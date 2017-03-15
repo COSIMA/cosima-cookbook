@@ -1,7 +1,4 @@
-# cosima
-
-This repository serves two purposes.
-
-1. A summary of the 0.1 degree MOM5 experiments completed and in progress.
-2. A cookbook of MOM5 diagnostics
-
+<<<<<<< HEAD
+# cosima-cookbook
+Short self contained analysis examples
+>>>>>>> d73ef32764c3d4f24520a8f26e65919afd48211c
