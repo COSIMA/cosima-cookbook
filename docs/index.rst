@@ -10,7 +10,7 @@ Welcome to cosima-cookbook's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+.. include:: items/index.txt
 
 Indices and tables
 ==================
