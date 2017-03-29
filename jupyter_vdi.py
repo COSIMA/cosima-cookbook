@@ -119,7 +119,7 @@ def start_jupyter(s):
     global webbrowser_started
 
     if not webbrowser_started:
-        m = re.search('The Jupyter Notebook is running at: (?P<url>.*)', s.decode())
+        m = re.search('The Jupyter Notebook is running at: (?P<url>.*)', s.decode('utf8'))
         if m is not None:
             params.update(m.groupdict())
             # open browser locally
