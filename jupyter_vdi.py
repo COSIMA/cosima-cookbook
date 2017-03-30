@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 """
 Script to launch a VDI session (or connect to already running session)
 and start a Jupyter server on the VDI
@@ -21,6 +21,8 @@ Usage:
 
 Author: James Munroe, 2017
 """
+
+from __future__ import print_function
 
 import re
 import sys
@@ -97,7 +99,7 @@ if m is not None:
 else:
     print('No')
     print("Launching new VDI session...", end='')
-    r = session('launch --partition main')
+    r = session('launch --partition main', params)
     m = re.search('#~#id=(?P<jobid>(?P<jobidNumber>.*?))#~#', r.before.decode())
     params.update(m.groupdict())
     time.sleep(2) # TODO: instead of waiting, should check for confirmation
@@ -117,7 +119,7 @@ def start_jupyter(s):
     global webbrowser_started
 
     if not webbrowser_started:
-        m = re.search('The Jupyter Notebook is running at: (?P<url>.*)', s.decode())
+        m = re.search('The Jupyter Notebook is running at: (?P<url>.*)', s.decode('utf8'))
         if m is not None:
             params.update(m.groupdict())
             # open browser locally
