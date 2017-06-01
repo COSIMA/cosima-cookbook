@@ -1,4 +1,4 @@
-.. _examples-index:
+.. _configurations-index:
 
 Model Configurations
 ====================
@@ -9,4 +9,4 @@ Model Configurations
 General examples
 ----------------
 
-Model Configurations
+List of experiments
