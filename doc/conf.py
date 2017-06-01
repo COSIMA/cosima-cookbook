@@ -56,7 +56,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'COSIMA'
+project = 'COSIMA Cookbook'
 copyright = '2017, COSIMA'
 author = 'COSIMA'
 
@@ -179,8 +179,8 @@ sphinx_gallery_conf = {
         'numpy': 'http://docs.scipy.org/doc/numpy-1.9.1'},
 
     # path to your examples scripts
-    'examples_dirs' : '../examples',
+    'examples_dirs' : ['../diagnostics', '../configurations'],
 
     # path where to save gallery generated examples
-    'gallery_dirs'  : 'auto_examples',
+    'gallery_dirs'  : ['auto_diagnostics', 'auto_configurations'],
 }

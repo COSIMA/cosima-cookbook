@@ -7,7 +7,7 @@ COSIMA Cookbook
 ===============
 
 This provides a summary of the ocean and sea ice modelling done by the 
-`COSIMA <http://cosima.org.au`_ community.
+`COSIMA <http://cosima.org.au>`_ community.
 
 It provides both examples of diagnostics to adapt to your own use and summaries
 of diagnostics for models run by members of the community.
@@ -19,9 +19,8 @@ The code for this cookbook is on Github: `COSIMA-Cookbook <https://github.com/Oc
    :caption: Contents:
 
    getting_started
-   auto_examples/index
-   experiments
-
+   auto_diagnostics/index
+   auto_configurations/index
 
 
 Indices and tables

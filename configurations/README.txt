@@ -1,12 +1,8 @@
-.. _configurations-index:
-
 Model Configurations
 ====================
 
 
-.. _general_examples:
+(INSERT ANDY'S OVERVIEW SKETCH)
 
-General examples
-----------------
-
-List of experiments
+~
+~
