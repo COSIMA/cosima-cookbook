@@ -1,8 +1,6 @@
-====================================
-Getting Started with COSIMA-Cookbook
-====================================
-
-# cosima-cookbook
+===============
+COSIMA Cookbook
+===============
 
 `COSIMA: Consortium for Ocean-Sea Ice Modelling in Australia
 <http://cosima.org.au>`_
