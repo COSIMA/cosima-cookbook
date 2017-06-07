@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-import os
-import sys
-import subprocess
+from setuptools import setup
 
-if sys.argv[1:2] == ['install']:
-    subprocess.check_call([sys.executable, 'build.py'],
-                          cwd=os.path.abspath(os.path.dirname(__file__)))
-else:
-    print("Usage: setup.py install\n\nThis will just run build.py --- useful for readthdocs.org\n")
-    sys.exit(1)
+setup(name='cosima_cookbook',
+      version='0.1',
+      description='Diagnostics for COSIMA: Consortium for Ocean-Sea Ice Modelling in Australia',
+      url='https://github.com/OceansAus/cosima-cookbook',
+      author='James Munroe',
+      author_email='jmunroe@mun.ca',
+      license='Apache License 2.0',
+      packages=['cosima_cookbook'],
+      zip_safe=False)
