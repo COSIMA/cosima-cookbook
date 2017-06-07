@@ -21,6 +21,7 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import sphinx_nbexamples
 
 # -- General configuration ------------------------------------------------
 
@@ -40,7 +41,7 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
-    'sphinx_gallery.gen_gallery',
+    'sphinx_nbexamples',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -49,16 +50,15 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
 
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
 project = 'COSIMA Cookbook'
-copyright = '2017, COSIMA'
-author = 'COSIMA'
+copyright = '2017, James Munroe'
+author = 'James Munroe'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -166,21 +166,15 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
-
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}
 
-sphinx_gallery_conf = {
-    'backreferences_dir': 'gen_modules/backreferences',
-    'doc_module': ('sphinx_gallery', 'numpy'),
-    'reference_url': {
-        'sphinx_gallery': None,
-        'matplotlib': 'http://matplotlib.org',
-        'numpy': 'http://docs.scipy.org/doc/numpy-1.9.1'},
+example_gallery_config = dict(
+#    preprocess=[''],
+#    insert_bokeh='0.12.1',
+#    urls='https://github.com/Chilipp/sphinx-nbexamples/blob/master/examples',
+     examples_dirs=['../configurations', '../diagnostics'],
+     pattern='.+.ipynb',
+)
 
-    # path to your examples scripts
-    'examples_dirs' : ['../diagnostics', '../configurations'],
 
-    # path where to save gallery generated examples
-    'gallery_dirs'  : ['auto_diagnostics', 'auto_configurations'],
-}

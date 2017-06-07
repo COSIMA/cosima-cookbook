@@ -29,6 +29,6 @@ html-noplot:
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
-deploy: html
+deploy:
 	rsync -avz _build/html/. ubuntu@130.56.253.161:/var/www/html/.
 	ssh -l ubuntu 130.56.253.161 'sudo chgrp -R www-data /var/www/html'

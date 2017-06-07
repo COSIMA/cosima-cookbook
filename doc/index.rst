@@ -19,9 +19,8 @@ The code for this cookbook is on Github: `COSIMA-Cookbook <https://github.com/Oc
    :caption: Contents:
 
    getting_started
-   auto_diagnostics/index
-   auto_configurations/index
-
+   diagnostics/index
+   configurations/index
 
 Indices and tables
 ==================
