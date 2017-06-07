@@ -87,3 +87,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+doc/_build
+doc/diagnostics
+doc/configurations
+doc/notebooks
+doc/gen_modules
