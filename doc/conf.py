@@ -170,10 +170,9 @@ texinfo_documents = [
 intersphinx_mapping = {'https://docs.python.org/': None}
 
 example_gallery_config = dict(
-#    preprocess=[''],
-#    insert_bokeh='0.12.1',
-#    urls='https://github.com/Chilipp/sphinx-nbexamples/blob/master/examples',
-     examples_dirs=['../configurations', '../diagnostics'],
+     dont_preprocess=True,
+     insert_bokeh='0.12.5',
+     examples_dirs=['../configurations', '../diagnostics', '../notebooks'],
      pattern='.+.ipynb',
 )
 

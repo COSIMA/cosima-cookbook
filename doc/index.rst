@@ -15,12 +15,13 @@ of diagnostics for models run by members of the community.
 The code for this cookbook is on Github: `COSIMA-Cookbook <https://github.com/OceansAus/cosima-cookbook>`_
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    getting_started
    diagnostics/index
    configurations/index
+   notebooks/index
 
 Indices and tables
 ==================
