@@ -21,8 +21,8 @@ help:
 
 clean:
 	rm -rf $(BUILDDIR)/*
-	rm -rf auto_diagnostics/
-	rm -rf auto_configurations/
+	rm -rf diagnostics/
+	rm -rf configurations/
 
 html-noplot:
 	$(SPHINXBUILD) -D plot_gallery=0 -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
