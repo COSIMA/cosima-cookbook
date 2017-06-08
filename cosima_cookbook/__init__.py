@@ -35,7 +35,7 @@ DataDir = '/g/data3/hh5/tmp/cosima'
 
 # find all experiments with at least one outputNNN subdirectory
 expts = sorted({ re.search(DataDir + '/' + '(.*)' + '/output', d).group(1) 
-             for d in glob(DataDir + '*/*/*/output*') })
+	         for d in glob(os.path.join(DataDir , '*/*/output*') )})
 
 def get_expt():
     cwd = os.getcwd()
@@ -43,7 +43,7 @@ def get_expt():
     return expt
     
 @memory.cache
-def build_index(expt):
+def build_index(expt=None):
     """
     An experiment is a collection of outputNNN directories.  Each directory 
     represents the output of a single job submission script. These directories 
@@ -59,10 +59,15 @@ def build_index(expt):
     .ncfile, varname, dimensions, chunksize
 
     Generate an index for all netCDF4 files. The results are cached, so needs only to be done once.
+
+    if expt is None, index is build for all files in datadir.
     """
 
-    exptdir = os.path.join(DataDir, expt)
-    ncfiles = glob(os.path.join(exptdir, 'output*/*.nc'))
+    if expt is None:
+        ncfiles = glob(os.path.join(DataDir, '*/*/output*/*.nc'))
+    else:
+        exptdir = os.path.join(DataDir, expt)
+        ncfiles = glob(os.path.join(exptdir, 'output*/*.nc'))
     ncfiles.sort()
 
     def get_vars(ncpath):
@@ -72,10 +77,13 @@ def build_index(expt):
         ds = netCDF4.Dataset(ncpath)
         ncfile = os.path.basename(ncpath)
         
+	# extract out experiment from path
+        expt = re.search(DataDir + '/' + '(.*)' + '/output', ncpath).group(1) 
+
         for k, v in ds.variables.items():
             index.append( (v.name, v.dimensions, 
                                tuple(v.chunking()), ncfile,
-                               ncpath) )
+                               ncpath, expt) )
         return index
     
     b = dask.bag.from_sequence(ncfiles)
@@ -83,7 +91,7 @@ def build_index(expt):
     index = list(index)
     index = pd.DataFrame.from_records(index,
                                       columns = ['variable', 'dimensions',
-                                               'chunking', 'ncfile', 'path'])
+                                               'chunking', 'ncfile', 'path', 'expt'])
     return index
 
 
