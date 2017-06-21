@@ -20,6 +20,8 @@ import netCDF4
 import tempfile
 from joblib import Memory
 
+from tqdm import tqdm_notebook
+
 cachedir = tempfile.gettempdir()
 memory = Memory(cachedir=cachedir, verbose=0)
 
@@ -43,7 +45,7 @@ def get_expt():
     return expt
     
 @memory.cache
-def build_index(expt=None):
+def build_index(expt=None, bag=False):
     """
     An experiment is a collection of outputNNN directories.  Each directory 
     represents the output of a single job submission script. These directories 
@@ -86,9 +88,15 @@ def build_index(expt=None):
                                ncpath, expt) )
         return index
     
-    b = dask.bag.from_sequence(ncfiles)
-    index = b.map(get_vars).concat()
-    index = list(index)
+
+    
+    if bag:
+        b = dask.bag.from_sequence(ncfiles)
+        index = b.map(get_vars).concat()
+        index = list(index)
+    else:
+        index = map(get_vars, tqdm_notebook(ncfiles))
+
     index = pd.DataFrame.from_records(index,
                                       columns = ['variable', 'dimensions',
                                                'chunking', 'ncfile', 'path', 'expt'])
