@@ -93,9 +93,14 @@ def build_index(expt=None, bag=False):
     if bag:
         b = dask.bag.from_sequence(ncfiles)
         index = b.map(get_vars).concat()
-        index = list(index)
     else:
-        index = map(get_vars, tqdm_notebook(ncfiles))
+        index = []
+        for ncfile in tqdm_notebook(ncfiles):
+            row = get_vars(ncfile)
+            index.extend(row)
+    
+    
+    index = list(index)
 
     index = pd.DataFrame.from_records(index,
                                       columns = ['variable', 'dimensions',
