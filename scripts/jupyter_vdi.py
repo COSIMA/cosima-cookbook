@@ -33,7 +33,8 @@ import getpass
 import pexpect
 
 params = {'user' : 'jm0634',
-          'JupyterPort' : '8890',
+          'JupyterPort' : '8889',
+          'BokehPort' : '8787',
           'execHost' :  'vdi.nci.org.au',
          }
 
@@ -129,7 +130,7 @@ def start_jupyter(s):
     return s
 
 print ("Running Jupyter on VDI...")
-cmd = '-t -L {JupyterPort}:localhost:{JupyterPort} bash -c "echo &&  module use /g/data3/hh5/public/modules && module load conda && source activate analysis3  && jupyter notebook --no-browser --port {JupyterPort} "'
+cmd = '-t -L {JupyterPort}:localhost:{JupyterPort} -L {BokehPort}:localhost:{BokehPort} bash -c "echo &&  module use /g/data3/hh5/public/modules && module load conda && source activate analysis3  && export DASHBOARD_SERVER_URL=http://130.56.243.58:3000; export DASHBOARD_SERVER_AUTH_TOKEN=notebook_to_dashboard_secret && jupyter notebook --no-browser --port {JupyterPort} "'
 s = ssh(cmd, params, login_timeout=2)
 
 print ("Waiting for Jupyter to start...")
