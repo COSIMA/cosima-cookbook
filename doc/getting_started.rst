@@ -2,42 +2,77 @@
 Getting Started
 ===============
 
-`COSIMA: Consortium for Ocean-Sea Ice Modelling in Australia
-<http://cosima.org.au>`_
+Some users may find it sufficient to browse through the sample diagnostics
+and model configurations provided.  In order to reproduce these results
+on your own, you will a Python 3 development environment.
 
-This repository is a gallery of self contained analysis examples.
+The cookbook itself includes a Python 3 package that contains the
+diagnostics themselves and some utility functions.  The Jupyter IPython
+notebooks that can be downloaded from the cookbook need this package
+(called cosima_cookbook) to be installed.
 
-Setting up a development environment
-====================================
+Choosing up your platform
+==========================
 
-The assumption is that these notebooks will be run on either raijin.nci.org.au, the VDI (http://nci.org.au/services/vdi/) or on a virtual machine with NFS mounted directories on tenjin.nci.org.au. The notebooks can also be run locally  by using something like sshfs.
+COSIMA ocean and ice models are typically run on `NCI <nci.org.au>`_ computing
+platform.  The output data is very large and it is assumed that this
+data resides on a NCI storage system.
 
-On raijin, use::
-    module use conda
+The cookbook may be used on several different platforms:
 
-On your on machine, install miniconda
+#. `Virtual Desktop Infrastructure (VDI) <http://nci.org.au/services/vdi/>`_
+#. `Raijin raijin.nci.org.au <http://nci.org.au/systems-services/peak-system/raijin/>`_ using qsub
+#. `Tenjin tenjin.nci.org.au <http://nci.org.au/systems-services/cloud-computing/tenjin/>`_ using virtual machines and NFS mounted directories
+#. Local workstation or laptop with data accessible over sshfs or OPeNDAP
 
-Create an a conda environment 'cosima'
+For this documentation, we will assume you are running your analysis using
+the VDI.  Use the
+`VDI User Guide <https://opus.nci.org.au/display/Help/VDI+User+Guide>`_
+to get connect to the VDI.
+
+Once connected, open a terminal (Applications -> System Tools -> Terminal).
+
+(If your connection to the VDI is too slow, can can also also ssh directly to a VDI
+node and work over ssh tunnels. Ask James Munroe for more information. )
 
 Clone the cosima-cookbook repository::
 
-    git clone https://github.com/OceansAus/cosima-cookbook.git
+    $ git clone https://github.com/OceansAus/cosima-cookbook.git
 
-install the cosima_cookbook utilities. From the cosima-cookbook directory, run::
+The next assumption we make it that you have a Python development environment
+setup.  Options include either miniconda or modules.  In either case,
+it is recommend to create a user-writable environment to be able to install
+additional Python packages.
 
-    pip install -e .
+Clone the cosima-cookbook repository::
 
-Run the Jupyter notebook::
+    $ git clone https://github.com/OceansAus/cosima-cookbook.git
 
-    jupyter notebook --no-browser --ip='*'
+Within the cosima-cookbook directory, run::
 
-Use::
+    $ pip install -e .
 
-    scripts/jupyter_vdi.py
+This installs the cosima-cookbook so that it is available in your
+current Python environment.  The '-e' switch means editable; changes to
+the cosima_cookbook project can be made without having to reinstall.
+(Eventually, the cosima_cookbook package will be made available through
+PyPi and as a conda package but this is still in development).
 
-[NCI Virtual Desktop Infrastructure (VDI)](http://nci.org.au/services/vdi/)
+The cookbook requires a number of other packages including
 
-These notebooks are designed to run on tenjin.nci.org.au which includes the VDI or on raijin.nci.org.au.
+ jupyter joblib tqdm matplotlib pandas numpy dask distributed xarray netcdf4
+ bokeh seaborn datashader python-graphviz basemap cartopy
 
-This cookbook assumes a Python computational environment and access to 
-the NCI infrastructure.
+Note, just installing all of this packages in your /home directory will
+probably use more than your allocated quota.  Options include installing these
+files somewhere on /g/data or on /local.  You may wish to examine this script
+to see one way of setting things up::
+
+    scripts/bootstrap.sh
+
+Finally, run the Jupyter notebook::
+
+    $ jupyter notebook
+
+You can also connect to this Jupyter notebook using an SSH tunnel. See
+`scripts/jupyter_vdi.py`_.
