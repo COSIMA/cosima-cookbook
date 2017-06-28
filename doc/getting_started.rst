@@ -61,7 +61,14 @@ PyPi and as a conda package but this is still in development).
 The cookbook requires a number of other packages including
 
  jupyter joblib tqdm matplotlib pandas numpy dask distributed xarray netcdf4
- bokeh seaborn datashader python-graphviz
+ bokeh seaborn datashader python-graphviz basemap cartopy
+
+Note, just installing all of this packages in your /home directory will
+probably use more than your allocated quota.  Options include installing these
+files somewhere on /g/data or on /local.  You may wish to examine this script
+to see one way of setting things up::
+
+    scripts/bootstrap.sh
 
 Finally, run the Jupyter notebook::
 
