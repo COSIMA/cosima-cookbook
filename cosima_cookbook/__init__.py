@@ -4,7 +4,6 @@ Common tools for working with COSIMA model output
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 
 import dask
@@ -20,13 +19,10 @@ import netCDF4
 import tempfile
 from joblib import Memory
 
-from tqdm import tqdm_notebook
+from tqdm import tqdm_notebook, tqdm
 
 cachedir = tempfile.gettempdir()
 memory = Memory(cachedir=cachedir, verbose=0)
-
-
-client = Client()
 
 import warnings 
 warnings.filterwarnings("ignore", 
@@ -43,9 +39,41 @@ def get_expt():
     cwd = os.getcwd()
     _, expt = cwd.split('cosima-cookbook/configurations/')
     return expt
-    
+
+
 @memory.cache
-def build_index(expt=None, bag=False):
+def index_ncfile(ncpath):
+    """
+    Give an ncfile, create an index of all the variables, dimensions, chunking information
+    along with the metadata for that file.
+    """
+
+    dataset = netCDF4.Dataset(ncpath)
+ 
+    variables = [ { 'name' : v.name,
+                     'dimensions' : v.dimensions,
+                     'chunking' : tuple(v.chunking()), }
+		  for v in dataset.variables.values() ]
+
+    dataset.close()   
+
+    ncfile = os.path.basename(ncpath)
+ 
+    # extract out experiment from path
+    expt = re.search(DataDir + '/' + '(.*)' + '/output', ncpath).group(1) 
+
+    index = {'ncfile': ncfile,
+             'ncpath': ncpath,
+             'configuration' : '',
+             'experiment' : expt,
+             'run' : '', 
+             'variables': variables,
+            }
+
+    return index
+
+@memory.cache    
+def build_index():
     """
     An experiment is a collection of outputNNN directories.  Each directory 
     represents the output of a single job submission script. These directories 
@@ -60,51 +88,19 @@ def build_index(expt=None, bag=False):
  
     .ncfile, varname, dimensions, chunksize
 
-    Generate an index for all netCDF4 files. The results are cached, so needs only to be done once.
-
-    if expt is None, index is build for all files in datadir.
+    Generate an index for all netCDF4 files. The results are cached, so 
+    this needs only to be done once.
     """
 
-    if expt is None:
-        ncfiles = glob(os.path.join(DataDir, '*/*/output*/*.nc'))
-    else:
-        exptdir = os.path.join(DataDir, expt)
-        ncfiles = glob(os.path.join(exptdir, 'output*/*.nc'))
+    ncfiles = glob(os.path.join(DataDir, '*/*/output*/*.nc'))
     ncfiles.sort()
+    b = dask.bag.from_sequence(ncfiles)
+    index = b.map(index_ncfiles)
+   
+  #  index = list(index)
 
-    def get_vars(ncpath):
-        
-        index = []
+    index = pd.DataFrame.from_records(index)
 
-        ds = netCDF4.Dataset(ncpath)
-        ncfile = os.path.basename(ncpath)
-        
-	# extract out experiment from path
-        expt = re.search(DataDir + '/' + '(.*)' + '/output', ncpath).group(1) 
-
-        for k, v in ds.variables.items():
-            index.append( (v.name, v.dimensions, 
-                               tuple(v.chunking()), ncfile,
-                               ncpath, expt) )
-        return index
-    
-
-    
-    if bag:
-        b = dask.bag.from_sequence(ncfiles)
-        index = b.map(get_vars).concat()
-    else:
-        index = []
-        for ncfile in tqdm_notebook(ncfiles):
-            row = get_vars(ncfile)
-            index.extend(row)
-    
-    
-    index = list(index)
-
-    index = pd.DataFrame.from_records(index,
-                                      columns = ['variable', 'dimensions',
-                                               'chunking', 'ncfile', 'path', 'expt'])
     return index
 
 
