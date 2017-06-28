@@ -4,15 +4,15 @@ Getting Started
 
 Some users may find it sufficient to browse through the sample diagnostics
 and model configurations provided.  In order to reproduce these results
-on your own, you will a Python development environment.
+on your own, you will a Python 3 development environment.
 
-The cookbook itself includes a Python package that contains the
+The cookbook itself includes a Python 3 package that contains the
 diagnostics themselves and some utility functions.  The Jupyter IPython
 notebooks that can be downloaded from the cookbook need this package
-(called cosima_cookbook) to be installed to be able to work.
+(called cosima_cookbook) to be installed.
 
-Choosing up your environment
-============================
+Choosing up your platform
+==========================
 
 COSIMA ocean and ice models are typically run on `NCI <nci.org.au>`_ computing
 platform.  The output data is very large and it is assumed that this
@@ -25,35 +25,47 @@ The cookbook may be used on several different platforms:
 #. `Tenjin tenjin.nci.org.au <http://nci.org.au/systems-services/cloud-computing/tenjin/>`_ using virtual machines and NFS mounted directories
 #. Local workstation or laptop with data accessible over sshfs or OPeNDAP
 
-The assumption is that these notebooks will be run on either
-raijin.nci.org.au, the VDI (http://nci.org.au/services/vdi/) or on a virtual machine with NFS mounted directories on tenjin.nci.org.au. The notebooks can also be run locally  by using something like sshfs.
+For this documentation, we will assume you are running your analysis using
+the VDI.  Use the
+`VDI User Guide <https://opus.nci.org.au/display/Help/VDI+User+Guide>`_
+to get connect to the VDI.
 
-On raijin, use::
-    module use conda
+Once connected, open a terminal (Applications -> System Tools -> Terminal).
 
-On your on machine, install miniconda
-
-Create an a conda environment 'cosima'
+(If your connection to the VDI is too slow, can can also also ssh directly to a VDI
+node and work over ssh tunnels. Ask James Munroe for more information. )
 
 Clone the cosima-cookbook repository::
 
-    git clone https://github.com/OceansAus/cosima-cookbook.git
+    $ git clone https://github.com/OceansAus/cosima-cookbook.git
 
-install the cosima_cookbook utilities. From the cosima-cookbook directory, run::
+The next assumption we make it that you have a Python development environment
+setup.  Options include either miniconda or modules.  In either case,
+it is recommend to create a user-writable environment to be able to install
+additional Python packages.
 
-    pip install -e .
+Clone the cosima-cookbook repository::
 
-Run the Jupyter notebook::
+    $ git clone https://github.com/OceansAus/cosima-cookbook.git
 
-    jupyter notebook --no-browser --ip='*'
+Within the cosima-cookbook directory, run::
 
-Use::
+    $ pip install -e .
 
-    scripts/jupyter_vdi.py
+This installs the cosima-cookbook so that it is available in your
+current Python environment.  The '-e' switch means editable; changes to
+the cosima_cookbook project can be made without having to reinstall.
+(Eventually, the cosima_cookbook package will be made available through
+PyPi and as a conda package but this is still in development).
 
-[NCI Virtual Desktop Infrastructure (VDI)](http://nci.org.au/services/vdi/)
+The cookbook requires a number of other packages including
 
-These notebooks are designed to run on tenjin.nci.org.au which includes the VDI or on raijin.nci.org.au.
+ jupyter joblib tqdm matplotlib pandas numpy dask distributed xarray netcdf4
+ bokeh seaborn datashader python-graphviz
 
-This cookbook assumes a Python computational environment and access to
-the NCI infrastructure.
+Finally, run the Jupyter notebook::
+
+    $ jupyter notebook
+
+You can also connect to this Jupyter notebook using an SSH tunnel. See
+`scripts/jupyter_vdi.py`_.
