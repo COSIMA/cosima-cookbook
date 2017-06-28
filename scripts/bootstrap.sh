@@ -17,7 +17,8 @@ conda info -a
 
 conda create -n cosima_cookbook python=3 jupyter joblib tqdm matplotlib\
                          pandas numpy dask distributed xarray netcdf4\
-                         bokeh seaborn datashader python-graphviz
+                         bokeh seaborn datashader python-graphviz basemap\
+			 cartopy
 source activate cosima_cookbook
 
 #python setup.py install
