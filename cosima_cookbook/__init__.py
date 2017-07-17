@@ -48,27 +48,27 @@ def index_ncfile(ncpath):
     along with the metadata for that file.
     """
 
-    dataset = netCDF4.Dataset(ncpath)
- 
-    variables = [ { 'name' : v.name,
-                     'dimensions' : v.dimensions,
-                     'chunking' : tuple(v.chunking()), }
-		  for v in dataset.variables.values() ]
-
-    dataset.close()   
-
     ncfile = os.path.basename(ncpath)
  
     # extract out experiment from path
     expt = re.search(DataDir + '/' + '(.*)' + '/output', ncpath).group(1) 
 
-    index = {'ncfile': ncfile,
-             'ncpath': ncpath,
-             'configuration' : '',
-             'experiment' : expt,
-             'run' : '', 
-             'variables': variables,
-            }
+    if not os.path.exists(ncpath):
+        return None
+    
+    dataset = netCDF4.Dataset(ncpath)
+ 
+    index = [ { 'ncfile': ncfile,
+                'ncpath': ncpath,
+                'configuration' : '',
+                'experiment' : expt,
+                'run' : '', 
+                'name' : v.name,
+                'dimensions' : v.dimensions,
+                'chunking' : tuple(v.chunking()), }
+        for v in dataset.variables.values() ]
+
+    dataset.close()   
 
     return index
 
@@ -94,11 +94,16 @@ def build_index():
 
     ncfiles = glob(os.path.join(DataDir, '*/*/output*/*.nc'))
     ncfiles.sort()
-    b = dask.bag.from_sequence(ncfiles)
-    index = b.map(index_ncfiles)
+    bag = dask.bag.from_sequence(ncfiles)
+    index = bag.map(index_ncfile)
    
-  #  index = list(index)
+    # convert bag to list
+    index = list(index)
 
+    # flatten
+    index = [item for sublist in index for item in sublist]
+
+    # convert to dataframe
     index = pd.DataFrame.from_records(index)
 
     return index
@@ -120,8 +125,9 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     
     """
     
-    df = build_index(expt)
-    var = df[(df.ncfile.str.contains(ncfile)) & (df.variable == variable)]
+    df = build_index()
+
+    var = df[(df.ncfile.str.contains(ncfile)) & (df.name == variable)]
     
     chunking = var.chunking.iloc[0]
     dimensions = var.dimensions.iloc[0]  
@@ -131,7 +137,7 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
         default_chunks.update(chunks)
         chunks = default_chunks
         
-    ncfiles = sorted(list(var.path))
+    ncfiles = sorted(list(var.ncpath))
     
     if n is not None:
         ncfiles = ncfiles[-n:]
