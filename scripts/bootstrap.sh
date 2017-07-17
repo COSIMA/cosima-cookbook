@@ -8,9 +8,12 @@ export PATH="$MINICONDA/bin:$PATH"
 hash -r
 
 conda config --set always_yes yes
-conda update conda
-conda install -n root conda-build
-conda install -n root _license
+conda config --prepend channels file://g/data1/v45/conda-mirror
+conda config --prepend bokeh
+
+#conda update conda
+#conda install -n root conda-build
+#conda install -n root _license
 
 # Useful for debugging any issues with conda
 conda info -a
