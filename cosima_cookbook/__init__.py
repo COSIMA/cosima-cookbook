@@ -69,7 +69,7 @@ def build_index(expt=None, bag=False):
         ncfiles = glob(os.path.join(DataDir, '*/*/output*/*.nc'))
     elif 'access' in expt:
         exptdir = os.path.join(DataDir, expt)
-        ncfiles = glob(os.path.join(exptdir, 'output*/ocean/ocean*.nc'))
+        ncfiles = glob(os.path.join(exptdir, 'output*/ocean/*.nc'))
     else:
         exptdir = os.path.join(DataDir, expt)
         ncfiles = glob(os.path.join(exptdir, 'output*/*.nc'))
