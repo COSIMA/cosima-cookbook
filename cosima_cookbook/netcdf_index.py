@@ -16,7 +16,8 @@ directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
                       ]
 
 cosima_cookbook_dir = '/g/data1/v45/cosima-cookbook'
-database_file = '/{}/cosima-cookbook.db'.format(cosima_cookbook_dir)
+database_file = '{}/cosima-cookbook.db'.format(cosima_cookbook_dir)
+database_url = 'sqlite:///{}'.format(database_file)
 
 def build_index():
     """
@@ -52,9 +53,8 @@ def build_index():
 
     # The use of the `dataset` module hides the details of working with SQL directly.
     # In this database is a single table listing all variables in NetCDF4 seen previously.
-    db = dataset.connect('sqlite://' + database_file)
-
-    print('Using database {}'.format(database_file))
+    print('Using database {}'.format(database_url))
+    db = dataset.connect(database_url)
 
     files_already_seen = set([_['ncfile'] for _ in db['ncfiles'].distinct('ncfile')])
 
@@ -100,7 +100,7 @@ def build_index():
         return ncvars
 
     print('Indexing new .nc files...')
-    with distributed.Client() as client:
+    with distributed.default_client() as client:
         bag = dask.bag.from_sequence(files_to_add)
         bag = bag.map(index_variables).flatten()
         futures = client.compute(bag)
@@ -139,8 +139,7 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     else:
         experiment = expt
 
-    db = dataset.connect('sqlite://' + database_file)
-
+    db = dataset.connect(database_url)
 
     res = db.query('SELECT ncfile, dimensions, chunking \
                     FROM ncfiles \
