@@ -42,38 +42,6 @@ def get_expt():
     _, expt = cwd.split('cosima-cookbook/configurations/')
     return expt
 
-
-@memory.cache
-def index_ncfile(ncpath):
-    """
-    Give an ncfile, create an index of all the variables, dimensions, chunking information
-    along with the metadata for that file.
-    """
-
-    ncfile = os.path.basename(ncpath)
-
-    # extract out experiment from path
-    expt = re.search(DataDir + '/' + '(.*)' + '/output', ncpath).group(1)
-
-    if not os.path.exists(ncpath):
-        return None
-
-    dataset = netCDF4.Dataset(ncpath)
-
-    index = [ { 'ncfile': ncfile,
-                'ncpath': ncpath,
-                'configuration' : '',
-                'experiment' : expt,
-                'run' : '',
-                'name' : v.name,
-                'dimensions' : v.dimensions,
-                'chunking' : tuple(v.chunking()), }
-        for v in dataset.variables.values() ]
-
-    dataset.close()
-
-    return index
-
 from .netcdf_index import build_index
 from .netcdf_index import get_nc_variable
 
