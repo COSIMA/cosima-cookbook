@@ -32,25 +32,32 @@ to get connect to the VDI.
 
 Once connected, open a terminal (Applications -> System Tools -> Terminal).
 
-(If your connection to the VDI is too slow, can can also also ssh directly to a VDI
-node and work over ssh tunnels. Ask James Munroe for more information. )
+If your connection to the VDI is too slow, can can also also ssh directly to a VDI
+node and work over ssh tunnels. Ask James Munroe for more information.
 
-Clone the cosima-cookbook repository::
-
-    $ git clone https://github.com/OceansAus/cosima-cookbook.git
-
-The next assumption we make it that you have a Python development environment
-setup.  Options include either miniconda or modules.  In either case,
-it is recommend to create a user-writable environment to be able to install
-additional Python packages.
-
-Clone the cosima-cookbook repository::
+1. Clone the cosima-cookbook repository::
 
     $ git clone https://github.com/OceansAus/cosima-cookbook.git
+    $ cd cosima-cookbook
 
-Within the cosima-cookbook directory, run::
+[Alternative: set up SSH keys for github:: 
+    git clone git@github.com:OceansAus/cosima-cookbook.git
 
-    $ pip install -e .
+]
+
+2. The cookbook is built using Python so we need a Python development environment. Already
+installed on the VDI is an installation of miniconda:
+
+Activate conda environment already installed on VDI::
+
+    $ module use /g/data3/hh5/public/modules
+    $ module load conda/analysis3
+
+[Alternative: install your own conda environment. In that case, you may omit the --user flags below.]
+
+3. Install the cosima-cookbook package. Within the cosima-cookbook directory, run::
+
+    $ pip install --user -e .
 
 This installs the cosima-cookbook so that it is available in your
 current Python environment.  The '-e' switch means editable; changes to
@@ -58,19 +65,16 @@ the cosima_cookbook project can be made without having to reinstall.
 (Eventually, the cosima_cookbook package will be made available through
 PyPi and as a conda package but this is still in development).
 
+4. Install required modules for working with the cookbook::
+
+    pip install --user joblib tqdm --user
+
 The cookbook requires a number of other packages including
 
- jupyter joblib tqdm matplotlib pandas numpy dask distributed xarray netcdf4
+ jupyter matplotlib pandas numpy dask distributed xarray netcdf4
  bokeh seaborn datashader python-graphviz basemap cartopy
 
-Note, just installing all of this packages in your /home directory will
-probably use more than your allocated quota.  Options include installing these
-files somewhere on /g/data or on /local.  You may wish to examine this script
-to see one way of setting things up::
-
-    scripts/bootstrap.sh
-
-Finally, run the Jupyter notebook::
+5. Finally, run the Jupyter notebook from the cookbook directory::
 
     $ jupyter notebook
 
