@@ -48,8 +48,6 @@ def build_index():
     print('Found {} .nc files'.format(len(ncfiles)))
 
     # We can persist this index by storing it in a sqlite database placed in a centrally available location.
-    if not os.path.exists(cosima_cookbook_dir):
-        os.mkdir(cosima_cookbook_dir)
 
     # The use of the `dataset` module hides the details of working with SQL directly.
     # In this database is a single table listing all variables in NetCDF4 seen previously.
