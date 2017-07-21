@@ -11,8 +11,10 @@ import dask.bag
 import distributed
 from distributed.diagnostics.progressbar import progress
 import xarray as xr
+import subprocess
 
 directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
+                       '/g/data1/v45/APE-MOM',
                       ]
 
 cosima_cookbook_dir = '/g/data1/v45/cosima-cookbook'
@@ -36,15 +38,14 @@ def build_index():
     """
 
     # Build index of all NetCDF files found in directories to search.
-    m = re.compile('.*\.nc$')
 
     ncfiles = []
     for directoryToSearch in directoriesToSearch:
         print('Searching {}'.format(directoryToSearch))
-        for root, dirs, filenames in os.walk(directoryToSearch):
-            for filename in filenames:
-                if m.match(filename) is not None:
-                    ncfiles.append(os.path.join(root, filename))
+        results = subprocess.check_output(['find', directoryToSearch, '-name', '*.nc'])
+        results = [s for s in results.decode('utf-8').split()]
+        ncfiles.extend(results)
+
     print('Found {} .nc files'.format(len(ncfiles)))
 
     # We can persist this index by storing it in a sqlite database placed in a centrally available location.
@@ -68,7 +69,7 @@ def build_index():
 
     # output* directories
     # match the parent and grandparent directory to configuration/experiment
-    m = re.compile('(.*)/(.*)/(.*)/(output\d+)/.*\.nc')
+    m = re.compile('(.*)/([^/]*)/([^/]*)/(output\d+)/.*\.nc')
 
     def index_variables(ncfile):
 
@@ -117,7 +118,8 @@ def build_index():
 
 
 def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
-                   op= lambda x: x):
+                   op=None,
+                   time_units=None):
     """
     For a given experiment, concatenate together variable over all time
     given a basename ncfile.
@@ -129,6 +131,9 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     n > 0 means only use the last n ncfiles files. Useful for testing.
 
     op() is function to apply to each variable before concatenating.
+
+    time_units (e.g. "days since 1600-01-01") can be used to override
+    the original time.units
 
     """
 
@@ -150,8 +155,12 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
 
     ncfiles = [row['ncfile'] for row in rows]
 
-    chunking = eval(rows[0]['chunking'])
+    print('Using {} ncfiles'.format(len(ncfiles)))
+
     dimensions = eval(rows[0]['dimensions'])
+    chunking = eval(rows[0]['chunking'])
+
+    print ('chunking info', dimensions, chunking)
     default_chunks = dict(zip(dimensions, chunking))
 
     if chunks is not None:
@@ -161,12 +170,23 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     if n is not None:
         ncfiles = ncfiles[-n:]
 
+    if op is None:
+        op = lambda x: x
+
     b = dask.bag.from_sequence(ncfiles)
     b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks,
                                              decode_times=False)[variable]) )
-    datasets = b.compute()
 
-    dsx = xr.concat(datasets, dim='time', coords='all')
+    dataarrays = b.compute()
 
-    return dsx
+    dataarray = xr.concat(dataarrays, dim='time', coords='all')
+
+    if time_units is None:
+        time_units = dataarray.time.units
+
+    decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
+    dataarray.coords['time'] = ('time', decoded_time,
+                                {'long_name' : 'time', 'decoded_using' : time_units }
+                               )
+    return dataarray
 
