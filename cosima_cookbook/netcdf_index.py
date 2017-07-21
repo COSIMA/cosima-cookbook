@@ -11,8 +11,10 @@ import dask.bag
 import distributed
 from distributed.diagnostics.progressbar import progress
 import xarray as xr
+import subprocess
 
 directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
+                       '/g/data1/v45/APE-MOM',
                       ]
 
 cosima_cookbook_dir = '/g/data1/v45/cosima-cookbook'
@@ -36,15 +38,14 @@ def build_index():
     """
 
     # Build index of all NetCDF files found in directories to search.
-    m = re.compile('.*\.nc$')
 
     ncfiles = []
     for directoryToSearch in directoriesToSearch:
         print('Searching {}'.format(directoryToSearch))
-        for root, dirs, filenames in os.walk(directoryToSearch):
-            for filename in filenames:
-                if m.match(filename) is not None:
-                    ncfiles.append(os.path.join(root, filename))
+        results = subprocess.check_output(['find', directoryToSearch, '-name', '*.nc'])
+        results = [s for s in results.decode('utf-8').split()]
+        ncfiles.extend(results)
+
     print('Found {} .nc files'.format(len(ncfiles)))
 
     # We can persist this index by storing it in a sqlite database placed in a centrally available location.
@@ -68,7 +69,7 @@ def build_index():
 
     # output* directories
     # match the parent and grandparent directory to configuration/experiment
-    m = re.compile('(.*)/(.*)/(.*)/(output\d+)/.*\.nc')
+    m = re.compile('(.*)/([^/]*)/([^/]*)/(output\d+)/.*\.nc')
 
     def index_variables(ncfile):
 
