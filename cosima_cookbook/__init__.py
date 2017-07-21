@@ -21,7 +21,9 @@ from joblib import Memory
 
 from tqdm import tqdm_notebook, tqdm
 
+print('starting distributed client...')
 client = Client()
+print(client)
 
 cachedir = tempfile.gettempdir()
 memory = Memory(cachedir=cachedir, verbose=0)
