@@ -162,7 +162,8 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
         ncfiles = ncfiles[-n:]
 
     b = dask.bag.from_sequence(ncfiles)
-    b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks)[variable]) )
+    b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks,
+                                             decode_times=False)[variable]) )
     datasets = b.compute()
 
     dsx = xr.concat(datasets, dim='time', coords='all')
