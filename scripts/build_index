@@ -1,0 +1,2 @@
+#!/bin/sh
+python -c "import cosima_cookbook as cc; cc.build_index()"
