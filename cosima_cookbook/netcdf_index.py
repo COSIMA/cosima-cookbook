@@ -118,7 +118,8 @@ def build_index():
 
 
 def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
-                   op= lambda x: x):
+                   op=None,
+                   time_units=None):
     """
     For a given experiment, concatenate together variable over all time
     given a basename ncfile.
@@ -130,6 +131,9 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     n > 0 means only use the last n ncfiles files. Useful for testing.
 
     op() is function to apply to each variable before concatenating.
+
+    time_units (e.g. "days since 1600-01-01") can be used to override
+    the original time.units
 
     """
 
@@ -151,8 +155,12 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
 
     ncfiles = [row['ncfile'] for row in rows]
 
-    chunking = eval(rows[0]['chunking'])
+    print('Using {} ncfiles'.format(len(ncfiles)))
+
     dimensions = eval(rows[0]['dimensions'])
+    chunking = eval(rows[0]['chunking'])
+
+    print ('chunking info', dimensions, chunking)
     default_chunks = dict(zip(dimensions, chunking))
 
     if chunks is not None:
@@ -162,11 +170,22 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     if n is not None:
         ncfiles = ncfiles[-n:]
 
+    if op is None:
+        op = lambda x: x
+
     b = dask.bag.from_sequence(ncfiles)
-    b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks)[variable]) )
-    datasets = b.compute()
+    b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks,
+                                             decode_times=False)[variable]) )
+    dataarrays = b.compute()
 
-    dsx = xr.concat(datasets, dim='time', coords='all')
+    dataarray = xr.concat(dataarrays, dim='time', coords='all')
 
-    return dsx
+    if time_units is None:
+        time_units = dataarray.time.units
+
+    decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
+    dataarray.coords['time'] = ('time', decoded_time,
+                                {'long_name' : 'time', 'decoded_using' : time_units }
+                               )
+    return dataarray
 
