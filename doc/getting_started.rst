@@ -11,8 +11,8 @@ diagnostics themselves and some utility functions.  The Jupyter IPython
 notebooks that can be downloaded from the cookbook need this package
 (called cosima_cookbook) to be installed.
 
-Choosing up your platform
-==========================
+Choosing your platform
+======================
 
 COSIMA ocean and ice models are typically run on `NCI <nci.org.au>`_ computing
 platform.  The output data is very large and it is assumed that this
@@ -37,27 +37,31 @@ node and work over ssh tunnels. Ask James Munroe for more information.
 
 1. Clone the cosima-cookbook repository::
 
-    $ git clone https://github.com/OceansAus/cosima-cookbook.git
-    $ cd cosima-cookbook
+    git clone https://github.com/OceansAus/cosima-cookbook.git
+    cd cosima-cookbook
 
 [Alternative: set up SSH keys for github:: 
     git clone git@github.com:OceansAus/cosima-cookbook.git
 
 ]
 
-2. The cookbook is built using Python so we need a Python development environment. Already
-installed on the VDI is an installation of miniconda:
+2. The cookbook is built using Python so we need a Python development environment
+with the following packages installed:
 
-Activate conda environment already installed on VDI::
+ jupyter matplotlib pandas numpy dask distributed xarray netcdf4
+ bokeh seaborn datashader python-graphviz basemap cartopy
 
-    $ module use /g/data3/hh5/public/modules
-    $ module load conda/analysis3
+There is a miniconda environment with all of these packes accessible from the VDI
+and raijin:
 
-[Alternative: install your own conda environment. In that case, you may omit the --user flags below.]
+    module use /g/data3/hh5/public/modules
+    module load conda/analysis3
+
+[Alternative: install your own conda environment. In that case, you may omit the --user flag below.]
 
 3. Install the cosima-cookbook package. Within the cosima-cookbook directory, run::
 
-    $ pip install --user -e .
+    pip install --user -e .
 
 This installs the cosima-cookbook so that it is available in your
 current Python environment.  The '-e' switch means editable; changes to
@@ -65,18 +69,9 @@ the cosima_cookbook project can be made without having to reinstall.
 (Eventually, the cosima_cookbook package will be made available through
 PyPi and as a conda package but this is still in development).
 
-4. Install required modules for working with the cookbook::
+4. Finally, run the Jupyter notebook from the cookbook directory::
 
-    pip install --user joblib tqdm --user
-
-The cookbook requires a number of other packages including
-
- jupyter matplotlib pandas numpy dask distributed xarray netcdf4
- bokeh seaborn datashader python-graphviz basemap cartopy
-
-5. Finally, run the Jupyter notebook from the cookbook directory::
-
-    $ jupyter notebook
+    jupyter notebook
 
 You can also connect to this Jupyter notebook using an SSH tunnel. See
 `scripts/jupyter_vdi.py`_.
