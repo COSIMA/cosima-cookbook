@@ -27,6 +27,7 @@ import getpass
 
 import pexpect
 #Check Version of MAC OS
+from appscript import *
 import platform
 OS_c=platform.system()
 OS_V=platform.release()
@@ -127,7 +128,6 @@ def start_jupyter(s):
                 webbrowser.open(params['url'])
                 webbrowser_started = True
             else:
-                from appscript import *
                 safari=app("Safari")
                 safari.make(new=k.document,with_properties={k.URL:params['url']})
     return s
