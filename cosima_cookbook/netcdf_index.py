@@ -177,6 +177,7 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     b = dask.bag.from_sequence(ncfiles)
     b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks,
                                              decode_times=False)[variable]) )
+
     dataarrays = b.compute()
 
     dataarray = xr.concat(dataarrays, dim='time', coords='all')
