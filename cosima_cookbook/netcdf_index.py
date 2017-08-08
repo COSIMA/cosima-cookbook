@@ -155,7 +155,7 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
 
     ncfiles = [row['ncfile'] for row in rows]
 
-    print('Using {} ncfiles'.format(len(ncfiles)))
+    print('Found {} ncfiles'.format(len(ncfiles)))
 
     dimensions = eval(rows[0]['dimensions'])
     chunking = eval(rows[0]['chunking'])
@@ -168,6 +168,7 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
         chunks = default_chunks
 
     if n is not None:
+        print('using last {} ncfiles only'.format(n))
         ncfiles = ncfiles[-n:]
 
     if op is None:
@@ -180,12 +181,14 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
 
     dataarray = xr.concat(dataarrays, dim='time', coords='all')
 
-    if time_units is None:
-        time_units = dataarray.time.units
+    if 'time' in dataarray.coords:
+        if time_units is None:
+            time_units = dataarray.time.units
 
-    decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
-    dataarray.coords['time'] = ('time', decoded_time,
-                                {'long_name' : 'time', 'decoded_using' : time_units }
-                               )
+        decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
+        dataarray.coords['time'] = ('time', decoded_time,
+                                    {'long_name' : 'time', 'decoded_using' : time_units }
+                                   )
+
     return dataarray
 
