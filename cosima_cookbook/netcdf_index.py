@@ -2,6 +2,8 @@
 Common tools for accessing NetCDF4 variables
 """
 
+__all__ = ['build_index', 'get_nc_variable', 'get_experiments']
+
 import netCDF4
 import dataset
 import re
@@ -116,6 +118,17 @@ def build_index():
 
     return True
 
+def get_experiments(configuration):
+    """
+    Returns list of all experiments for the given configuration
+    """
+    db = dataset.connect(database_url)
+    
+    rows = db.query('SELECT DISTINCT experiment FROM ncfiles '
+                'WHERE configuration = "{configuration}"'.format(configuration=configuration), )
+    expts = [row['experiment'] for row in rows]
+    
+    return expts
 
 def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
                    op=None,
@@ -155,20 +168,23 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
 
     ncfiles = [row['ncfile'] for row in rows]
 
-    print('Found {} ncfiles'.format(len(ncfiles)))
+    #print('Found {} ncfiles'.format(len(ncfiles)))
 
     dimensions = eval(rows[0]['dimensions'])
     chunking = eval(rows[0]['chunking'])
 
-    print ('chunking info', dimensions, chunking)
-    default_chunks = dict(zip(dimensions, chunking))
+    #print ('chunking info', dimensions, chunking)
+    if chunking is not None:
+        default_chunks = dict(zip(dimensions, chunking))
+    else:
+        default_chunks = {}
 
     if chunks is not None:
         default_chunks.update(chunks)
         chunks = default_chunks
 
     if n is not None:
-        print('using last {} ncfiles only'.format(n))
+        #print('using last {} ncfiles only'.format(n))
         ncfiles = ncfiles[-n:]
 
     if op is None:
@@ -193,3 +209,13 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
 
     return dataarray
 
+def get_scalar_variables(configuration):
+    db = dataset.connect(database_url)
+    
+    rows = db.query('SELECT DISTINCT variable FROM ncfiles '
+         'WHERE basename = "ocean_scalar.nc" '
+         'AND dimensions = "(\'time\', \'scalar_axis\')" '
+         'AND configuration = "{configuration}"'.format(configuration=configuration))
+    variables = [row['variable'] for row in rows]
+    
+    return variables
