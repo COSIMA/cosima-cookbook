@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='cosima_cookbook',
-    version='0.1',
+    version='0.2',
     description='Diagnostics for COSIMA: Consortium for Ocean-Sea Ice Modelling in Australia',
     url='https://github.com/OceansAus/cosima-cookbook',
     author='James Munroe',
