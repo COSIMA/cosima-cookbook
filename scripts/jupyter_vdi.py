@@ -2,23 +2,18 @@
 """
 Script to launch a VDI session (or connect to already running session)
 and start a Jupyter server on the VDI
-
 A ssh tunnel from the local machine to the VDI is set up and the local
 webbrowser is spawned.
-
 This is a python3 script (uses unicode strings).  If you don't have
 python3 on your local machine, try installing Miniconda3
-
 The only external module is pexpect which may need to be installed
 using conda or pip.
-
 Usage:
 - edit params dictionary below with your NCI user id (replace jm0634)
 - if you use a password, the script will prompt you for your password when needed
 - if you have already set up SSH public key with Strudel, try running
     $ ssh-add ~/.ssh/MassiveLauncherKey
   to add your public key to the ssh key agent.
-
 Author: James Munroe, 2017
 """
 
@@ -31,6 +26,11 @@ import time
 import getpass
 
 import pexpect
+#Check Version of MAC OS
+from appscript import *
+import platform
+OS_c=platform.system()
+OS_V=platform.release()
 
 params = {'user' : 'jm0634',
           'JupyterPort' : '8889',
@@ -123,14 +123,17 @@ def start_jupyter(s):
         m = re.search('The Jupyter Notebook is running at: (?P<url>.*)', s.decode('utf8'))
         if m is not None:
             params.update(m.groupdict())
-            # open browser locally
-            webbrowser.open(params['url'])
-            webbrowser_started = True
-
+            if OS_c!='Darwin' and OS_v!='16.6.0':
+                # Open browser locally
+                webbrowser.open(params['url'])
+                webbrowser_started = True
+            else:
+                safari=app("Safari")
+                safari.make(new=k.document,with_properties={k.URL:params['url']})
     return s
 
 print ("Running Jupyter on VDI...")
-cmd = """-t -L {JupyterPort}:localhost:{JupyterPort} -L {BokehPort}:localhost:{BokehPort} 'bash -l -c "jupyter notebook --no-browser --port {JupyterPort}"'"""
+cmd = """-t -L {JupyterPort}:localhost:{JupyterPort} -L {BokehPort}:localhost:{BokehPort} 'bash -l -c "module load conda/analysis27 && jupyter notebook --no-browser --port {JupyterPort}"'"""
 s = ssh(cmd, params, login_timeout=2)
 
 print ("Waiting for Jupyter to start...")
