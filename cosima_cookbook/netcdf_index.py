@@ -71,17 +71,27 @@ def build_index():
 
     # output* directories
     # match the parent and grandparent directory to configuration/experiment
-    m = re.compile('(.*)/([^/]*)/([^/]*)/(output\d+)/.*\.nc')
+    find_output = re.compile('(.*)/([^/]*)/([^/]*)/(output\d+)/.*\.nc')
 
+    # determine general pattern for ncfile names
+    find_basename_pattern = re.compile('(?P<root>[^\d]+)(?P<index>__\d+_\d+)?(?P<indexice>\.\d+\-\d+)?(?P<ext>\.nc)')
+    
     def index_variables(ncfile):
 
-        matched = m.match(ncfile)
+        matched = find_output.match(ncfile)
         if matched is None:
             return []
 
         if not os.path.exists(ncfile):
             return []
-
+        
+        basename = os.path.basename(ncfile)
+        m = find_basename_pattern.match(basename)
+        if m is None:
+            basename_pattern = basename
+        else: 
+            basename_pattern = m.group('root') + ('__\d+_\d+' if m.group('index') else '') + ('.\d+-\d+' if m.group('indexice') else '')+ m.group('ext')
+    
         try:
             with netCDF4.Dataset(ncfile) as ds:
                 ncvars = [ {'ncfile': ncfile,
@@ -89,7 +99,8 @@ def build_index():
                    'configuration': matched.group(2),
                    'experiment' : matched.group(3),
                    'run' : matched.group(4),
-                   'basename' : os.path.basename(ncfile),
+                   'basename' : basename,
+                   'basename_pattern' : basename_pattern,
                    'variable' : v.name,
                    'dimensions' : str(v.dimensions),
                    'chunking' : str(v.chunking()),
@@ -98,14 +109,19 @@ def build_index():
             print ('Exception occurred while trying to read {}'.format(ncfile))
             ncvars = []
 
+        print(ncfile)
+        print(ncvars)
         return ncvars
 
     print('Indexing new .nc files...')
-    with distributed.default_client() as client:
+    
+    with distributed.Client() as client:
         bag = dask.bag.from_sequence(files_to_add)
         bag = bag.map(index_variables).flatten()
+    
         futures = client.compute(bag)
-        progress(futures)
+        progress(futures, notebook=False)
+        
         ncvars = futures.result()
 
     print('')
