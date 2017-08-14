@@ -109,8 +109,6 @@ def build_index():
             print ('Exception occurred while trying to read {}'.format(ncfile))
             ncvars = []
 
-        print(ncfile)
-        print(ncvars)
         return ncvars
 
     print('Indexing new .nc files...')
