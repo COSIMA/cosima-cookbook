@@ -8,8 +8,8 @@ This is a python3 script (uses unicode strings).  If you don't have
 python3 on your local machine, try installing Miniconda3
 The only external module is pexpect which may need to be installed
 using conda or pip.
+
 Usage:
-- edit params dictionary below with your NCI user id (replace jm0634)
 - if you use a password, the script will prompt you for your password when needed
 - if you have already set up SSH public key with Strudel, try running
     $ ssh-add ~/.ssh/MassiveLauncherKey
@@ -26,24 +26,41 @@ import time
 import getpass
 
 import pexpect
-#Check Version of MAC OS
-from appscript import *
-import platform
-OS_c=platform.system()
-OS_V=platform.release()
 
-params = {'user' : 'jm0634',
-          'JupyterPort' : '8889',
-          'BokehPort' : '8787',
-          'execHost' :  'vdi.nci.org.au',
-         }
+#Check Version of MAC OS
+from appscript import app, k
+import platform
+OS_c = platform.system()
+OS_v = platform.release()
+
+import configparser
+import os
+
+DEFAULTS = {
+        'user' : getpass.getuser(),
+        'jupyterport' : '8889',
+        'bokehport' : '8787',
+        'exechost' :  'vdi.nci.org.au',
+        }
+
+parser = configparser.ConfigParser(defaults=DEFAULTS)
+
+if os.path.exists('cosima_cookbook.conf'):
+    parser.read('cosima_cookbook.conf')
+else:
+    print('No config file found. Creating default cosima_cookbook.conf file.')
+    print('Please edit this file as needed.')
+    with open('cosima_cookbook.conf', 'w') as f:
+        parser.write(f)
+
+params = parser.defaults()
 
 def ssh(cmd, params, login_timeout=10):
     """
     Run a remote command via SSH
     """
 
-    cmd = ("ssh -l {user} {execHost} " + cmd).format(**params)
+    cmd = ("ssh -l {user} {exechost} " + cmd).format(**params)
     s = pexpect.spawn(cmd)
 
     # SSH pexpect logic taken from pxshh:
@@ -82,8 +99,8 @@ print("Checking SSH keys to VDI are configured...", end='' )
 r = session('hello --partition main', params)
 if r.exitstatus != 0:
     # suggest setting up SSH keys
-    # TODO: get user id from user instead of being hard coded
-    print("Error with ssh keys/password and VDI. Edit params dictionary in the script")
+    print("Error with ssh keys/password and VDI.")
+    print("  Incorrect user name in ./cosima_cookbook.conf file?")
     sys.exit(1)
 print("OK")
 
@@ -108,11 +125,11 @@ else:
 
 print("Determine jobid for VDI session...{jobid}".format(**params))
 
-print("Get execHost for VDI session...", end='')
+print("Get exechost for VDI session...", end='')
 r = session('get-host --jobid {jobid}', params)
-m = re.search('#~#host=(?P<execHost>.*?)#~#', r.before.decode())
+m = re.search('#~#host=(?P<exechost>.*?)#~#', r.before.decode())
 params.update(m.groupdict())
-print('{execHost}'.format(**params))
+print('{exechost}'.format(**params))
 
 # wait for jupyter to start running and launch web browser locally
 webbrowser_started = False
@@ -128,12 +145,14 @@ def start_jupyter(s):
                 webbrowser.open(params['url'])
                 webbrowser_started = True
             else:
+                print('using appscript')
                 safari=app("Safari")
-                safari.make(new=k.document,with_properties={k.URL:params['url']})
+                safari.make(new=k.document, with_properties={k.URL:params['url']})
+                webbrowser_started = True
     return s
 
 print ("Running Jupyter on VDI...")
-cmd = """-t -L {JupyterPort}:localhost:{JupyterPort} -L {BokehPort}:localhost:{BokehPort} 'bash -l -c "module load conda/analysis27 && jupyter notebook --no-browser --port {JupyterPort}"'"""
+cmd = """-t -L {jupyterport}:localhost:{jupyterport} -L {bokehport}:localhost:{bokehport} 'bash -l -c "module load conda/analysis3 && jupyter notebook --no-browser --port {jupyterport}"'"""
 s = ssh(cmd, params, login_timeout=2)
 
 print ("Waiting for Jupyter to start...")
