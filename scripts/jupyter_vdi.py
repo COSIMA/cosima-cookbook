@@ -152,7 +152,7 @@ def start_jupyter(s):
     return s
 
 print ("Running Jupyter on VDI...")
-cmd = """-t -L {jupyterport}:localhost:{jupyterport} -L {bokehport}:localhost:{bokehport} 'bash -l -c "module load conda/analysis3 && jupyter notebook --no-browser --port {jupyterport}"'"""
+cmd = """-t -L {jupyterport}:localhost:{jupyterport} -L {bokehport}:localhost:{bokehport} 'bash -l -c "module use /g/data3/hh5/public/modules && module load conda/analysis3 && jupyter notebook --no-browser --port {jupyterport}"'"""
 s = ssh(cmd, params, login_timeout=2)
 
 print ("Waiting for Jupyter to start...")
