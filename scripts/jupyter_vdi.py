@@ -45,12 +45,14 @@ DEFAULTS = {
 
 parser = configparser.ConfigParser(defaults=DEFAULTS)
 
-if os.path.exists('cosima_cookbook.conf'):
-    parser.read('cosima_cookbook.conf')
+config_path = os.path.expanduser('~/cosima_cookbook.conf')
+
+if os.path.exists(config_path):
+    parser.read(config_path)
 else:
-    print('No config file found. Creating default cosima_cookbook.conf file.')
+    print('No config file found. Creating default', config_path, 'file.')
     print('Please edit this file as needed.')
-    with open('cosima_cookbook.conf', 'w') as f:
+    with open(config_path, 'w') as f:
         parser.write(f)
 
 params = parser.defaults()
