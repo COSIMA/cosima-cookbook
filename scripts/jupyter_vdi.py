@@ -10,7 +10,7 @@ The only external module is pexpect which may need to be installed
 using conda or pip.
 
 Usage:
-- if you use a password, the script will prompt you for your password when needed
+- if you use a password, the script will ask for your password when needed
 - if you have already set up SSH public key with Strudel, try running
     $ ssh-add ~/.ssh/MassiveLauncherKey
   to add your public key to the ssh key agent.
@@ -67,8 +67,11 @@ def ssh(cmd, params, login_timeout=10):
     s = pexpect.spawn(cmd)
 
     # SSH pexpect logic taken from pxshh:
-    i = s.expect(["(?i)are you sure you want to continue connecting", "(?i)(?:password)|(?:passphrase for key)",
-                  "(?i)permission denied", "(?i)connection closed by remote host", pexpect.EOF, pexpect.TIMEOUT], timeout=login_timeout)
+    i = s.expect(["(?i)are you sure you want to continue connecting",
+                  "(?i)(?:password)|(?:passphrase for key)",
+                  "(?i)permission denied",
+                  "(?i)connection closed by remote host",
+                  pexpect.EOF, pexpect.TIMEOUT], timeout=login_timeout)
 
     # First phase
     if i == 0:
@@ -76,16 +79,22 @@ def ssh(cmd, params, login_timeout=10):
         # This is what you get if SSH does not have the remote host's
         # public key stored in the 'known_hosts' cache.
         s.sendline("yes")
-        i = s.expect(["(?i)are you sure you want to continue connecting", "(?i)(?:password)|(?:passphrase for key)",
-                      "(?i)permission denied", "(?i)connection closed by remote host", pexpect.EOF, pexpect.TIMEOUT], timeout=login_timeout)
+        i = s.expect(["(?i)are you sure you want to continue connecting",
+                      "(?i)(?:password)|(?:passphrase for key)",
+                      "(?i)permission denied",
+                      "(?i)connection closed by remote host",
+                      pexpect.EOF, pexpect.TIMEOUT], timeout=login_timeout)
 
     if i == 1:  # password or passphrase
         if 'password' not in params:
             params['password'] = getpass.getpass('password: ')
 
         s.sendline(params['password'])
-        i = s.expect(["(?i)are you sure you want to continue connecting", "(?i)(?:password)|(?:passphrase for key)",
-                      "(?i)permission denied", "(?i)connection closed by remote host", pexpect.EOF, pexpect.TIMEOUT], timeout=login_timeout)
+        i = s.expect(["(?i)are you sure you want to continue connecting",
+                      "(?i)(?:password)|(?:passphrase for key)",
+                      "(?i)permission denied",
+                      "(?i)connection closed by remote host",
+                      pexpect.EOF, pexpect.TIMEOUT], timeout=login_timeout)
 
     # TODO: check if ssh connection is successful
 
@@ -119,7 +128,7 @@ if m is not None:
         w // 3600, w % 3600 // 60, w % 60)
     print(remainingWalltime, 'time remaining')
 
-    # TODO: should give use option of starting a new session of the remaining walltime is short
+    # TODO: should give user option of starting a new session if the remaining walltime is short
 else:
     print('No')
     print("Launching new VDI session...", end='')
@@ -147,7 +156,8 @@ def start_jupyter(s):
 
     if not webbrowser_started:
         m = re.search(
-            'The Jupyter Notebook is running at: (?P<url>.*)', s.decode('utf8'))
+            'The Jupyter Notebook is running at: (?P<url>.*)',
+            s.decode('utf8'))
         if m is not None:
             params.update(m.groupdict())
             if OS_c != 'Darwin' and OS_v != '16.6.0':
@@ -168,7 +178,8 @@ cmd = """-t -L {jupyterport}:localhost:{jupyterport}
     -L {bokehport}:localhost:{bokehport}
     'bash -l -c "module use /g/data3/hh5/public/modules
     && module load conda/analysis3 &&
-    jupyter notebook --no-browser --port {jupyterport}"'"""
+    jupyter notebook --no-browser --port {jupyterport}"'
+    """.replace('\n', ' ')
 s = ssh(cmd, params, login_timeout=2)
 
 print("Waiting for Jupyter to start...")
