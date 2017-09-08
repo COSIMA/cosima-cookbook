@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+# Create tabulated summary of namelists for a set of files.
+# These functions assume we are dealing with ACCESS-OM2 data.
+# Andrew Kiss https://github.com/aekiss
+
+
 import cosima_cookbook as cc
 from IPython.display import display, Markdown
 import os
@@ -17,25 +22,29 @@ def summary_md(configuration, expts, path='/g/data3/hh5/tmp/cosima/',
                    ]):
     for nml in nmls:
         epaths = []
-        mdstr = '| group | variable | '
         for e in expts:
-            # build table heading; use multiple lines if e is a path
-            mdstr = mdstr + e.replace('/', '/<br>') + ' | '
             # NB: only look at output000
-            epaths.append(os.path.join(
-                path, configuration, e, 'output000', nml))
+            epaths.append(os.path.join(path, configuration, e, 'output000', nml))
         nmld = cc.nmldiff(cc.nmldict(tuple(epaths)))
+        epaths = list(nmld.keys())  # redefine to handle missing paths
+        epaths.sort()
         nmldss = cc.superset(nmld)
         display(Markdown('### ' + nml + ' namelist differences'))
         if len(nmldss) == 0:
             display(Markdown('no differences'))
         else:
-            mdstr = mdstr + '\n|---|:--|' + ':-:|' * len(expts)
+            mdstr = '| group | variable | '
+            for e in epaths:
+                mdstr = mdstr + e.replace('/', '/<br>') + ' | '
+            mdstr = mdstr + '\n|---|:--|' + ':-:|' * len(epaths)
             for group in sorted(nmldss):
                 for mem in sorted(nmldss[group]):
                     mdstr = mdstr + '\n| ' + '&' + \
-                        '[' + group + '](' + search + group + ')' + ' | ' + \
-                        '[' + mem + '](' + search + mem + ')' + ' | '
+                            group + ' | ' + \
+                            mem + ' | '
+#                        search doesn't work on github submodules or forks
+#                        '[' + group + '](' + search + group + ')' + ' | ' + \
+#                        '[' + mem + '](' + search + mem + ')' + ' | '
                     for e in epaths:
                         if group in nmld[e]:
                             if mem in nmld[e][group]:
