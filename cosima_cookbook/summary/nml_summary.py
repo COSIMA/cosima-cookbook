@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# import nmldiff
+import cosima_cookbook as cc
 from IPython.display import display, Markdown
 import os
 
@@ -19,11 +19,13 @@ def summary_md(configuration, expts, path='/g/data3/hh5/tmp/cosima/',
         epaths = []
         mdstr = '| group | variable | '
         for e in expts:
-            mdstr = mdstr + e + ' | '
+            # build table heading; use multiple lines if e is a path
+            mdstr = mdstr + e.replace('/', '/<br>') + ' | '
+            # NB: only look at output000
             epaths.append(os.path.join(
                 path, configuration, e, 'output000', nml))
-        nmld = nmldiff.nmldiff(tuple(epaths))
-        nmldss = nmldiff.superset(nmld)
+        nmld = cc.nmldiff(cc.nmldict(tuple(epaths)))
+        nmldss = cc.superset(nmld)
         display(Markdown('### ' + nml + ' namelist differences'))
         if len(nmldss) == 0:
             display(Markdown('no differences'))

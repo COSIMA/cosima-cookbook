@@ -2,6 +2,26 @@
 
 
 import f90nml  # from http://f90nml.readthedocs.io/en/latest/
+import os
+
+
+def nmldict(nmlfnames):
+    """Return dict of the groups/group members of multiple
+        FORTRAN namelist files.
+
+    Input: tuple of any number of namelist file path strings
+            non-existent files are silently ignored
+    Output: dict with key:value pairs where
+            key is filename path string
+            value is complete Namelist from filename
+    """
+    nmlfnames = set(nmlfnames)  # remove any duplicates from nmlfnames
+
+    nmlall = {}  # dict keys are nml paths, values are Namelist dicts
+    for nml in nmlfnames:
+        if os.path.exists(nml):
+            nmlall[nml] = f90nml.read(nml)
+    return nmlall
 
 
 def superset(nmlall):
@@ -28,22 +48,18 @@ def superset(nmlall):
     return nmlsuperset
 
 
-def nmldiff(nmlfnames):
+def nmldiff(nmlall):
     """Return dict of the groups/group members that differ across multiple
         FORTRAN namelist files.
 
-    Input: tuple of any number of namelist filename strings
+    Input: dict (e.g. returned by nmldict) with key:value pairs where
+            key is filename path string
+            value is complete Namelist from filename
     Output: dict with key:value pairs where
             key is filename strings
             value is Namelist from filename, with anything common to
                 all other files removed
     """
-
-    nmlfnames = set(nmlfnames)  # remove any duplicates from nmlfnames
-
-    nmlall = {}  # dict keys are nml paths, values are Namelist dicts
-    for nml in nmlfnames:
-        nmlall[nml] = f90nml.read(nml)
 
 # Create diff by removing common groups/members from nmlall.
 # This is complicated by the fact group names / member names may differ
