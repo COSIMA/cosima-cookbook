@@ -14,7 +14,7 @@ import dask
 
 from joblib import Memory
 
-cachedir = '/g/data1/v45/cosima-cookbook'
+cachedir = None
 memory = Memory(cachedir=cachedir, verbose=0)
 
 from ..netcdf_index import get_nc_variable
@@ -24,8 +24,8 @@ def mean_tau_x(expt):
     """
     10-year zonal average of horizontal wind stress.
     """
-    tau_x = get_nc_variable(expt, 
-                            'ocean_month.nc', 
+    tau_x = get_nc_variable(expt,
+                            'ocean_month.nc',
                             'tau_x',
                             time_units = 'days since 2000-01-01',
                             n=10)
@@ -33,5 +33,5 @@ def mean_tau_x(expt):
     mean_tau_x = tau_x.mean('xu_ocean').mean('time')
     mean_tau_x = mean_tau_x.compute()
     mean_tau_x.name = 'mean_tau_x'
-    
+
     return mean_tau_x
