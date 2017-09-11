@@ -13,5 +13,9 @@ from . plots import *
 
 from . import netcdf_index
 from . netcdf_index import *
+
+from . import summary
+from . summary import *
+
 __all__.extend(netcdf_index.__all__)
 

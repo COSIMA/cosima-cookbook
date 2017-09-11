@@ -41,8 +41,9 @@ node and work over ssh tunnels. Ask James Munroe for more information.
     cd cosima-cookbook
 
 [Alternative: set up SSH keys for github:: 
+    
     git clone git@github.com:OceansAus/cosima-cookbook.git
-
+    
 ]
 
 2. The cookbook is built using Python so we need a Python development environment
@@ -51,8 +52,7 @@ with the following packages installed:
  jupyter matplotlib pandas numpy dask distributed xarray netcdf4
  bokeh seaborn datashader python-graphviz basemap cartopy
 
-There is a miniconda environment with all of these packes accessible from the VDI
-and raijin:
+There is a miniconda environment with all of these packes accessible from the VDI and raijin::
 
     module use /g/data3/hh5/public/modules
     module load conda/analysis3
