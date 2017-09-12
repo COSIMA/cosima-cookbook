@@ -21,6 +21,7 @@ setup(
         'dask',
         'distributed',
         'netcdf4',
+        'f90nml',
         ],
     test_suite='nose.collector',
     tests_require=['nose'],
