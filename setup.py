@@ -10,6 +10,14 @@ setup(
     license='Apache License 2.0',
     packages=find_packages(),
 
+    install_requires=[
+        'dask',
+        'xarray',
+        'numpy',
+        'joblib',
+        'matplotlib',
+        'bokeh',
+        ],
     test_suite='nose.collector',
     tests_require=['nose'],
 )
