@@ -4,7 +4,7 @@ Getting Started
 
 Some users may find it sufficient to browse through the sample diagnostics
 and model configurations provided.  In order to reproduce these results
-on your own, you will a Python 3 development environment.
+on your own, you will need a Python 3 development environment.
 
 The cookbook itself includes a Python 3 package that contains the
 diagnostics themselves and some utility functions.  The Jupyter IPython
@@ -52,7 +52,7 @@ with the following packages installed:
  jupyter matplotlib pandas numpy dask distributed xarray netcdf4
  bokeh seaborn datashader python-graphviz basemap cartopy
 
-There is a miniconda environment with all of these packes accessible from the VDI and raijin::
+There is a miniconda environment with all of these packages accessible from the VDI and raijin::
 
     module use /g/data3/hh5/public/modules
     module load conda/analysis3
