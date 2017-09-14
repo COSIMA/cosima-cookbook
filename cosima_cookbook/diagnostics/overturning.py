@@ -1,6 +1,6 @@
 from joblib import Memory
 
-cachedir = '/g/data1/v45/cosima-cookbook'
+cachedir = None
 memory = Memory(cachedir=cachedir, verbose=0)
 
 from ..netcdf_index import get_nc_variable
@@ -16,5 +16,5 @@ def psi_avg(expt):
 
     psi_avg = psi.mean('time')
     psi_avg = psi_avg.compute()
-    
+
     return psi_avg
