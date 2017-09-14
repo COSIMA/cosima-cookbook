@@ -35,3 +35,22 @@ def annual_scalar(expts=[], variable=''):
     plt.ylabel(annual_average.name + ' ({})'.format(annual_average.units))
     plt.legend()
     print('done.')
+
+def drake_passage(expts=[]):
+    """
+    Plot Drake Passage transport.
+    """
+    print("Calculating...", end='')
+    
+    plt.figure(figsize=(12,6))
+    
+    for expt in expts:
+        transport = cc.diagnostics.drake_passage(expt)
+        transport.plot(label=expt)
+    
+    plt.title('Drake Passage Transport')
+    plt.xlabel('Time')
+    plt.ylabel('Transport (Sv)')
+    plt.legend(fontsize=10)
+    print('done.')
+    
