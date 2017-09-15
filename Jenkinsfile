@@ -1,7 +1,7 @@
 pipeline {
     agent { docker 'python:3.5.1' }
     stages {
-        state('Test') {
+        stage('Test') {
             steps {
                 sh 'echo "Fail!"; exit 1'
             }
