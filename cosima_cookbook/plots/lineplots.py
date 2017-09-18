@@ -20,7 +20,7 @@ def wind_stress(expts=[]):
     plt.xlabel('Stress (N m$^{-2}$)')
     plt.legend(loc='upper right',fontsize=10)
     
-def annual_scalar(expts=[], variable=''):
+def annual_scalar(expts=[], variable='', ax=None):
 
     print("Calculating...", end='')
     
@@ -29,9 +29,12 @@ def annual_scalar(expts=[], variable=''):
         
     for expt in expts:
         annual_average = cc.diagnostics.annual_scalar(expt, variable)
-        annual_average.plot(label=expt)
+        annual_average.plot(label=expt, ax=ax)
 
-    plt.title(annual_average.long_name)
-    plt.ylabel(annual_average.name + ' ({})'.format(annual_average.units))
-    plt.legend()
+    if ax is None:
+        ax = plt.gca()
+        
+    ax.set_title(annual_average.long_name)
+    ax.set_ylabel(annual_average.name + ' ({})'.format(annual_average.units))
+    ax.legend()
     print('done.')
