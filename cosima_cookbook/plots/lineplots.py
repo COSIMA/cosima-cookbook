@@ -45,7 +45,8 @@ def annual_scalar(expts=[], variables=[]):
     if not isinstance(variables, list):
         variables = [variables]
 
-    for variable in tqdm_notebook(variables, leave=False, desc='variables', position=0):
+    for variable in tqdm_notebook(variables, leave=False, desc='variables',
+                                  position=0):
         for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
             annual_average = cc.diagnostics.annual_scalar(expt, variable)
             if len(variables) > 1:
@@ -73,3 +74,21 @@ def annual_scalar(expts=[], variables=[]):
                        borderaxespad=0.)  # puts long legend outside plot
 
 #    print('done.')
+
+
+def drake_passage(expts=[]):
+    """
+    Plot Drake Passage transport.
+    """
+    print("Calculating...", end='')
+
+    plt.figure(figsize=(12, 6))
+
+    for expt in expts:
+        transport = cc.diagnostics.drake_passage(expt)
+        transport.plot(label=expt)
+    plt.title('Drake Passage Transport')
+    plt.xlabel('Time')
+    plt.ylabel('Transport (Sv)')
+    plt.legend(fontsize=10)
+    print('done.')
