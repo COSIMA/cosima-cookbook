@@ -4,10 +4,13 @@ from tqdm import tqdm_notebook
 
 
 def wind_stress(expts=[]):
-    """Plot zonally averaged wind stress.
+    """
+    Plot zonally averaged wind stress.
 
-    Argument:
-        expts: experiment name string or list of name strings
+    Parameters
+    ----------
+    expts : str or list of str
+        Experiment name(s).
     """
 
     plt.figure(figsize=(12, 6))
@@ -15,7 +18,7 @@ def wind_stress(expts=[]):
     if not isinstance(expts, list):
         expts = [expts]
 
-    for expt in expts:
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
         mean_tau_x = cc.diagnostics.mean_tau_x(expt)
         plt.plot(mean_tau_x, mean_tau_x.yu_ocean,
                  linewidth=2,
@@ -25,19 +28,22 @@ def wind_stress(expts=[]):
     plt.xlim([-0.08, 0.20])
     plt.ylabel('Latitude ($^\circ$N)')
     plt.xlabel('Stress (N m$^{-2}$)')
-    plt.legend(loc='best', borderaxespad=0.)
+    plt.legend(fontsize=10, loc='best')
 
 
 def annual_scalar(expts=[], variables=[]):
-    """Calculate and plot annual average of variable(s) for experiment(s).
-
-    Arguments:
-        expts: experiment name string or list of name strings
-        variable: variable name string or list of name strings
     """
-    plt.figure(figsize=(12, 6))
+    Calculate and plot annual average of variable(s) for experiment(s).
 
-#    print("Calculating...", end='')
+    Parameters
+    ----------
+    expts : str or list of str
+        Experiment name(s).
+    variable : str or list of str
+        Variable name(s).
+    """
+
+    plt.figure(figsize=(12, 6))
 
     if not isinstance(expts, list):
         expts = [expts]
@@ -63,32 +69,37 @@ def annual_scalar(expts=[], variables=[]):
             plt.title(annual_average.long_name)
             plt.ylabel(annual_average.name
                        + ' ({})'.format(annual_average.units))
-            plt.legend(loc='best', borderaxespad=0.)
+            plt.legend(loc='best')
         else:
             if len(expts) == 1:
                 plt.title(expts[0])
             else:
                 plt.title('')  # legend displays this info instead
             plt.ylabel('')  # legend displays this info instead
-            plt.legend(bbox_to_anchor=(1, 1), loc='best',
+            plt.legend(fontsize=10, bbox_to_anchor=(1, 1), loc='best',
                        borderaxespad=0.)  # puts long legend outside plot
-
-#    print('done.')
+    plt.xlabel('Time')
 
 
 def drake_passage(expts=[]):
     """
     Plot Drake Passage transport.
+
+    Parameters
+    ----------
+    expts : str or list of str
+        Experiment name(s).
     """
-    print("Calculating...", end='')
 
     plt.figure(figsize=(12, 6))
 
-    for expt in expts:
+    if not isinstance(expts, list):
+        expts = [expts]
+
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
         transport = cc.diagnostics.drake_passage(expt)
         transport.plot(label=expt)
     plt.title('Drake Passage Transport')
     plt.xlabel('Time')
     plt.ylabel('Transport (Sv)')
-    plt.legend(fontsize=10)
-    print('done.')
+    plt.legend(fontsize=10, loc='best')
