@@ -29,6 +29,7 @@ def psi_avg(expt, n=10):
     return psi_avg
 
 
+@memory.cache
 def psiGM_avg(expt, n=10):
 
     # modified to remove op by AH - 20/9/17
@@ -49,3 +50,20 @@ def psiGM_avg(expt, n=10):
     psiGM_avg = psiGM_avg.compute()
 
     return psiGM_avg
+
+@memory.cache
+def zonal_mean(expt, variable, n=10):
+        
+    zonal_var = get_nc_variable(expt, 'ocean.nc', variable,
+                                chunks={'st_ocean': None},
+                                time_units = 'days since 1900-01-01')
+    
+    # Average over first year. We would prefer to compare with WOA13 long-term average.
+    zonal_var0 = zonal_var.sel(time=slice('1900-01-01','1901-01-01')).mean('xt_ocean').mean('time') 
+    zonal_var0.compute()
+    
+    zonal_mean = zonal_var.isel(time=slice(-n,None)).mean('xt_ocean').mean('time')
+    zonal_mean.compute()
+    zonal_diff = zonal_mean - zonal_var0
+    
+    return zonal_mean, zonal_diff

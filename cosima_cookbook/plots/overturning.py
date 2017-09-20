@@ -26,3 +26,23 @@ def psi_avg(expt, n=10, GM=False, clev=np.arange(-20,20,2)):
     plt.xlabel('Latitude ($^\circ$N)')
     plt.xlim([-75,85])
     plt.title('Overturning in %s' % expt)
+
+def zonal_mean(expts,variable,n=10):
+               
+    if not isinstance(expts, list):
+        expts = [expts]
+    
+    for expt in expts:
+        zonal_mean, zonal_diff = cc.diagnostics.zonal_mean(expt,variable,n)
+        plt.figure(figsize=(12,5))
+        plt.subplot(121)
+        zonal_mean.plot()
+        plt.title(expt)
+        plt.gca().invert_yaxis()
+        plt.title('{}: Zonal Mean {}'.format(expt, variable))
+        plt.subplot(122)
+        zonal_diff.plot()
+        plt.title(expt)
+        plt.gca().invert_yaxis()
+        plt.title('{}: Zonal Mean {} Change'.format(expt, variable))
+        
