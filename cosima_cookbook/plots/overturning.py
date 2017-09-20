@@ -2,10 +2,15 @@ import cosima_cookbook as cc
 import matplotlib.pyplot as plt
 import numpy as np
 
-def psi_avg(expt, clev=np.arange(-20,20,2)):
+def psi_avg(expt, n=10, GM=False, clev=np.arange(-20,20,2)):
     
-    psi_avg = cc.diagnostics.psi_avg(expt)
+    psi_avg = cc.diagnostics.psi_avg(expt, n)
+    if GM:
+        #print('Adding GM component')
+        psi_avg = psi_avg + cc.diagnostics.psiGM_avg(expt, n)
     
+    
+    plt.figure(figsize=(10, 5)) 
     plt.contourf(psi_avg.grid_yu_ocean, 
                  psi_avg.potrho, psi_avg, 
                  cmap=plt.cm.PiYG,levels=clev,extend='both')
