@@ -26,7 +26,7 @@ def psi_avg(expt, n=10, GM=False, clev=np.arange(-20,20,2)):
     plt.xlabel('Latitude ($^\circ$N)')
     plt.xlim([-75,85])
     plt.title('Overturning in %s' % expt)
-
+    
 def zonal_mean(expts,variable,n=10):
                
     if not isinstance(expts, list):
