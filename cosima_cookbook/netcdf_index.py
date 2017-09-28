@@ -139,18 +139,22 @@ def get_experiments(configuration):
     db = dataset.connect(database_url)
     
     rows = db.query('SELECT DISTINCT experiment FROM ncfiles '
-                'WHERE configuration = "{configuration}"'.format(configuration=configuration), )
+                'WHERE configuration = "{configuration}" ORDER BY experiment'.format(configuration=configuration), )
     expts = [row['experiment'] for row in rows]
     
     return expts
 
-def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
-                   op=None,
-                   time_units=None):
+def get_nc_variable(expt, ncfile, 
+                    variable, chunks={}, n=None,
+                    op=None,
+                    time_units=None):
     """
-    For a given experiment, concatenate together variable over all time
-    given a basename ncfile.
+    For a given experiment, concatenate together 
+    variable over all time given a basename ncfile.
 
+    Since some NetCDF4 files have trailing integers (e.g. ocean_123_456.nc)
+    ncfile is actually an regular expression.
+    
     By default, xarray is set to use the same chunking pattern that is
     stored in the ncfile. This can be overwritten by passing in a dictionary
     chunks or setting chunks=None for no chunking (load directly into memory).
@@ -174,7 +178,7 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     res = db.query('SELECT ncfile, dimensions, chunking \
                     FROM ncfiles \
                     WHERE experiment = "{}" \
-                    AND basename LIKE "%{}%" \
+                    AND basename_pattern = "{}" \
                     AND variable = "{}" \
                     ORDER BY ncfile'.format(experiment, ncfile, variable))
 
@@ -182,6 +186,9 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
 
     ncfiles = [row['ncfile'] for row in rows]
 
+    if len(ncfiles) == 0:
+        raise ValueError("No variable {} found for {} in {}".format(variable, expt, ncfile))
+    
     #print('Found {} ncfiles'.format(len(ncfiles)))
 
     dimensions = eval(rows[0]['dimensions'])
@@ -204,23 +211,46 @@ def get_nc_variable(expt, ncfile, variable, chunks={}, n=None,
     if op is None:
         op = lambda x: x
 
-    b = dask.bag.from_sequence(ncfiles)
-    b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks,
-                                             decode_times=False)[variable]) )
+    print ('Opening {} ncfiles...'.format(len(ncfiles)))
+    
+    dataarrays = []
+    for ncfile in ncfiles:
+        dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variable]
+        
+        dataarray = op(dataarray)
+        
+        if 'time' in dataarray.coords:
+            if time_units is None:
+                time_units = dataarray.time.units
 
-    dataarrays = b.compute()
-
-    dataarray = xr.concat(dataarrays, dim='time', coords='all')
-
-    if 'time' in dataarray.coords:
-        if time_units is None:
-            time_units = dataarray.time.units
-
-        decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
-        dataarray.coords['time'] = ('time', decoded_time,
+            decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
+            dataarray.coords['time'] = ('time', decoded_time,
                                     {'long_name' : 'time', 'decoded_using' : time_units }
                                    )
 
+        dataarrays.append(dataarray)
+        
+    #b = dask.bag.from_sequence(ncfiles)
+    #b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks,
+    #                                         decode_times=False)[variable]) )
+
+    #dataarrays = b.compute()
+
+    print ('Building dataarray.')
+    
+    dataarray = xr.concat(dataarrays, dim='time', coords='all', )
+
+    #if 'time' in dataarray.coords:
+    #    if time_units is None:
+    #        time_units = dataarray.time.units
+
+    #    decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
+    #    dataarray.coords['time'] = ('time', decoded_time,
+    #                                {'long_name' : 'time', 'decoded_using' : time_units }
+    #                               )
+
+    print ('Dataarray constructed.')
+    
     return dataarray
 
 def get_scalar_variables(configuration):
