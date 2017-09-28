@@ -22,6 +22,7 @@ setup(
         'distributed',
         'netcdf4',
         'f90nml',
+        'tqdm'
         ],
     test_suite='nose.collector',
     tests_require=['nose'],
