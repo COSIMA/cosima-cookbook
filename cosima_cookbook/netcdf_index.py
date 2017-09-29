@@ -147,7 +147,7 @@ def get_experiments(configuration):
 def get_nc_variable(expt, ncfile, 
                     variable, chunks={}, n=None,
                     op=None,
-                    time_units=None):
+                    time_units="days since 1900-01-01"):
     """
     For a given experiment, concatenate together 
     variable over all time given a basename ncfile.
@@ -164,7 +164,7 @@ def get_nc_variable(expt, ncfile,
     op() is function to apply to each variable before concatenating.
 
     time_units (e.g. "days since 1600-01-01") can be used to override
-    the original time.units
+    the original time.units.  If time_units=None, no overriding is performed.
 
     """
 
@@ -211,7 +211,7 @@ def get_nc_variable(expt, ncfile,
     if op is None:
         op = lambda x: x
 
-    print ('Opening {} ncfiles...'.format(len(ncfiles)))
+    #print ('Opening {} ncfiles...'.format(len(ncfiles)))
     
     dataarrays = []
     for ncfile in ncfiles:
@@ -236,7 +236,7 @@ def get_nc_variable(expt, ncfile,
 
     #dataarrays = b.compute()
 
-    print ('Building dataarray.')
+    #print ('Building dataarray.')
     
     dataarray = xr.concat(dataarrays, dim='time', coords='all', )
 
@@ -249,7 +249,7 @@ def get_nc_variable(expt, ncfile,
     #                                {'long_name' : 'time', 'decoded_using' : time_units }
     #                               )
 
-    print ('Dataarray constructed.')
+    #print ('Dataarray constructed.')
     
     return dataarray
 
