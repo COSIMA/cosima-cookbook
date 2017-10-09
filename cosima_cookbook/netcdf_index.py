@@ -14,6 +14,7 @@ import distributed
 from distributed.diagnostics.progressbar import progress
 import xarray as xr
 import subprocess
+import tqdm
 
 directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
                        '/g/data1/v45/APE-MOM',
@@ -42,27 +43,69 @@ def build_index():
     # Build index of all NetCDF files found in directories to search.
 
     ncfiles = []
-    for directoryToSearch in directoriesToSearch:
-        print('Searching {}'.format(directoryToSearch))
-        results = subprocess.check_output(['find', directoryToSearch, '-name', '*.nc'])
-        results = [s for s in results.decode('utf-8').split()]
-        ncfiles.extend(results)
+    runs_available = []
 
-    print('Found {} .nc files'.format(len(ncfiles)))
+    print('Finding runs on disk...', end='')
+    for directoryToSearch in directoriesToSearch:
+        #print('Searching {}'.format(directoryToSearch))
+
+        # find all subdirectories
+        results = subprocess.check_output(['find', directoryToSearch, '-maxdepth', '3', '-type', 'd',
+            '-name', 'output???'])
+
+        results = [s for s in results.decode('utf-8').split()]
+        runs_available.extend(results)
+    print('found {} run directories'.format( len(runs_available)))
+
+    #ncfiles.extend(results)
+#
+#    results = subprocess.check_output(['find', directoryToSearch, '-name', '*.nc'])
+#
+#    print('Found {} .nc files'.format(len(ncfiles)))
 
     # We can persist this index by storing it in a sqlite database placed in a centrally available location.
 
     # The use of the `dataset` module hides the details of working with SQL directly.
+
     # In this database is a single table listing all variables in NetCDF4 seen previously.
     print('Using database {}'.format(database_url))
+    print('Querying database...', end='')
+
     db = dataset.connect(database_url)
 
-    files_already_seen = set([_['ncfile'] for _ in db['ncfiles'].distinct('ncfile')])
+    # find list of all run directories
+    r = db.query('SELECT DISTINCT rootdir, configuration, experiment, run FROM ncfiles')
 
-    print('Files already indexed: {}'.format(len(files_already_seen)))
+    runs_already_seen = [os.path.join(*row.values())
+                         for row in r]
+
+    print('runs already indexed: {}'.format(len(runs_already_seen)))
+
+    runs_to_index = list(set(runs_available) - set(runs_already_seen))
+
+    if len(runs_to_index) == 0:
+        print("No new runs found.")
+        return
+
+    print('{} new run directories found including...'.format(len(runs_to_index)))
+
+    for i in range(min(3, len(runs_to_index))):
+        print(runs_to_index[i])
+    if len(runs_to_index) > 3:
+        print('...')
+
+    print('Finding files on disk...')
+    ncfiles = []
+    for run in tqdm.tqdm_notebook(runs_to_index, leave=True):
+        results = subprocess.check_output(['find', run, '-name', '*.nc'])
+        results = [s for s in results.decode('utf-8').split()]
+
+        ncfiles.extend(results)
 
     # NetCDF files found on disk not seen before:
-    files_to_add = set(ncfiles) - set(files_already_seen)
+    #files_to_add = set(ncfiles) - set(files_already_seen)
+
+    files_to_add = ncfiles
 
     print('Files found but not yet indexed: {}'.format(len(files_to_add)))
 
@@ -75,7 +118,7 @@ def build_index():
 
     # determine general pattern for ncfile names
     find_basename_pattern = re.compile('(?P<root>[^\d]+)(?P<index>__\d+_\d+)?(?P<indexice>\.\d+\-\d+)?(?P<ext>\.nc)')
-    
+
     def index_variables(ncfile):
 
         matched = find_output.match(ncfile)
@@ -84,14 +127,14 @@ def build_index():
 
         if not os.path.exists(ncfile):
             return []
-        
+
         basename = os.path.basename(ncfile)
         m = find_basename_pattern.match(basename)
         if m is None:
             basename_pattern = basename
-        else: 
+        else:
             basename_pattern = m.group('root') + ('__\d+_\d+' if m.group('index') else '') + ('.\d+-\d+' if m.group('indexice') else '')+ m.group('ext')
-    
+
         try:
             with netCDF4.Dataset(ncfile) as ds:
                 ncvars = [ {'ncfile': ncfile,
@@ -112,14 +155,14 @@ def build_index():
         return ncvars
 
     print('Indexing new .nc files...')
-    
+
     with distributed.Client() as client:
         bag = dask.bag.from_sequence(files_to_add)
         bag = bag.map(index_variables).flatten()
-    
+
         futures = client.compute(bag)
         progress(futures, notebook=False)
-        
+
         ncvars = futures.result()
 
     print('')
@@ -137,24 +180,24 @@ def get_experiments(configuration):
     Returns list of all experiments for the given configuration
     """
     db = dataset.connect(database_url)
-    
+
     rows = db.query('SELECT DISTINCT experiment FROM ncfiles '
                 'WHERE configuration = "{configuration}" ORDER BY experiment'.format(configuration=configuration), )
     expts = [row['experiment'] for row in rows]
-    
+
     return expts
 
-def get_nc_variable(expt, ncfile, 
+def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
                     op=None,
                     time_units="days since 1900-01-01"):
     """
-    For a given experiment, concatenate together 
+    For a given experiment, concatenate together
     variable over all time given a basename ncfile.
 
     Since some NetCDF4 files have trailing integers (e.g. ocean_123_456.nc)
     ncfile is actually an regular expression.
-    
+
     By default, xarray is set to use the same chunking pattern that is
     stored in the ncfile. This can be overwritten by passing in a dictionary
     chunks or setting chunks=None for no chunking (load directly into memory).
@@ -188,7 +231,7 @@ def get_nc_variable(expt, ncfile,
 
     if len(ncfiles) == 0:
         raise ValueError("No variable {} found for {} in {}".format(variable, expt, ncfile))
-    
+
     #print('Found {} ncfiles'.format(len(ncfiles)))
 
     dimensions = eval(rows[0]['dimensions'])
@@ -212,13 +255,13 @@ def get_nc_variable(expt, ncfile,
         op = lambda x: x
 
     #print ('Opening {} ncfiles...'.format(len(ncfiles)))
-    
+
     dataarrays = []
     for ncfile in ncfiles:
         dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variable]
-        
+
         dataarray = op(dataarray)
-        
+
         if 'time' in dataarray.coords:
             if time_units is None:
                 time_units = dataarray.time.units
@@ -229,7 +272,7 @@ def get_nc_variable(expt, ncfile,
                                    )
 
         dataarrays.append(dataarray)
-        
+
     #b = dask.bag.from_sequence(ncfiles)
     #b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks,
     #                                         decode_times=False)[variable]) )
@@ -237,7 +280,7 @@ def get_nc_variable(expt, ncfile,
     #dataarrays = b.compute()
 
     #print ('Building dataarray.')
-    
+
     dataarray = xr.concat(dataarrays, dim='time', coords='all', )
 
     #if 'time' in dataarray.coords:
@@ -250,16 +293,16 @@ def get_nc_variable(expt, ncfile,
     #                               )
 
     #print ('Dataarray constructed.')
-    
+
     return dataarray
 
 def get_scalar_variables(configuration):
     db = dataset.connect(database_url)
-    
+
     rows = db.query('SELECT DISTINCT variable FROM ncfiles '
          'WHERE basename = "ocean_scalar.nc" '
          'AND dimensions = "(\'time\', \'scalar_axis\')" '
          'AND configuration = "{configuration}"'.format(configuration=configuration))
     variables = [row['variable'] for row in rows]
-    
+
     return variables
