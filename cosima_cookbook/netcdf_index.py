@@ -96,7 +96,7 @@ def build_index():
 
     print('Finding files on disk...')
     ncfiles = []
-    for run in tqdm.tqdm_notebook(runs_to_index, leave=True):
+    for run in tqdm.tqdm_notebook(runs_to_index, leave=False):
         results = subprocess.check_output(['find', run, '-name', '*.nc'])
         results = [s for s in results.decode('utf-8').split()]
 
@@ -153,6 +153,10 @@ def build_index():
             ncvars = []
 
         return ncvars
+
+    if len(files_to_add) == 0:
+        print("No new .nc files found.")
+        return True
 
     print('Indexing new .nc files...')
 
