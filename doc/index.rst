@@ -30,6 +30,9 @@ of diagnostics for models run by members of the community.
    configurations/index
    notebooks/index
 
+   :caption: Help & Reference
+   related_projects
+
 Indices and tables
 ==================
 
