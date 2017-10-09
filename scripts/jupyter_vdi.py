@@ -174,7 +174,7 @@ def start_jupyter(s):
 
         if m is not None:
             params.update(m.groupdict())
-            if OS_c != 'Darwin' and OS_v != '16.6.0':
+            if not (OS_c == 'Darwin' and OS_v == '16.6.0'):
                 # Open browser locally
                 webbrowser.open(params['url'])
                 webbrowser_started = True
@@ -188,12 +188,20 @@ def start_jupyter(s):
 
 
 logging.info("Running Jupyter on VDI...")
-cmd = """-t -L {jupyterport}:localhost:{jupyterport}
-    -L {bokehport}:localhost:{bokehport}
-    'bash -l -c "module use /g/data3/hh5/public/modules
-    && module load conda/analysis3 &&
-    jupyter notebook --no-browser --port {jupyterport}"'
-    """.replace('\n', ' ')
+
+setupconda = params.get('setupconda',
+              """module use /g/data3/hh5/public/modules
+                 && module load conda/analysis3
+              """.replace('\n', ' '))
+
+run_jupyter = "jupyter notebook --no-browser --port {jupyterport}"
+run_jupyter = setupconda + ' && ' + run_jupyter
+
+cmd = ' '.join(['-t',
+                '-L {jupyterport}:localhost:{jupyterport}',
+                '-L {bokehport}:localhost:{bokehport}',
+                """'bash -l -c "%s"'""" % run_jupyter])
+
 s = ssh(cmd, params, login_timeout=2)
 
 logging.info("Waiting for Jupyter to start...")
