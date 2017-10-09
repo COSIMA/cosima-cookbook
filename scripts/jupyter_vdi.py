@@ -2,8 +2,10 @@
 """
 Script to launch a VDI session (or connect to already running session)
 and start a Jupyter server on the VDI
+
 A ssh tunnel from the local machine to the VDI is set up and the local
 webbrowser is spawned.
+
 This is a python3 script (uses unicode strings).  If you don't have
 python3 on your local machine, try installing Miniconda3
 The only external module is pexpect which may need to be installed
@@ -14,6 +16,7 @@ Usage:
 - if you have already set up SSH public key with Strudel, try running
     $ ssh-add ~/.ssh/MassiveLauncherKey
   to add your public key to the ssh key agent.
+
 Author: James Munroe, 2017
 """
 
@@ -26,6 +29,11 @@ import time
 import getpass
 
 import pexpect
+
+import logging
+logging.basicConfig(format='[%(asctime)s jupyter_vdi.py] %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.INFO)
 
 import platform
 OS_c = platform.system()
@@ -50,10 +58,12 @@ parser = configparser.ConfigParser(defaults=DEFAULTS)
 config_path = os.path.expanduser('~/cosima_cookbook.conf')
 
 if os.path.exists(config_path):
+    logging.info('Using config file: {}'.format(config_path))
+
     parser.read(config_path)
 else:
-    print('No config file found. Creating default', config_path, 'file.')
-    print('*** Please edit this file as needed. ***')
+    logging.warn('No config file found. Creating default', config_path, 'file.')
+    logging.warn('*** Please edit this file as needed. ***')
     with open(config_path, 'w') as f:
         parser.write(f)
 
@@ -111,17 +121,17 @@ def session(func, *args, **kwargs):
     return s
 
 
-print("Checking SSH keys to VDI are configured...", end='')
+logging.info("Checking SSH keys to VDI are configured...")
 r = session('hello --partition main', params)
 if r.exitstatus != 0:
     # suggest setting up SSH keys
-    print("Error with ssh keys/password and VDI.")
-    print("  Incorrect user name in ~/cosima_cookbook.conf file?")
-    print("  Edit ~/cosima_cookbook.conf before continuing.")
+    logging.error("Error with ssh keys/password and VDI.")
+    logging.error("  Incorrect user name in ~/cosima_cookbook.conf file?")
+    logging.error("  Edit ~/cosima_cookbook.conf before continuing.")
     sys.exit(1)
-print("OK")
+logging.info("SSH keys configured OK")
 
-print("Determine if VDI session is already running...", end='')
+logging.info("Determine if VDI session is already running...")
 r = session('list-avail --partition main', params)
 m = re.search('#~#id=(?P<jobid>(?P<jobidNumber>.*?))#~#state=(?P<state>.*?)(?:#~#time_rem=(?P<remainingWalltime>.*?))?#~#', r.before.decode())
 if m is not None:
@@ -129,12 +139,12 @@ if m is not None:
     w = int(params['remainingWalltime'])
     remainingWalltime = '{:02}:{:02}:{:02}'.format(
         w // 3600, w % 3600 // 60, w % 60)
-    print(remainingWalltime, 'time remaining')
+    logging.info('Time remaining: %s', remainingWalltime)
 
     # TODO: should give user option of starting a new session if the remaining walltime is short
 else:
-    print('No')
-    print("Launching new VDI session...", end='')
+    logging.info('No VDI session found')
+    logging.info("Launching a new VDI session...")
     r = session('launch --partition main', params)
     m = re.search('#~#id=(?P<jobid>(?P<jobidNumber>.*?))#~#',
                   r.before.decode())
@@ -142,13 +152,13 @@ else:
     time.sleep(2)  # TODO: instead of waiting, should check for confirmation
     # use has-started
 
-print("Determine jobid for VDI session...{jobid}".format(**params))
+logging.info("Determine jobid for VDI session...{jobid}".format(**params))
 
-print("Get exechost for VDI session...", end='')
+logging.info("Get exechost for VDI session...")
 r = session('get-host --jobid {jobid}', params)
 m = re.search('#~#host=(?P<exechost>.*?)#~#', r.before.decode())
 params.update(m.groupdict())
-print('{exechost}'.format(**params))
+logging.info('exechost: {exechost}'.format(**params))
 
 # wait for jupyter to start running and launch web browser locally
 webbrowser_started = False
@@ -161,6 +171,7 @@ def start_jupyter(s):
         m = re.search(
             'The Jupyter Notebook is running at: (?P<url>.*)',
             s.decode('utf8'))
+
         if m is not None:
             params.update(m.groupdict())
             if OS_c != 'Darwin' and OS_v != '16.6.0':
@@ -176,7 +187,7 @@ def start_jupyter(s):
     return s
 
 
-print("Running Jupyter on VDI...")
+logging.info("Running Jupyter on VDI...")
 cmd = """-t -L {jupyterport}:localhost:{jupyterport}
     -L {bokehport}:localhost:{bokehport}
     'bash -l -c "module use /g/data3/hh5/public/modules
@@ -185,9 +196,10 @@ cmd = """-t -L {jupyterport}:localhost:{jupyterport}
     """.replace('\n', ' ')
 s = ssh(cmd, params, login_timeout=2)
 
-print("Waiting for Jupyter to start...")
+logging.info("Waiting for Jupyter to start...")
 
 # give control over to user
 s.interact(output_filter=start_jupyter)
 
+logging.info('end of script')
 # optional: terminate to close the vdi session?
