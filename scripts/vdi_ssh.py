@@ -60,7 +60,7 @@ params.update(m.groupdict())
 print('{execHost}'.format(**params))
 
 print ("Openning SSH to VDI...")
-cmd = 'ssh -t {execHost} -l {User}'.format(**params)
+cmd = 'ssh -Y -t {execHost} -l {User}'.format(**params)
 
 p = subprocess.Popen(cmd.split())
 p.wait()
