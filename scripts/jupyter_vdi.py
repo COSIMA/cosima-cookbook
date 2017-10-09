@@ -27,14 +27,16 @@ import getpass
 
 import pexpect
 
-# Check Version of MAC OS
-from appscript import app, k
 import platform
 OS_c = platform.system()
 OS_v = platform.release()
 
-import configparser
+# Check Version of MAC OS
+if OS_c == 'Darwin' and OS_v == '16.6.0':
+    import appscript
+
 import os
+import configparser
 
 DEFAULTS = {
     'user': getpass.getuser(),
@@ -51,7 +53,7 @@ if os.path.exists(config_path):
     parser.read(config_path)
 else:
     print('No config file found. Creating default', config_path, 'file.')
-    print('Please edit this file as needed.')
+    print('*** Please edit this file as needed. ***')
     with open(config_path, 'w') as f:
         parser.write(f)
 
@@ -114,7 +116,8 @@ r = session('hello --partition main', params)
 if r.exitstatus != 0:
     # suggest setting up SSH keys
     print("Error with ssh keys/password and VDI.")
-    print("  Incorrect user name in ./cosima_cookbook.conf file?")
+    print("  Incorrect user name in ~/cosima_cookbook.conf file?")
+    print("  Edit ~/cosima_cookbook.conf before continuing.")
     sys.exit(1)
 print("OK")
 
@@ -166,9 +169,9 @@ def start_jupyter(s):
                 webbrowser_started = True
             else:
                 print('using appscript')
-                safari = app("Safari")
-                safari.make(new=k.document, with_properties={
-                            k.URL: params['url']})
+                safari = appscript.app("Safari")
+                safari.make(new=appscript.k.document, with_properties={
+                            appscript.k.URL: params['url']})
                 webbrowser_started = True
     return s
 
