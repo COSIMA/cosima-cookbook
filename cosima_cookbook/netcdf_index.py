@@ -16,6 +16,8 @@ import xarray as xr
 import subprocess
 import tqdm
 
+import logging
+
 directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
                        '/g/data1/v45/APE-MOM',
                       ]
@@ -259,9 +261,11 @@ def get_nc_variable(expt, ncfile,
         op = lambda x: x
 
     #print ('Opening {} ncfiles...'.format(len(ncfiles)))
+    logging.debug(f'Opening {len(ncfiles)} ncfiles...')
 
     dataarrays = []
-    for ncfile in ncfiles:
+    for ncfile in tqdm.tqdm_notebook(ncfiles,
+            desc='get_nc_variable:', leave=False):
         dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variable]
 
         dataarray = op(dataarray)
@@ -285,7 +289,8 @@ def get_nc_variable(expt, ncfile,
 
     #print ('Building dataarray.')
 
-    dataarray = xr.concat(dataarrays, dim='time', coords='all', )
+    dataarray = xr.concat(dataarrays,
+                          dim='time', coords='all', )
 
     #if 'time' in dataarray.coords:
     #    if time_units is None:

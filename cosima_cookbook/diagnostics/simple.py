@@ -4,9 +4,13 @@ from ..memory import memory
 
 @memory.cache
 def annual_scalar(expt, variable):
-    darray = get_nc_variable(expt, 'ocean_scalar.nc', variable,
-                              time_units='days since 1900-01-01')
-    annual_average = darray.resample('A', 'time').load()
+    """
+    """
+    darray = get_nc_variable(expt,
+                             'ocean_scalar.nc',
+                             variable,
+                             time_units='days since 1900-01-01')
+    annual_average = darray.resample('A', 'time').compute()
     annual_average.attrs['long_name'] = darray.long_name + ' (annual average)'
     annual_average.attrs['units'] = darray.units
 
