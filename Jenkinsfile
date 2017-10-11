@@ -1,9 +1,9 @@
 pipeline {
-    agent { docker 'python:3.5.1' }
+    agent { node { label 'jm0634.raijin' } }
     stages {
         stage('Test') {
             steps {
-                sh 'echo "Fail!"; exit 1'
+                sh 'echo "Pass!"; exit 0'
             }
         }
         stage('build') {
