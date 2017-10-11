@@ -1,7 +1,8 @@
 # cosima-cookbook
 
-[![Travis CI Build Status](https://travis-ci.org/OceansAus/cosima-cookbook.svg?branch=master)](https://travis-ci.org/OceansAus/cosima-cookbook)
-[![Documentation Status](https://readthedocs.org/projects/cosima-cookbook/badge/?version=latest)](https://cosima-cookbook.readthedocs.org/en/latest)
+| Travis CI | Jenkins | Read the Docs | 
+|:---------:|:-------:|:-------------:|
+| [![Travis CI Build Status](https://travis-ci.org/OceansAus/cosima-cookbook.svg?branch=master)](https://travis-ci.org/OceansAus/cosima-cookbook) | [![Build Status](https://accessdev.nci.org.au/jenkins/job/COSIMA/job/OceansAus/job/cosima-cookbook/job/master/badge/icon)](https://accessdev.nci.org.au/jenkins/job/COSIMA/job/OceansAus/job/cosima-cookbook/job/master/) | [![Documentation Status](https://readthedocs.org/projects/cosima-cookbook/badge/?version=latest)](https://cosima-cookbook.readthedocs.org/en/latest) |
 
 https://readthedocs.org/projects/mpi4py/badge/?version=latest
 
