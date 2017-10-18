@@ -24,13 +24,14 @@ def drake_passage(expt):
     if tx_trans.units == 'Sv (10^9 kg/s)':
         transport = tx_trans.sum('yt_ocean').resample('A','time')
     else:
-        print('WARNING: Changing units for ', expt)
+        #print('WARNING: Changing units for ', expt)
         transport = tx_trans.sum('yt_ocean').resample('A','time')*1.0e-9
 
     return transport
 
 @memory.cache
 def sea_surface_temperature(expt):
+    ## Load SST from expt
     SST = get_nc_variable(expt, 'ocean.nc', 'temp',time_units = 'days since 1900-01-01').isel(st_ocean=0)
     
     # Average over first year. We would prefer to compare with WOA13 long-term average.

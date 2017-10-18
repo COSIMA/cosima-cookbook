@@ -103,3 +103,76 @@ def drake_passage(expts=[]):
     plt.xlabel('Time')
     plt.ylabel('Transport (Sv)')
     plt.legend(fontsize=10, loc='best')
+    
+def aabw(expts=[], GM=False):
+    """
+    Plot timeseries of AABW transport measured at 55S.
+
+    Parameters
+    ----------
+    expts : str or list of str
+        Experiment name(s).
+    """
+
+    plt.figure(figsize=(12, 6))
+
+    if not isinstance(expts, list):
+        expts = [expts]
+
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
+        psi_aabw = cc.diagnostics.calc_aabw(expt, GM)
+        psi_aabw.plot(label=expt)
+        
+    plt.title('AABW Transport')
+    plt.xlabel('Time')
+    plt.ylabel('Transport (Sv)')
+    plt.legend(fontsize=10, loc='best')
+    
+
+def amoc(expts=[], GM=False):
+    """
+    Plot timeseries of AMOC transport measured at 26N.
+
+    Parameters
+    ----------
+    expts : str or list of str
+        Experiment name(s).
+    """
+
+    plt.figure(figsize=(12, 6))
+
+    if not isinstance(expts, list):
+        expts = [expts]
+
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
+        psi_amoc = cc.diagnostics.calc_amoc(expt, GM)
+        psi_amoc.plot(label=expt)
+        
+    plt.title('AMOC Transport at 26N')
+    plt.xlabel('Time')
+    plt.ylabel('Transport (Sv)')
+    plt.legend(fontsize=10, loc='best')
+
+def amoc_south(expts=[], GM=False):
+    """
+    Plot timeseries of AMOC transport measured at 35S.
+
+    Parameters
+    ----------
+    expts : str or list of str
+        Experiment name(s).
+    """
+
+    plt.figure(figsize=(12, 6))
+
+    if not isinstance(expts, list):
+        expts = [expts]
+
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
+        psi_amoc_south = cc.diagnostics.calc_amoc_south(expt, GM)
+        psi_amoc_south.plot(label=expt)
+        
+    plt.title('AMOC Transport at 35S')
+    plt.xlabel('Time')
+    plt.ylabel('Transport (Sv)')
+    plt.legend(fontsize=10, loc='best')

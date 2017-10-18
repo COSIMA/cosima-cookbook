@@ -6,7 +6,7 @@ memory = Memory(cachedir=cachedir, verbose=1)
 from ..netcdf_index import get_nc_variable
 
 @memory.cache
-def psi_avg(expt, n=10):
+def psi_avg(expt, n=10, GM = False):
 
     def op(p):
         summed_p = p.sum('grid_xt_ocean')
@@ -17,41 +17,134 @@ def psi_avg(expt, n=10):
                           op=op,
                           chunks={'potrho': None}, n=n,
                           time_units = 'days since 1900-01-01')
+    if GM: 
+        psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
+                              op=op,
+                              chunks={'potrho': None}, n=n,
+                              time_units = 'days since 1900-01-01')
     
     if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
         psi = psi*1.0e-9
+        if GM:
+            psiGM = psiGM*1.0e9
     
     psi_avg = psi.cumsum('potrho').mean('time') - \
                 psi.sum('potrho').mean('time')
+    if GM:
+        psi_avg = psa_avg + psiGM
+        
     psi_avg = psi_avg.compute()
 
     return psi_avg
 
 
 @memory.cache
-def psiGM_avg(expt, n=10):
-
+def calc_aabw(expt, GM = False): 
+    print('Calculating {} timeseries of AABW transport at 55S '.format(expt))
+    
     def op(p):
         summed_p = p.sum('grid_xt_ocean')
         summed_p.attrs['units'] = p.units
         return summed_p
-    
-    psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
+
+    psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
                           op=op,
-                          chunks={'potrho': None}, n=n,
+                          chunks={'potrho': None},
                           time_units = 'days since 1900-01-01')
+    if GM:
+        psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
+                              op=op,
+                              chunks={'potrho': None},
+                              time_units = 'days since 1900-01-01')
     
-    if psiGM.units == 'kg/s':
-        #print('WARNING: Changing psiGM units for ', expt)
-        psiGM = psiGM*1.0e-9
+    if psi.units == 'kg/s':
+        #print('WARNING: Changing units for ', expt)
+        psi = psi*1.0e-9
+        if GM:
+            psiGM = psiGM*1.0e-9
     
-    psiGM_avg = psiGM.mean('time')
-    psiGM_avg = psiGM_avg.compute()
+    psi_sum = psi.cumsum('potrho') - psi.sum('potrho')
+    if GM:
+        psi_sum = psi_sum + psiGM
+    
+    psi_aabw = psi_sum.sel(method='Nearest',grid_yu_ocean=-55).sel(potrho=slice(1036,None))\
+                .min('potrho').resample('3A',dim='time')
+    psi_aabw = psi_aabw.compute()
+    
+    return psi_aabw
 
-    return psiGM_avg
+
+@memory.cache
+def calc_amoc(expt, GM = False): 
+    print('Calculating {} timeseries of AMOC transport at 26N '.format(expt))
+    
+    def op(p):
+        summed_p = p.sum('grid_xt_ocean')
+        summed_p.attrs['units'] = p.units
+        return summed_p
+
+    psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
+                          op=op,
+                          chunks={'potrho': None},
+                          time_units = 'days since 1900-01-01')
+    if GM:
+        psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
+                              op=op,
+                              chunks={'potrho': None},
+                              time_units = 'days since 1900-01-01')
+    
+    if psi.units == 'kg/s':
+        #print('WARNING: Changing units for ', expt)
+        psi = psi*1.0e-9
+        if GM:
+            psiGM = psiGM*1.0e-9
+    
+    psi_sum = psi.cumsum('potrho') - psi.sum('potrho')
+    if GM:
+        psi_sum = psi_sum + psiGM
+    
+    psi_amoc = psi_sum.sel(method='Nearest',grid_yu_ocean=26).sel(potrho=slice(1035.5,None))\
+                .max('potrho').resample('3A',dim='time')
+    psi_amoc = psi_amoc.compute()
+    
+    return psi_amoc
 
 
+@memory.cache
+def calc_amoc_south(expt, GM = False): 
+    print('Calculating {} timeseries of AMOC transport at 35S '.format(expt))
+    
+    def op(p):
+        summed_p = p.sum('grid_xt_ocean')
+        summed_p.attrs['units'] = p.units
+        return summed_p
+
+    psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
+                          op=op,
+                          chunks={'potrho': None},
+                          time_units = 'days since 1900-01-01')
+    if GM:
+        psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
+                              op=op,
+                              chunks={'potrho': None},
+                              time_units = 'days since 1900-01-01')
+    
+    if psi.units == 'kg/s':
+        #print('WARNING: Changing units for ', expt)
+        psi = psi*1.0e-9
+        if GM:
+            psiGM = psiGM*1.0e-9
+    
+    psi_sum = psi.cumsum('potrho') - psi.sum('potrho')
+    if GM:
+        psi_sum = psi_sum + psiGM
+    
+    psi_amoc_south = psi_sum.sel(method='Nearest',grid_yu_ocean=-35).sel(potrho=slice(1035.5,None))\
+                .max('potrho').resample('3A',dim='time')
+    psi_amoc_south = psi_amoc_south.compute()
+    
+    return psi_amoc_south
 
 @memory.cache
 def zonal_mean(expt, variable, n=10):
