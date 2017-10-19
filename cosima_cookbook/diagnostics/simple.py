@@ -1,15 +1,16 @@
-from joblib import Memory
-
-cachedir = None
-memory = Memory(cachedir=cachedir, verbose=0)
-
 from ..netcdf_index import get_nc_variable
+from ..memory import memory
+
 
 @memory.cache
 def annual_scalar(expt, variable):
-    darray = get_nc_variable(expt, 'ocean_scalar.nc', variable,
-                              time_units='days since 1900-01-01')
-    annual_average = darray.resample('A', 'time').load()
+    """
+    """
+    darray = get_nc_variable(expt,
+                             'ocean_scalar.nc',
+                             variable,
+                             time_units='days since 1900-01-01')
+    annual_average = darray.resample('A', 'time').compute()
     annual_average.attrs['long_name'] = darray.long_name + ' (annual average)'
     annual_average.attrs['units'] = darray.units
 
@@ -32,25 +33,25 @@ def drake_passage(expt):
 @memory.cache
 def sea_surface_temperature(expt):
     SST = get_nc_variable(expt, 'ocean.nc', 'temp',time_units = 'days since 1900-01-01').isel(st_ocean=0)
-    
+
     # Average over first year. We would prefer to compare with WOA13 long-term average.
-    SST0 = SST.sel(time=slice('1900-01-01','1901-01-01')).mean('time') 
-    
+    SST0 = SST.sel(time=slice('1900-01-01','1901-01-01')).mean('time')
+
     # Average over last 10 time slices - prefer to do this by year.
-    SST = SST.isel(time=slice(-10,None)).mean('time') 
+    SST = SST.isel(time=slice(-10,None)).mean('time')
     SSTdiff = SST - SST0
-    
+
     return SST, SSTdiff
 
 @memory.cache
 def sea_surface_salinity(expt):
     SSS = get_nc_variable(expt, 'ocean.nc', 'salt',time_units = 'days since 1900-01-01').isel(st_ocean=0)
-    
+
     # Average over first year. We would prefer to compare with WOA13 long-term average.
-    SSS0 = SSS.sel(time=slice('1900-01-01','1901-01-01')).mean('time') 
-    
+    SSS0 = SSS.sel(time=slice('1900-01-01','1901-01-01')).mean('time')
+
     # Average over last 10 time slices - prefer to do this by year.
-    SSS = SSS.isel(time=slice(-10,None)).mean('time') 
+    SSS = SSS.isel(time=slice(-10,None)).mean('time')
     SSSdiff = SSS - SSS0
-    
+
     return SSS, SSSdiff
