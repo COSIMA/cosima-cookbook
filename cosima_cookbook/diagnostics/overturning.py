@@ -27,12 +27,12 @@ def psi_avg(expt, n=10, GM = False):
         #print('WARNING: Changing units for ', expt)
         psi = psi*1.0e-9
         if GM:
-            psiGM = psiGM*1.0e9
+            psiGM = psiGM*1.0e-9
     
     psi_avg = psi.cumsum('potrho').mean('time') - \
                 psi.sum('potrho').mean('time')
     if GM:
-        psi_avg = psa_avg + psiGM
+        psi_avg = psi_avg + psiGM.mean('time')
         
     psi_avg = psi_avg.compute()
 
