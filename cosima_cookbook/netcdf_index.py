@@ -16,6 +16,8 @@ import xarray as xr
 import subprocess
 import tqdm
 
+import logging
+
 directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
                        '/g/data1/v45/APE-MOM',
                       ]
@@ -96,7 +98,7 @@ def build_index():
 
     print('Finding files on disk...')
     ncfiles = []
-    for run in tqdm.tqdm_notebook(runs_to_index, leave=True):
+    for run in tqdm.tqdm_notebook(runs_to_index, leave=False):
         results = subprocess.check_output(['find', run, '-name', '*.nc'])
         results = [s for s in results.decode('utf-8').split()]
 
@@ -153,6 +155,10 @@ def build_index():
             ncvars = []
 
         return ncvars
+
+    if len(files_to_add) == 0:
+        print("No new .nc files found.")
+        return True
 
     print('Indexing new .nc files...')
 
@@ -255,9 +261,11 @@ def get_nc_variable(expt, ncfile,
         op = lambda x: x
 
     #print ('Opening {} ncfiles...'.format(len(ncfiles)))
+    logging.debug(f'Opening {len(ncfiles)} ncfiles...')
 
     dataarrays = []
-    for ncfile in ncfiles:
+    for ncfile in tqdm.tqdm_notebook(ncfiles,
+            desc='get_nc_variable:', leave=False):
         dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variable]
 
         dataarray = op(dataarray)
@@ -281,7 +289,8 @@ def get_nc_variable(expt, ncfile,
 
     #print ('Building dataarray.')
 
-    dataarray = xr.concat(dataarrays, dim='time', coords='all', )
+    dataarray = xr.concat(dataarrays,
+                          dim='time', coords='all', )
 
     #if 'time' in dataarray.coords:
     #    if time_units is None:

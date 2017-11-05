@@ -1,22 +1,4 @@
-import dask
-#import dask.bag
-#from dask.distributed import Client
-
-#import pandas as pd
-#import xarray as xr
-#from glob import glob
-#import re
-#import netCDF4
-
-#print('starting distributed client...')
-#client = Client()
-#print(client)
-
-from joblib import Memory
-
-cachedir = None
-memory = Memory(cachedir=cachedir, verbose=0)
-
+from ..memory import memory
 from ..netcdf_index import get_nc_variable
 
 @memory.cache
@@ -27,7 +9,7 @@ def mean_tau_x(expt):
     tau_x = get_nc_variable(expt,
                             'ocean_month.nc',
                             'tau_x',
-                            time_units = 'days since 2000-01-01',
+                            time_units = 'days since 1900-01-01',
                             n=10)
 
     mean_tau_x = tau_x.mean('xu_ocean').mean('time')
