@@ -104,6 +104,30 @@ def drake_passage(expts=[]):
     plt.ylabel('Transport (Sv)')
     plt.legend(fontsize=10, loc='best')
     
+
+def bering_strait(expts=[]):
+    """
+    Plot Bering Strait transport.
+
+    Parameters
+    ----------
+    expts : str or list of str
+        Experiment name(s).
+    """
+
+    plt.figure(figsize=(12, 6))
+
+    if not isinstance(expts, list):
+        expts = [expts]
+
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
+        transport = cc.diagnostics.bering_strait(expt)
+        transport.plot(label=expt)
+    plt.title('Bering Strait Transport')
+    plt.xlabel('Time')
+    plt.ylabel('Transport (Sv)')
+    plt.legend(fontsize=10, loc='best')
+    
 def aabw(expts=[], GM=False):
     """
     Plot timeseries of AABW transport measured at 55S.
