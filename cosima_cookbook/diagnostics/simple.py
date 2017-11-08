@@ -1,15 +1,16 @@
-from joblib import Memory
-
-cachedir = None
-memory = Memory(cachedir=cachedir, verbose=0)
-
 from ..netcdf_index import get_nc_variable
+from ..memory import memory
+
 
 @memory.cache
 def annual_scalar(expt, variable):
-    darray = get_nc_variable(expt, 'ocean_scalar.nc', variable,
-                              time_units='days since 1900-01-01')
-    annual_average = darray.resample('A', 'time').load()
+    """
+    """
+    darray = get_nc_variable(expt,
+                             'ocean_scalar.nc',
+                             variable,
+                             time_units='days since 1900-01-01')
+    annual_average = darray.resample('A', 'time').compute()
     annual_average.attrs['long_name'] = darray.long_name + ' (annual average)'
     annual_average.attrs['units'] = darray.units
 
@@ -50,15 +51,15 @@ def sea_surface_temperature(expt):
 
     if SST.units == 'degrees K':
         SST = SST - 273.15
-    
+
     # Annual Average  WOA13 long-term climatology.
     ## TODO: Need to generalise this to other resolutions!!
     SST_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_\d+_mom10.nc', 'temp',time_units = 'days since 1900-01-01').isel(ZT=0)
 
-    # Average 
-    SST = SST.mean('time') 
+    # Average
+    SST = SST.mean('time')
     SSTdiff = SST - SST_WOA13.mean('time').values
-    
+
     return SST, SSTdiff
 
 @memory.cache
@@ -66,14 +67,14 @@ def sea_surface_salinity(expt):
     ## Load SST from expt - last 10 outputs (TODO: would prefer to do this by year)
     SSS = get_nc_variable(expt, 'ocean_month.nc', 'surface_salt',n=10,time_units = 'days since 1900-01-01')
     #SSS = get_nc_variable(expt, 'ocean.nc', 'salt',n=10,time_units = 'days since 1900-01-01').isel(st_ocean=0)
-    
+
     # Annual Average  WOA13 long-term climatology.
     ## TODO: Need to generalise this to other resolutions!!
     SSS_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_\d+_mom10.nc', 'salt',time_units = 'days since 1900-01-01').isel(ZT=0)
 
 
     # Average over last 10 time slices - prefer to do this by year.
-    SSS = SSS.mean('time') 
+    SSS = SSS.mean('time')
     SSSdiff = SSS - SSS_WOA13.mean('time').values
-    
+
     return SSS, SSSdiff
