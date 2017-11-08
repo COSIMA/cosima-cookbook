@@ -2,7 +2,9 @@
 Common tools for accessing NetCDF4 variables
 """
 
-__all__ = ['build_index', 'get_nc_variable', 'get_experiments']
+__all__ = ['build_index', 'get_nc_variable',
+           'get_experiments', 'get_configurations',
+           'get_variables', 'get_ncfiles']
 
 import netCDF4
 import dataset
@@ -17,6 +19,7 @@ import subprocess
 import tqdm
 
 import logging
+logging.basicConfig(level=logging.INFO)
 
 directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
                        '/g/data1/v45/APE-MOM',
@@ -26,7 +29,7 @@ cosima_cookbook_dir = '/g/data1/v45/cosima-cookbook'
 database_file = '{}/cosima-cookbook.db'.format(cosima_cookbook_dir)
 database_url = 'sqlite:///{}'.format(database_file)
 
-def build_index():
+def build_index(use_bag=False):
     """
     An experiment is a collection of outputNNN directories.  Each directory
     represents the output of a single job submission script. These directories
@@ -162,14 +165,19 @@ def build_index():
 
     print('Indexing new .nc files...')
 
-    with distributed.Client() as client:
-        bag = dask.bag.from_sequence(files_to_add)
-        bag = bag.map(index_variables).flatten()
+    if use_bag:
+        with distributed.Client() as client:
+            bag = dask.bag.from_sequence(files_to_add)
+            bag = bag.map(index_variables).flatten()
 
-        futures = client.compute(bag)
-        progress(futures, notebook=False)
+            futures = client.compute(bag)
+            progress(futures, notebook=False)
 
-        ncvars = futures.result()
+            ncvars = futures.result()
+    else:
+        ncvars = []
+        for file_to_add in tqdm.tqdm_notebook(files_to_add, leave=False):
+            ncvars.extend(index_variables(file_to_add))
 
     print('')
     print('Found {} new variables'.format(len(ncvars)))
@@ -180,6 +188,19 @@ def build_index():
     print('Indexing complete.')
 
     return True
+
+
+def get_configurations():
+    """
+    Returns list of all configurations
+    """
+    db = dataset.connect(database_url)
+
+    rows = db.query('SELECT DISTINCT configuration FROM ncfiles')
+    configurations = [row['configuration'] for row in rows]
+
+    return configurations
+
 
 def get_experiments(configuration):
     """
@@ -192,6 +213,35 @@ def get_experiments(configuration):
     expts = [row['experiment'] for row in rows]
 
     return expts
+
+def get_ncfiles(expt):
+    """
+    Returns list of ncfiles for the given experiment
+    """
+    with dataset.connect(database_url) as db:
+        rows = db.query('SELECT DISTINCT basename_pattern '
+                        'FROM ncfiles '
+                        f'WHERE experiment = "{expt}"')
+        ncfiles = [row['basename_pattern'] for row in rows]
+
+    return ncfiles
+
+
+def get_variables(expt, ncfile):
+    """
+    Returns list of variables available in given experiment
+    and ncfile basename pattern
+    """
+
+    with dataset.connect(database_url) as db:
+        rows = db.query('SELECT DISTINCT variable '
+                        'FROM ncfiles '
+                        f'WHERE experiment = "{expt}" '
+                        f'AND basename_pattern = "{ncfile}"')
+        variables = [row['variable'] for row in rows]
+
+    return variables
+
 
 def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
@@ -215,6 +265,7 @@ def get_nc_variable(expt, ncfile,
     time_units (e.g. "days since 1600-01-01") can be used to override
     the original time.units.  If time_units=None, no overriding is performed.
 
+    if variable is a list, then return a dataset for all given variables
     """
 
     if '/' in expt:
@@ -222,15 +273,27 @@ def get_nc_variable(expt, ncfile,
     else:
         experiment = expt
 
+    if not isinstance(variable, list):
+        variables = [variable]
+        return_dataarray = True
+    else:
+        variables = variable
+        return_dataarray = False
+
     db = dataset.connect(database_url)
 
-    res = db.query('SELECT ncfile, dimensions, chunking \
-                    FROM ncfiles \
-                    WHERE experiment = "{}" \
-                    AND basename_pattern = "{}" \
-                    AND variable = "{}" \
-                    ORDER BY ncfile'.format(experiment, ncfile, variable))
+    var_list = ",".join(['"{}"'.format(v) for v in variables])
 
+    sql = " ".join(['SELECT DISTINCT ncfile, dimensions, chunking ',
+                    'FROM ncfiles',
+                    'WHERE experiment = "{}"'.format(experiment),
+                    'AND basename_pattern = "{}"'.format(ncfile),
+                    'AND variable in ({})'.format(var_list),
+                    'ORDER BY ncfile'])
+
+    logging.debug(sql)
+
+    res = db.query(sql)
     rows = list(res)
 
     ncfiles = [row['ncfile'] for row in rows]
@@ -266,7 +329,7 @@ def get_nc_variable(expt, ncfile,
     dataarrays = []
     for ncfile in tqdm.tqdm_notebook(ncfiles,
             desc='get_nc_variable:', leave=False):
-        dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variable]
+        dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variables]
 
         dataarray = op(dataarray)
 
@@ -303,7 +366,10 @@ def get_nc_variable(expt, ncfile,
 
     #print ('Dataarray constructed.')
 
-    return dataarray
+    if return_dataarray:
+        return dataarray[variable]
+    else:
+        return dataarray
 
 def get_scalar_variables(configuration):
     db = dataset.connect(database_url)
