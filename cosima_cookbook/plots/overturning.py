@@ -4,11 +4,7 @@ import numpy as np
 
 def psi_avg(expt, n=10, GM=False, clev=np.arange(-20,20,2)):
     
-    psi_avg = cc.diagnostics.psi_avg(expt, n)
-    if GM:
-        #print('Adding GM component')
-        psi_avg = psi_avg + cc.diagnostics.psiGM_avg(expt, n)
-    
+    psi_avg = cc.diagnostics.psi_avg(expt, n, GM)
     
     plt.figure(figsize=(10, 5)) 
     plt.contourf(psi_avg.grid_yu_ocean, 
