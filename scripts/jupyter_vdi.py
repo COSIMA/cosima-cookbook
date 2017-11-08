@@ -194,7 +194,10 @@ setupconda = params.get('setupconda',
                  && module load conda/analysis3
               """.replace('\n', ' '))
 
-run_jupyter = "jupyter notebook --no-browser --port {jupyterport}"
+jupyterapp = params.get('jupyterapp',  "notebook")
+
+run_jupyter = "jupyter %s --no-browser --port {jupyterport}" % jupyterapp
+
 run_jupyter = setupconda + ' && ' + run_jupyter
 
 cmd = ' '.join(['-t',
