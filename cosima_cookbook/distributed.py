@@ -1,5 +1,5 @@
 import os, socket, getpass
-from dask.distributed import Client, LocalCluster
+from distributed import Client, LocalCluster
 
 from itertools import product
 import numpy as np
