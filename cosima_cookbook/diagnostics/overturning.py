@@ -45,9 +45,6 @@ def calc_aabw(expt, GM = False):
         summed_p.attrs['units'] = p.units
         return summed_p
 
-<<<<<<< HEAD
-    psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
-=======
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
                           op=op,
                           chunks={'potrho': None},
