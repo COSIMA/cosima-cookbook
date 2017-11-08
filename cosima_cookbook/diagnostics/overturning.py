@@ -6,7 +6,7 @@ def psi_avg(expt, n=10, GM = False):
 
     def op(p):
         summed_p = p.sum('grid_xt_ocean')
-        summed_p.attrs['units'] = p.units
+        #summed_p.attrs['units'] = p.units
         return summed_p
 
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
@@ -20,11 +20,11 @@ def psi_avg(expt, n=10, GM = False):
                               chunks={'potrho': None}, n=n,
                               time_units = 'days since 1900-01-01')
 
-    if psi.units == 'kg/s':
+    #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
-        psi = psi*1.0e-9
-        if GM:
-            psiGM = psiGM*1.0e-9
+    psi = psi*1.0e-9
+    if GM:
+        psiGM = psiGM*1.0e-9
 
     psi_avg = psi.cumsum('potrho').mean('time') - \
                 psi.sum('potrho').mean('time')
@@ -42,7 +42,7 @@ def calc_aabw(expt, GM = False):
 
     def op(p):
         summed_p = p.sum('grid_xt_ocean')
-        summed_p.attrs['units'] = p.units
+        #summed_p.attrs['units'] = p.units
         return summed_p
 
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
@@ -55,11 +55,11 @@ def calc_aabw(expt, GM = False):
                               chunks={'potrho': None},
                               time_units = 'days since 1900-01-01')
 
-    if psi.units == 'kg/s':
+    #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
-        psi = psi*1.0e-9
-        if GM:
-            psiGM = psiGM*1.0e-9
+    psi = psi*1.0e-9
+    if GM:
+        psiGM = psiGM*1.0e-9
 
     psi_sum = psi.cumsum('potrho') - psi.sum('potrho')
     if GM:
@@ -78,7 +78,7 @@ def calc_amoc(expt, GM = False):
 
     def op(p):
         summed_p = p.sum('grid_xt_ocean')
-        summed_p.attrs['units'] = p.units
+        #summed_p.attrs['units'] = p.units
         return summed_p
 
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
@@ -92,11 +92,11 @@ def calc_amoc(expt, GM = False):
                               chunks={'potrho': None},
                               time_units = 'days since 1900-01-01')
 
-    if psi.units == 'kg/s':
+    #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
-        psi = psi*1.0e-9
-        if GM:
-            psiGM = psiGM*1.0e-9
+    psi = psi*1.0e-9
+    if GM:
+        psiGM = psiGM*1.0e-9
 
     psi_sum = psi.cumsum('potrho') - psi.sum('potrho')
     if GM:
@@ -115,7 +115,7 @@ def calc_amoc_south(expt, GM = False):
 
     def op(p):
         summed_p = p.sum('grid_xt_ocean')
-        summed_p.attrs['units'] = p.units
+        #summed_p.attrs['units'] = p.units
         return summed_p
 
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
@@ -128,11 +128,11 @@ def calc_amoc_south(expt, GM = False):
                               chunks={'potrho': None},
                               time_units = 'days since 1900-01-01')
 
-    if psi.units == 'kg/s':
+    #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
-        psi = psi*1.0e-9
-        if GM:
-            psiGM = psiGM*1.0e-9
+    psi = psi*1.0e-9
+    if GM:
+        psiGM = psiGM*1.0e-9
 
     psi_sum = psi.cumsum('potrho') - psi.sum('potrho')
     if GM:
