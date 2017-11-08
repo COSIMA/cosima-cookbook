@@ -85,19 +85,10 @@ def calc_amoc(expt, GM = False):
         return summed_p
 
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
->>>>>>> 199f86cfb0e21999bc1f1f4c209ebf08445b4cf6
                           op=op,
                           chunks={'potrho': None},
                           time_units = 'days since 1900-01-01')
-<<<<<<< HEAD
 
-    if psiGM.units == 'kg/s':
-        #print('WARNING: Changing psiGM units for ', expt)
-        psiGM = psiGM*1.0e-9
-
-    psiGM_avg = psiGM.mean('time')
-    psiGM_avg = psiGM_avg.compute()
-=======
     if GM:
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                               op=op,
@@ -119,7 +110,6 @@ def calc_amoc(expt, GM = False):
     psi_amoc = psi_amoc.compute()
 
     return psi_amoc
->>>>>>> 199f86cfb0e21999bc1f1f4c209ebf08445b4cf6
 
 
 @memory.cache
