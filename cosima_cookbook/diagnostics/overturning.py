@@ -10,15 +10,17 @@ def psi_avg(expt, n=10, GM = False):
         return summed_p
 
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
-                          op=op,
+                       #   op=op,
                           chunks={'potrho': None}, n=n,
-                          time_units = 'days since 1900-01-01')
+                          time_units = 'days since 1700-01-01')
+    psi = psi.sum('grid_xt_ocean')
 
     if GM:
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
-                              op=op,
+                          #    op=op,
                               chunks={'potrho': None}, n=n,
-                              time_units = 'days since 1900-01-01')
+                              time_units = 'days since 1700-01-01')
+        psiGM = psiGM.sum('grid_xt_ocean')
 
     #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
@@ -31,7 +33,7 @@ def psi_avg(expt, n=10, GM = False):
     if GM:
         psi_avg = psi_avg + psiGM.mean('time')
 
-    psi_avg = psi_avg.compute()
+    psi_avg.load()
 
     return psi_avg
 
