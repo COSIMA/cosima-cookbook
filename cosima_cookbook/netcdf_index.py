@@ -2,6 +2,8 @@
 Common tools for accessing NetCDF4 variables
 """
 
+print('netcdf_index loaded.')
+
 __all__ = ['build_index', 'get_nc_variable',
            'get_experiments', 'get_configurations',
            'get_variables', 'get_ncfiles']
@@ -17,6 +19,7 @@ from distributed.diagnostics.progressbar import progress
 import xarray as xr
 import subprocess
 import tqdm
+import IPython.display
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -101,12 +104,14 @@ def build_index(use_bag=False):
 
     print('Finding files on disk...')
     ncfiles = []
-    for run in tqdm.tqdm_notebook(runs_to_index, leave=False):
+    for run in tqdm.tqdm_notebook(runs_to_index, leave=True):
         results = subprocess.check_output(['find', run, '-name', '*.nc'])
         results = [s for s in results.decode('utf-8').split()]
 
         ncfiles.extend(results)
 
+    IPython.display.clear_output(wait=True)
+    
     # NetCDF files found on disk not seen before:
     #files_to_add = set(ncfiles) - set(files_already_seen)
 
@@ -178,7 +183,8 @@ def build_index(use_bag=False):
         ncvars = []
         for file_to_add in tqdm.tqdm_notebook(files_to_add, leave=False):
             ncvars.extend(index_variables(file_to_add))
-
+        IPython.display.clear_output()
+        
     print('')
     print('Found {} new variables'.format(len(ncvars)))
 
@@ -241,12 +247,12 @@ def get_variables(expt, ncfile):
         variables = [row['variable'] for row in rows]
 
     return variables
-
-
+    
 def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
-                    op=None,
-                    time_units="days since 1900-01-01"):
+                    op=None, 
+                    time_units="days since 1900-01-01",
+                    use_bag = False):
     """
     For a given experiment, concatenate together
     variable over all time given a basename ncfile.
@@ -297,7 +303,9 @@ def get_nc_variable(expt, ncfile,
     rows = list(res)
 
     ncfiles = [row['ncfile'] for row in rows]
-
+    
+    res.close()
+    
     if len(ncfiles) == 0:
         raise ValueError("No variable {} found for {} in {}".format(variable, expt, ncfile))
 
@@ -323,46 +331,44 @@ def get_nc_variable(expt, ncfile,
     if op is None:
         op = lambda x: x
 
+
     #print ('Opening {} ncfiles...'.format(len(ncfiles)))
     logging.debug(f'Opening {len(ncfiles)} ncfiles...')
 
-    dataarrays = []
-    for ncfile in tqdm.tqdm_notebook(ncfiles,
+    if use_bag:
+        bag = dask.bag.from_sequence(ncfiles)
+        
+        load_variable = lambda ncfile: xr.open_dataset(ncfile, 
+                           chunks=chunks, 
+                           decode_times=False)[variables]
+        #bag = bag.map(load_variable, chunks, time_units, variables)
+        bag = bag.map(load_variable)
+        
+        dataarrays = bag.compute()
+    else:
+        dataarrays = []
+        for ncfile in tqdm.tqdm_notebook(ncfiles,
             desc='get_nc_variable:', leave=False):
-        dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variables]
+            dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variables]
 
-        dataarray = op(dataarray)
+            #dataarray = op(dataarray)
 
-        if 'time' in dataarray.coords:
-            if time_units is None:
-                time_units = dataarray.time.units
-
-            decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
-            dataarray.coords['time'] = ('time', decoded_time,
-                                    {'long_name' : 'time', 'decoded_using' : time_units }
-                                   )
-
-        dataarrays.append(dataarray)
-
-    #b = dask.bag.from_sequence(ncfiles)
-    #b = b.map(lambda fn : op(xr.open_dataset(fn, chunks=chunks,
-    #                                         decode_times=False)[variable]) )
-
-    #dataarrays = b.compute()
+            dataarrays.append(dataarray)
 
     #print ('Building dataarray.')
 
     dataarray = xr.concat(dataarrays,
                           dim='time', coords='all', )
 
-    #if 'time' in dataarray.coords:
-    #    if time_units is None:
-    #        time_units = dataarray.time.units
+    
+    if 'time' in dataarray.coords:
+        if time_units is None:
+            time_units = dataarray.time.units
 
-    #    decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
-    #    dataarray.coords['time'] = ('time', decoded_time,
-    #                                {'long_name' : 'time', 'decoded_using' : time_units }
-    #                               )
+        decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
+        dataarray.coords['time'] = ('time', decoded_time,
+                                    {'long_name' : 'time', 'decoded_using' : time_units }
+                                   )
 
     #print ('Dataarray constructed.')
 

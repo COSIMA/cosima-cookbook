@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import cosima_cookbook as cc
 from tqdm import tqdm_notebook
-
+import IPython.display
 
 def wind_stress(expts=[]):
     """
@@ -13,17 +13,27 @@ def wind_stress(expts=[]):
         Experiment name(s).
     """
 
-    plt.figure(figsize=(12, 6))
-
     if not isinstance(expts, list):
         expts = [expts]
 
+    # computing
+    results = []
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
-        mean_tau_x = cc.diagnostics.mean_tau_x(expt)
+        result = {'mean_tau_x': cc.diagnostics.mean_tau_x(expt),
+                  'expt': expt }
+        results.append(result)
+            
+    IPython.display.clear_output()
+    
+    plt.figure(figsize=(12, 6))
+    
+    # plotting
+    for result in results:
+        mean_tau_x = result['mean_tau_x']
+        expt = result['expt']
         plt.plot(mean_tau_x, mean_tau_x.yu_ocean,
                  linewidth=2,
                  label=expt)
-
     plt.ylim([-70, 65])
     plt.xlim([-0.08, 0.20])
     plt.ylabel('Latitude ($^\circ$N)')
@@ -43,42 +53,39 @@ def annual_scalar(expts=[], variables=[]):
         Variable name(s).
     """
 
-    plt.figure(figsize=(12, 6))
-
     if not isinstance(expts, list):
         expts = [expts]
 
     if not isinstance(variables, list):
         variables = [variables]
 
-    for variable in tqdm_notebook(variables, leave=False, desc='variables',
-                                  position=0):
-        for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
-            annual_average = cc.diagnostics.annual_scalar(expt, variable)
-            if len(variables) > 1:
-                lbl = annual_average.long_name + \
-                    ' ({})'.format(annual_average.units)
-                if len(expts) > 1:  # if false, title displays expt
-                    lbl = expt + ' ' + lbl
-            else:
-                lbl = expt  # title displays variable instead
-            annual_average.plot(label=lbl)
+    # computing
+    results = []
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
+        annual_average = cc.diagnostics.annual_scalar(expt, variables)
+            
+        result = {'annual_average': annual_average,
+                  'expt': expt}
+        results.append(result)
+    
+    IPython.display.clear_output()
+    
+    # plotting each variable in a separate plot
+    for variable in variables:
+        
+        plt.figure(figsize=(12, 6))
+        
+        for result in results:
+            annual_average = result['annual_average']
+            expt = result['expt']
 
-    if len(variables) > 0 and len(expts) > 0:
-        if len(variables) == 1:
-            plt.title(annual_average.long_name)
-            plt.ylabel(annual_average.name
-                       + ' ({})'.format(annual_average.units))
-            plt.legend(loc='best')
-        else:
-            if len(expts) == 1:
-                plt.title(expts[0])
-            else:
-                plt.title('')  # legend displays this info instead
-            plt.ylabel('')  # legend displays this info instead
-            plt.legend(fontsize=10, bbox_to_anchor=(1, 1), loc='best',
-                       borderaxespad=0.)  # puts long legend outside plot
-    plt.xlabel('Time')
+            annual_average[variable].plot(label=expt)
+            
+        plt.title(annual_average[variable].long_name)
+        plt.legend(fontsize=10, bbox_to_anchor=(1, 1), 
+                   loc='best', borderaxespad=0.)
+          
+        plt.xlabel('Time')
 
 
 def drake_passage(expts=[]):
@@ -96,9 +103,23 @@ def drake_passage(expts=[]):
     if not isinstance(expts, list):
         expts = [expts]
 
+    # computing
+    results = []
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
         transport = cc.diagnostics.drake_passage(expt)
+            
+        result = {'transport': transport,
+                  'expt': expt}
+        results.append(result)
+    
+    IPython.display.clear_output()
+    
+    # plotting
+    for result in results:
+        transport = result['transport']
+        expt = result['expt']
         transport.plot(label=expt)
+        
     plt.title('Drake Passage Transport')
     plt.xlabel('Time')
     plt.ylabel('Transport (Sv)')
