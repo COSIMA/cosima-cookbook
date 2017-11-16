@@ -38,7 +38,7 @@ def drake_passage(expt):
                          'tx_trans_int_z',
                          chunks={'yt_ocean':200},
                          time_units = 'days since 1700-01-01',
-                         use_bag=True)
+                         use_bag=False)
     
     tx_trans = tx.sel(xu_ocean=-69,method='nearest').sel(yt_ocean=slice(-72,-52))
     
