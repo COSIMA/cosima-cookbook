@@ -144,6 +144,9 @@ def bering_strait(expts=[]):
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
         transport = cc.diagnostics.bering_strait(expt)
         transport.plot(label=expt)
+        
+    IPython.display.clear_output()
+    
     plt.title('Bering Strait Transport')
     plt.xlabel('Time')
     plt.ylabel('Transport (Sv)')
@@ -167,6 +170,8 @@ def aabw(expts=[], GM=False):
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
         psi_aabw = cc.diagnostics.calc_aabw(expt, GM)
         psi_aabw.plot(label=expt)
+    
+    IPython.display.clear_output()
         
     plt.title('AABW Transport')
     plt.xlabel('Time')
@@ -192,6 +197,9 @@ def amoc(expts=[], GM=False):
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
         psi_amoc = cc.diagnostics.calc_amoc(expt, GM)
         psi_amoc.plot(label=expt)
+    
+    
+    IPython.display.clear_output()
         
     plt.title('AMOC Transport at 26N')
     plt.xlabel('Time')
@@ -216,7 +224,9 @@ def amoc_south(expts=[], GM=False):
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
         psi_amoc_south = cc.diagnostics.calc_amoc_south(expt, GM)
         psi_amoc_south.plot(label=expt)
-        
+    
+    IPython.display.clear_output()
+    
     plt.title('AMOC Transport at 35S')
     plt.xlabel('Time')
     plt.ylabel('Transport (Sv)')
