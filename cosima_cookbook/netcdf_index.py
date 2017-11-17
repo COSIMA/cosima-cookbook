@@ -304,7 +304,7 @@ def get_nc_variable(expt, ncfile,
 
     ncfiles = [row['ncfile'] for row in rows]
     
-    res.close()
+    #res.close()
     
     if len(ncfiles) == 0:
         raise ValueError("No variable {} found for {} in {}".format(variable, expt, ncfile))
