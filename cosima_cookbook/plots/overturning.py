@@ -48,8 +48,25 @@ def zonal_mean(expts,variable,n=10):
     if not isinstance(expts, list):
         expts = [expts]
     
-    for expt in expts:
+    
+    # computing
+    results = []
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
         zonal_mean, zonal_diff = cc.diagnostics.zonal_mean(expt,variable,n)
+            
+        result = {'zonal_mean': zonal_mean,
+                  'zonal_diff': zonal_diff,
+                  'expt': expt}
+        results.append(result)
+        
+    IPython.display.clear_output()
+    
+    # plotting
+    for result in results:
+        zonal_mean = result['zonal_mean']
+        zonal_diff = result['zonal_diff']
+        expt = result['expt']
+        
         plt.figure(figsize=(12,5))
         plt.subplot(121)
         zonal_mean.plot()
