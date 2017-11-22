@@ -163,11 +163,17 @@ def zonal_mean(expt, variable, n=10):
                                 time_units = 'days since 1700-01-01')
 
     # Average over first year. We would prefer to compare with WOA13 long-term average.
-    zonal_var0 = zonal_var.sel(time=slice('1700-01-01','1701-01-01')).mean('xt_ocean').mean('time')
-    zonal_var0.compute()
+    #zonal_var0 = zonal_var.sel(time=slice('1700-01-01','1701-01-01')).mean('xt_ocean').mean('time')
+    #zonal_var0.compute()
+    zonal_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_\d+_mom10.nc', 
+                                  variable,time_units = 'days since 1700-01-01').mean('GRID_X_T').mean('time')
+    zonal_WOA13.compute()
+    if variable == 'temp':
+        zonal_WOA13 = zonal_WOA13 + 273.15
+
 
     zonal_mean = zonal_var.isel(time=slice(-n,None)).mean('xt_ocean').mean('time')
     zonal_mean.compute()
-    zonal_diff = zonal_mean - zonal_var0
+    zonal_diff = zonal_mean - zonal_WOA13.values
 
     return zonal_mean, zonal_diff
