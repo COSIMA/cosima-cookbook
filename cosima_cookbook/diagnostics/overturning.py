@@ -1,8 +1,8 @@
-from ..netcdf_index import get_nc_variable
+from ..netcdf_index import get_nc_variable, get_variables
 from ..memory import memory
 
 @memory.cache
-def psi_avg(expt, n=10, GM = False):
+def psi_avg(expt, n=10):
 
     def op(p):
         summed_p = p.sum('grid_xt_ocean')
@@ -15,15 +15,20 @@ def psi_avg(expt, n=10, GM = False):
                           time_units = 'days since 1700-01-01')
     psi = psi.sum('grid_xt_ocean')
 
-    if GM:
+    varlist = get_variables(expt, 'ocean.nc')
+    if 'ty_trans_rho_gm' in varlist:
+        GM = True
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                           #    op=op,
                               chunks={'potrho': None}, n=n,
                               time_units = 'days since 1700-01-01')
         psiGM = psiGM.sum('grid_xt_ocean')
+    else:
+        GM = False
 
     #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
+    # assume units of kg/s, convert to Sv.
     psi = psi*1.0e-9
     if GM:
         psiGM = psiGM*1.0e-9
@@ -39,7 +44,7 @@ def psi_avg(expt, n=10, GM = False):
 
 
 @memory.cache
-def calc_aabw(expt, GM = False):
+def calc_aabw(expt):
     print('Calculating {} timeseries of AABW transport at 55S '.format(expt))
 
     def op(p):
@@ -52,15 +57,22 @@ def calc_aabw(expt, GM = False):
                           chunks={'potrho': None},
                           time_units = 'days since 1700-01-01')
     psi = psi.sum('grid_xt_ocean')
-    if GM:
+    
+    varlist = get_variables(expt, 'ocean.nc')
+    if 'ty_trans_rho_gm' in varlist:
+        GM = True
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                               #op=op,
                               chunks={'potrho': None},
                               time_units = 'days since 1700-01-01')
         psiGM = psiGM.sum('grid_xt_ocean')
+    else:
+        GM = False
 
     #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
+    # assume units of kg/s, convert to Sv.
+
     psi = psi*1.0e-9
     if GM:
         psiGM = psiGM*1.0e-9
@@ -77,7 +89,7 @@ def calc_aabw(expt, GM = False):
 
 
 @memory.cache
-def calc_amoc(expt, GM = False):
+def calc_amoc(expt):
     print('Calculating {} timeseries of AMOC transport at 26N '.format(expt))
 
     def op(p):
@@ -91,16 +103,21 @@ def calc_amoc(expt, GM = False):
                           time_units = 'days since 1700-01-01')
     psi = psi.sum('grid_xt_ocean')
 
-    if GM:
+    varlist = get_variables(expt, 'ocean.nc')
+    if 'ty_trans_rho_gm' in varlist:
+        GM = True
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                               #op=op,
                               chunks={'potrho': None},
                               time_units = 'days since 1700-01-01')
         psiGM = psiGM.sum('grid_xt_ocean')
-
+    else:
+        GM = False
 
     #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
+    # assume units of kg/s, convert to Sv.
+
     psi = psi*1.0e-9
     if GM:
         psiGM = psiGM*1.0e-9
@@ -117,7 +134,7 @@ def calc_amoc(expt, GM = False):
 
 
 @memory.cache
-def calc_amoc_south(expt, GM = False):
+def calc_amoc_south(expt):
     print('Calculating {} timeseries of AMOC transport at 35S '.format(expt))
 
     def op(p):
@@ -131,16 +148,21 @@ def calc_amoc_south(expt, GM = False):
                           time_units = 'days since 1700-01-01')
     psi = psi.sum('grid_xt_ocean')
 
-    if GM:
+    varlist = get_variables(expt, 'ocean.nc')
+    if 'ty_trans_rho_gm' in varlist:
+        GM = True
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                               #op=op,
                               chunks={'potrho': None},
                               time_units = 'days since 1700-01-01')
         psiGM = psiGM.sum('grid_xt_ocean')
-
+    else:
+        GM = False
 
     #if psi.units == 'kg/s':
         #print('WARNING: Changing units for ', expt)
+    # assume units of kg/s, convert to Sv.
+    
     psi = psi*1.0e-9
     if GM:
         psiGM = psiGM*1.0e-9
@@ -156,23 +178,28 @@ def calc_amoc_south(expt, GM = False):
     return psi_amoc_south
 
 @memory.cache
-def zonal_mean(expt, variable, n=10):
+def zonal_mean(expt, variable, n=10, resolution=1):
 
     zonal_var = get_nc_variable(expt, 'ocean.nc', variable,
-                                chunks={'st_ocean': None},
+                                chunks={'st_ocean': None},n=n,
                                 time_units = 'days since 1700-01-01')
-
-    # Average over first year. We would prefer to compare with WOA13 long-term average.
-    #zonal_var0 = zonal_var.sel(time=slice('1700-01-01','1701-01-01')).mean('xt_ocean').mean('time')
-    #zonal_var0.compute()
-    zonal_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_\d+_mom10.nc', 
-                                  variable,time_units = 'days since 1700-01-01').mean('GRID_X_T').mean('time')
+    
+    # Annual Average  WOA13 long-term climatology.
+    if resolution==1:
+        zonal_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_\d+_mom10.nc', variable).mean('GRID_X_T').mean('time')
+    elif resolution==0.25:
+        zonal_WOA13 = get_nc_variable('woa13/025', 'woa13_ts_\d+_mom025.nc', variable).mean('GRID_X_T').mean('time')
+    elif resolution==0.1:
+        zonal_WOA13 = get_nc_variable('woa13/01', 'woa13_ts_\d+_mom01.nc', variable).mean('GRID_X_T').mean('time')
+    else:
+        print('WARNING: Sorry, we dont seem to recognise resolution ', resolution)
+        
     zonal_WOA13.compute()
     if variable == 'temp':
         zonal_WOA13 = zonal_WOA13 + 273.15
 
 
-    zonal_mean = zonal_var.isel(time=slice(-n,None)).mean('xt_ocean').mean('time')
+    zonal_mean = zonal_var.mean('xt_ocean').mean('time')
     zonal_mean.compute()
     zonal_diff = zonal_mean - zonal_WOA13.values
 
