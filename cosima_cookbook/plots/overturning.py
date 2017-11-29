@@ -5,7 +5,7 @@ from tqdm import tqdm_notebook
 
 import IPython.display
     
-def psi_avg(expts, n=10, GM=False, clev=np.arange(-20,20,2)):
+def psi_avg(expts, n=10, clev=np.arange(-20,20,2)):
     
     if not isinstance(expts, list):
         expts = [expts]
@@ -13,7 +13,7 @@ def psi_avg(expts, n=10, GM=False, clev=np.arange(-20,20,2)):
     # computing
     results = []
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
-        psi_avg = cc.diagnostics.psi_avg(expt, n, GM)
+        psi_avg = cc.diagnostics.psi_avg(expt, n)
             
         result = {'psi_avg': psi_avg,
                   'expt': expt}
@@ -43,7 +43,7 @@ def psi_avg(expts, n=10, GM=False, clev=np.arange(-20,20,2)):
         plt.xlim([-75,85])
         plt.title('Overturning in %s' % expt)
     
-def zonal_mean(expts,variable,n=10):
+def zonal_mean(expts,variable,n=10,resolution=1):
                
     if not isinstance(expts, list):
         expts = [expts]
@@ -52,7 +52,7 @@ def zonal_mean(expts,variable,n=10):
     # computing
     results = []
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
-        zonal_mean, zonal_diff = cc.diagnostics.zonal_mean(expt,variable,n)
+        zonal_mean, zonal_diff = cc.diagnostics.zonal_mean(expt,variable,n,resolution)
             
         result = {'zonal_mean': zonal_mean,
                   'zonal_diff': zonal_diff,
