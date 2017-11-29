@@ -118,7 +118,7 @@ def drake_passage(expts=[]):
     for result in results:
         transport = result['transport']
         expt = result['expt']
-        transport.plot(label=expt)
+        transport.plot(label=expt) 
         
     plt.title('Drake Passage Transport')
     plt.xlabel('Time')
@@ -152,7 +152,7 @@ def bering_strait(expts=[]):
     plt.ylabel('Transport (Sv)')
     plt.legend(fontsize=10, loc='best')
     
-def aabw(expts=[], GM=False):
+def aabw(expts=[]):
     """
     Plot timeseries of AABW transport measured at 55S.
 
@@ -168,7 +168,7 @@ def aabw(expts=[], GM=False):
         expts = [expts]
 
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
-        psi_aabw = cc.diagnostics.calc_aabw(expt, GM)
+        psi_aabw = cc.diagnostics.calc_aabw(expt)
         psi_aabw.plot(label=expt)
     
     IPython.display.clear_output()
@@ -179,7 +179,7 @@ def aabw(expts=[], GM=False):
     plt.legend(fontsize=10, loc='best')
     
 
-def amoc(expts=[], GM=False):
+def amoc(expts=[]):
     """
     Plot timeseries of AMOC transport measured at 26N.
 
@@ -195,7 +195,7 @@ def amoc(expts=[], GM=False):
         expts = [expts]
 
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
-        psi_amoc = cc.diagnostics.calc_amoc(expt, GM)
+        psi_amoc = cc.diagnostics.calc_amoc(expt)
         psi_amoc.plot(label=expt)
     
     
@@ -206,7 +206,7 @@ def amoc(expts=[], GM=False):
     plt.ylabel('Transport (Sv)')
     plt.legend(fontsize=10, loc='best')
 
-def amoc_south(expts=[], GM=False):
+def amoc_south(expts=[]):
     """
     Plot timeseries of AMOC transport measured at 35S.
 
@@ -222,7 +222,7 @@ def amoc_south(expts=[], GM=False):
         expts = [expts]
 
     for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
-        psi_amoc_south = cc.diagnostics.calc_amoc_south(expt, GM)
+        psi_amoc_south = cc.diagnostics.calc_amoc_south(expt)
         psi_amoc_south.plot(label=expt)
     
     IPython.display.clear_output()
