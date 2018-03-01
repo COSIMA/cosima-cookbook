@@ -35,7 +35,7 @@ def sea_surface_temperature(expts=[],resolution=1):
         SST.plot()
         plt.title(expt)
         plt.subplot(122)
-        SSTdiff.plot()
+        SSTdiff.plot(robust=True)
         plt.title(expt)
 
 
@@ -71,4 +71,33 @@ def sea_surface_salinity(expts=[], resolution=1):
         plt.title(expt)
         plt.subplot(122)
         SSSdiff.plot(robust=True)
+        plt.title(expt)
+
+
+def mixed_layer_depth(expts=[]):
+    """
+    Plot a map of MLD from last decade of run.
+    """
+               
+    if not isinstance(expts, list):
+        expts = [expts]
+    
+    # computing
+    results = []
+    for expt in tqdm_notebook(expts, leave=False, desc='experiments'):
+        MLD = cc.diagnostics.mixed_layer_depth(expt)
+            
+        result = {'MLD': MLD,
+                  'expt': expt}
+        results.append(result)
+        
+    IPython.display.clear_output()
+   
+    # plotting
+    for result in results:
+        MLD = result['MLD']
+        expt = result['expt']
+        
+        plt.figure(figsize=(6,4))
+        MLD.plot()
         plt.title(expt)
