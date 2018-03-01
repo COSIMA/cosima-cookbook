@@ -122,3 +122,15 @@ def sea_surface_salinity(expt, resolution=1):
     SSSdiff = SSS - SSS_WOA13.mean('time').values
 
     return SSS, SSSdiff
+
+@memory.cache
+def mixed_layer_depth(expt):
+    ## Load MLD from expt 
+    varlist = get_variables(expt, 'ocean_month.nc')
+    if 'mld' in varlist:
+        MLD = get_nc_variable(expt, 'ocean_month.nc', 'mld',n=10)
+
+    # Average over last 10 time slices - prefer to do this by year.
+    MLD = MLD.mean('time')
+
+    return MLD
