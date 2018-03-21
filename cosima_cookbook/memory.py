@@ -9,6 +9,13 @@ from ..memory import memory
 
 from joblib import Memory
 
+import os, getpass, tempfile
+
+username = getpass.getuser()
+
+
+
 # pick up cachedir from an environment variable?
-cachedir='/tmp/amh157'
+# Append username to prevent clashes with others users
+cachedir = os.path.join(tempfile.gettempdir(),username)
 memory = Memory(cachedir=cachedir, verbose=0)
