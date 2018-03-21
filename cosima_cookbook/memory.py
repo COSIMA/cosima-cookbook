@@ -10,5 +10,5 @@ from ..memory import memory
 from joblib import Memory
 
 # pick up cachedir from an environment variable?
-cachedir='/tmp'
+cachedir='/tmp/amh157'
 memory = Memory(cachedir=cachedir, verbose=0)
