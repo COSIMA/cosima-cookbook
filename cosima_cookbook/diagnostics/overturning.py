@@ -81,7 +81,7 @@ def calc_aabw(expt):
     if GM:
         psi_sum = psi_sum + psiGM
 
-    psi_aabw = psi_sum.sel(method='Nearest',grid_yu_ocean=-55).sel(potrho=slice(1036,None))\
+    psi_aabw = psi_sum.sel(method='Nearest',grid_yu_ocean=-40).sel(potrho=slice(1036,None))\
                 .min('potrho').resample('3A',dim='time')
     psi_aabw = psi_aabw.compute()
 
