@@ -173,7 +173,7 @@ def aabw(expts=[]):
     
     IPython.display.clear_output()
         
-    plt.title('AABW Transport')
+    plt.title('AABW Transport at 40S')
     plt.xlabel('Time')
     plt.ylabel('Transport (Sv)')
     plt.legend(fontsize=10, loc='best')
