@@ -1,7 +1,6 @@
 """
 Common tools for accessing NetCDF4 variables
 """
-from __future__ import print_function
 
 print('netcdf_index loaded.')
 
