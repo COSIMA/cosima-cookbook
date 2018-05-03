@@ -12,6 +12,7 @@ import netCDF4
 import dataset
 import re
 import os
+import sys
 import fnmatch
 import dask.bag
 import distributed
@@ -237,13 +238,19 @@ def get_variables(expt, ncfile):
     """
     Returns list of variables available in given experiment
     and ncfile basename pattern
+    
+    
+    ncfile can use glob syntax http://www.sqlitetutorial.net/sqlite-glob/
+    and regular expressions also work in some limited cases.
     """
 
     with dataset.connect(database_url) as db:
         rows = db.query('SELECT DISTINCT variable '
                         'FROM ncfiles '
                         f'WHERE experiment = "{expt}" '
-                        f'AND basename_pattern = "{ncfile}"')
+                        f'AND (basename_pattern = "{ncfile}" '
+                        f'OR basename GLOB "{ncfile}")'
+                        )
         variables = [row['variable'] for row in rows]
 
     return variables
@@ -258,7 +265,8 @@ def get_nc_variable(expt, ncfile,
     variable over all time given a basename ncfile.
 
     Since some NetCDF4 files have trailing integers (e.g. ocean_123_456.nc)
-    ncfile is actually an regular expression.
+    ncfile can use glob syntax http://www.sqlitetutorial.net/sqlite-glob/
+    and regular expressions also work in some limited cases.
 
     By default, xarray is set to use the same chunking pattern that is
     stored in the ncfile. This can be overwritten by passing in a dictionary
@@ -292,9 +300,12 @@ def get_nc_variable(expt, ncfile,
 
     sql = " ".join(['SELECT DISTINCT ncfile, dimensions, chunking ',
                     'FROM ncfiles',
-                    'WHERE experiment = "{}"'.format(experiment),
-                    'AND basename_pattern = "{}"'.format(ncfile),
-                    'AND variable in ({})'.format(var_list),
+                    f'WHERE experiment = "{experiment}"',
+                    'AND (',
+                    f'basename_pattern = "{ncfile}"',
+                    f'OR basename GLOB "{ncfile}"',
+                    ')',
+                    f'AND variable in ({var_list})',
                     'ORDER BY ncfile'])
 
     logging.debug(sql)
@@ -365,7 +376,10 @@ def get_nc_variable(expt, ncfile,
         if time_units is None:
             time_units = dataarray.time.units
 
-        decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
+        try:
+            decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units)
+        except:  # for compatibility with older xarray (pre-0.10.2 ?)
+            decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
         dataarray.coords['time'] = ('time', decoded_time,
                                     {'long_name' : 'time', 'decoded_using' : time_units }
                                    )
