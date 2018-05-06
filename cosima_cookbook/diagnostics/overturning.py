@@ -186,11 +186,11 @@ def zonal_mean(expt, variable, n=10, resolution=1):
     
     # Annual Average  WOA13 long-term climatology.
     if resolution==1:
-        zonal_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_\d+_mom10.nc', variable).mean('GRID_X_T').mean('time')
+        zonal_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_??_mom10.nc', variable).mean('GRID_X_T').mean('time')
     elif resolution==0.25:
-        zonal_WOA13 = get_nc_variable('woa13/025', 'woa13_ts_\d+_mom025.nc', variable).mean('GRID_X_T').mean('time')
+        zonal_WOA13 = get_nc_variable('woa13/025', 'woa13_ts_??_mom025.nc', variable).mean('GRID_X_T').mean('time')
     elif resolution==0.1:
-        zonal_WOA13 = get_nc_variable('woa13/01', 'woa13_ts_\d+_mom01.nc', variable).mean('GRID_X_T').mean('time')
+        zonal_WOA13 = get_nc_variable('woa13/01', 'woa13_ts_??_mom01.nc', variable).mean('GRID_X_T').mean('time')
     else:
         print('WARNING: Sorry, we dont seem to recognise resolution ', resolution)
         
