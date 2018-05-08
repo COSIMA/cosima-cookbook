@@ -35,7 +35,7 @@ OS_V=platform.release()
 try:
     params = eval(open('~/vdiuser.config', 'r').read())
 except:
-    params = {'user' : 'jm5970',
+    params = {'user' : 'ur4354',
     'JupyterPort' : '8889',
     'BokehPort' : '8787',
     'execHost' :  'vdi.nci.org.au',}
