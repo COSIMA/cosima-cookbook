@@ -35,7 +35,7 @@ OS_V=platform.release()
 try:
     params = eval(open('~/vdiuser.config', 'r').read())
 except:
-    params = {'user' : 'ur4354',
+    params = {'user' : 'jm5970',
     'JupyterPort' : '8889',
     'BokehPort' : '8787',
     'execHost' :  'vdi.nci.org.au',}
@@ -120,22 +120,23 @@ print('{execHost}'.format(**params))
 webbrowser_started = False
 def start_jupyter(s):
     global webbrowser_started
-
     if not webbrowser_started:
-        m = re.search('The Jupyter Notebook is running at: (?P<url>.*)', s.decode('utf8'))
+        m = re.search('http://(?P<url>.*)',s.decode('utf8'))
         if m is not None:
             params.update(m.groupdict())
-            if OS_c!='Darwin' and OS_v!='16.6.0':
+            print(OS_c)
+            if OS_c!='Darwin':
                 # Open browser locally
-                webbrowser.open(params['url'])
+                webbrowser.open('http://'+params['url'])
                 webbrowser_started = True
             else:
                 safari=app("Safari")
-                safari.make(new=k.document,with_properties={k.URL:params['url']})
+                safari.make(new=k.document,with_properties={k.URL:'http://'+params['url']})
+                webbrowser_started = True
     return s
 
 print ("Running Jupyter on VDI...")
-cmd = """-t -L {JupyterPort}:localhost:{JupyterPort} -L {BokehPort}:localhost:{BokehPort} 'bash -l -c "module load conda/analysis27 && jupyter notebook --no-browser --port {JupyterPort}"'"""
+cmd = """-t -L {JupyterPort}:localhost:{JupyterPort} -L {BokehPort}:localhost:{BokehPort} 'bash -l -c "module load conda/analysis3 && jupyter notebook --no-browser --port {JupyterPort}"'"""
 s = ssh(cmd, params, login_timeout=2)
 
 print ("Waiting for Jupyter to start...")
