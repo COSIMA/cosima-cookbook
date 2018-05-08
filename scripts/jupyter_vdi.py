@@ -32,11 +32,13 @@ import platform
 OS_c=platform.system()
 OS_V=platform.release()
 
-params = {'user' : 'jm0634',
-          'JupyterPort' : '8889',
-          'BokehPort' : '8787',
-          'execHost' :  'vdi.nci.org.au',
-         }
+try:
+    params = eval(open('~/vdiuser.config', 'r').read())
+except:
+    params = {'user' : 'ur4354',
+    'JupyterPort' : '8889',
+    'BokehPort' : '8787',
+    'execHost' :  'vdi.nci.org.au',}
 
 def ssh(cmd, params, login_timeout=10):
     """
