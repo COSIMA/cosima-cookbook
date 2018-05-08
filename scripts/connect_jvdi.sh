@@ -1,10 +1,12 @@
 #!bin/sh
-# In order use this command, it is necesary to move or create a vdiuser.config file in the home directory or 
-# specify the path in the uconfigpath variable or replace "raijin_user" with the your account. 
-# Additionally you could add the following line to your .bashrc file:
-# source $COSIMA_COOKBOOK_PATH/connect_jvdi.sh > ~/.bashrc
+# To use this command, it is necesary to move or create a vdiuser.config file at your home directory,
+# specify the path in the uconfigpath variable or replace "ur4354" with your raijin user name.
+# Additionally, It's recomended to add the following line to your .bashrc file:
+# source $COSIMA_COOKBOOK_PATH/scripts/connect_jvdi.sh > ~/.bashrc
 # or you can run:
-# echo "source $COSIMA_COOKBOOK_PATH/connect_jvdi.sh > ~/.bashrc"
+# echo "source $COSIMA_COOKBOOK_PATH/scripts/connect_jvdi.sh > ~/.bashrc"
+# where $COSIMA_COOKBOOK_PATH is the path to the cosima cookbook directory.
+# To run just type in the command line "connect_jvdi" after loading the functions. 
 
 uconfigpath=~/vdiuser.config
 
