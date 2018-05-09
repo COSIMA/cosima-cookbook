@@ -19,19 +19,19 @@ function get_session(){
         user="$(echo "ur4354")"
     fi
     echo -n "Determine if VDI session is already running..."
-    running="$(ssh -o LogLevel=QUIET -t jm5970@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 list-avail --partition main")"
+    running="$(ssh -o LogLevel=QUIET -t $user@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 list-avail --partition main")"
     if [ ! -z "$running" ];then
 	echo "True"
 	idnum="$(echo $running | sed -e 's/#~#id=\([0-9]*\).*/\1/')"
     else
         echo "False"
 	echo -n  "Launching new VDI session..."
-        running="$(ssh -o LogLevel=QUIET -t jm5970@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 launch --partition main")"
+        running="$(ssh -o LogLevel=QUIET -t $user@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 launch --partition main")"
 	idnum="$(echo $running | sed -e 's/#~#id=\([0-9]*\).*/\1/')"
     fi
     echo Determine jobid for VDI session... $idnum
     echo -n Host for VDI session...
-    session="$(ssh -o LogLevel=QUIET -t jm5970@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 get-host --jobid ${idnum}")"
+    session="$(ssh -o LogLevel=QUIET -t $user@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 get-host --jobid ${idnum}")"
     sesionnnum="$(echo $session | sed -e 's/#~#host=vdi-n\([0-9]*\).*/\1/')"
     echo $sesionnnum
 }
