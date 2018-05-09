@@ -83,11 +83,11 @@ def sea_surface_temperature(expt, resolution=1):
 
     # Annual Average  WOA13 long-term climatology.
     if resolution==1:
-        SST_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_\d+_mom10.nc', 'temp').isel(ZT=0)
+        SST_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_??_mom10.nc', 'temp').isel(ZT=0)
     elif resolution==0.25:
-        SST_WOA13 = get_nc_variable('woa13/025', 'woa13_ts_\d+_mom025.nc', 'temp').isel(ZT=0)
+        SST_WOA13 = get_nc_variable('woa13/025', 'woa13_ts_??_mom025.nc', 'temp').isel(ZT=0)
     elif resolution==0.1:
-        SST_WOA13 = get_nc_variable('woa13/01', 'woa13_ts_\d+_mom01.nc', 'temp').isel(ZT=0)
+        SST_WOA13 = get_nc_variable('woa13/01', 'woa13_ts_??_mom01.nc', 'temp').isel(ZT=0)
     else:
         print('WARNING: Sorry, we dont seem to recognise resolution ', resolution)
     
@@ -109,11 +109,11 @@ def sea_surface_salinity(expt, resolution=1):
 
     # Annual Average  WOA13 long-term climatology.
     if resolution==1:
-        SSS_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_\d+_mom10.nc', 'salt').isel(ZT=0)
+        SSS_WOA13 = get_nc_variable('woa13/10', 'woa13_ts_??_mom10.nc', 'salt').isel(ZT=0)
     elif resolution==0.25:
-        SSS_WOA13 = get_nc_variable('woa13/025', 'woa13_ts_\d+_mom025.nc', 'salt').isel(ZT=0)
+        SSS_WOA13 = get_nc_variable('woa13/025', 'woa13_ts_??_mom025.nc', 'salt').isel(ZT=0)
     elif resolution==0.1:
-        SSS_WOA13 = get_nc_variable('woa13/01', 'woa13_ts_\d+_mom01.nc', 'salt').isel(ZT=0)
+        SSS_WOA13 = get_nc_variable('woa13/01', 'woa13_ts_??_mom01.nc', 'salt').isel(ZT=0)
     else:
         print('WARNING: Sorry, we dont seem to recognise resolution ', resolution)
 
