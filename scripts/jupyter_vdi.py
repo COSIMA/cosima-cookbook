@@ -168,18 +168,18 @@ def start_jupyter(s):
     global webbrowser_started
 
     if not webbrowser_started:
-        m = re.search('http://(?P<url>.*)',s.decode('utf8'))
+        m = re.search('http://localhost:(?P<url>.*)',s.decode('utf8'))
         if m is not None:
             params.update(m.groupdict())
             if not (OS_c == 'Darwin'):
                 # Open browser locally
-                webbrowser.open('http://'+params['url'])
+                webbrowser.open('http://localhost:'+params['url'])
                 webbrowser_started = True
             else:
-                print('using appscript')
+                print('using appscript',params['url'])
                 safari = appscript.app("Safari")
                 safari.make(new=appscript.k.document, with_properties={
-                            appscript.k.URL: 'http://'+params['url']})
+                            appscript.k.URL: 'http://localhost:'+params['url']})
                 webbrowser_started = True
     return s
 
