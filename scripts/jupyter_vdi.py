@@ -35,9 +35,6 @@ OS_V=platform.release()
 from os.path import expanduser
 home = expanduser("~")
 
-vdiuserfile=json.load(open('vdiuser.config'))
-vdiuserfile=json.load(open(home+'/.vdiuser.config'))
-
 try:
     params = json.load(open(home+'/.vdiuser.config'))
 except:
