@@ -29,13 +29,17 @@ import pexpect
 #Check Version of MAC OS
 from appscript import *
 import platform
+import json
 OS_c=platform.system()
 OS_V=platform.release()
 from os.path import expanduser
 home = expanduser("~")
 
+vdiuserfile=json.load(open('vdiuser.config'))
+vdiuserfile=json.load(open(home+'/.vdiuser.config'))
+
 try:
-    params = eval(open(home+'/vdiuser.config', 'r').read())
+    params = json.load(open(home+'/.vdiuser.config'))
 except:
     params = {'user' : 'ur4354',
     'JupyterPort' : '8889',
@@ -138,7 +142,7 @@ def start_jupyter(s):
     return s
 
 print ("Running Jupyter on VDI...")
-cmd = """-t -L {JupyterPort}:localhost:{JupyterPort} -L {BokehPort}:localhost:{BokehPort} 'bash -l -c "module load conda/analysis3 && jupyter notebook --no-browser --port {JupyterPort}"'"""
+cmd = """-t -L {JupyterPort}:localhost:{JupyterPort} -L {BokehPort}:localhost:{BokehPort} 'bash -l -c "module load conda/analysis27 && jupyter notebook --no-browser --port {JupyterPort}"'"""
 s = ssh(cmd, params, login_timeout=2)
 
 print ("Waiting for Jupyter to start...")
