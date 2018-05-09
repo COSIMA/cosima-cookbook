@@ -46,10 +46,12 @@ if OS_c == 'Darwin':
 import os
 import configparser
 
-DEFAULTS = {'user' : getpass.getuser(),
+DEFAULTS = {
+    'user' : getpass.getuser(),
     'JupyterPort' : '8889',
     'BokehPort' : '8787',
-    'execHost' :  'vdi.nci.org.au'}
+    'execHost' :  'vdi.nci.org.au'
+}
 
 parser = configparser.ConfigParser(defaults=DEFAULTS)
 
@@ -167,7 +169,6 @@ def start_jupyter(s):
 
     if not webbrowser_started:
         m = re.search('http://(?P<url>.*)',s.decode('utf8'))
-        print(m)
         if m is not None:
             params.update(m.groupdict())
             if not (OS_c == 'Darwin'):
