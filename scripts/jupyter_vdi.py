@@ -31,9 +31,11 @@ from appscript import *
 import platform
 OS_c=platform.system()
 OS_V=platform.release()
+from os.path import expanduser
+home = expanduser("~")
 
 try:
-    params = eval(open('~/vdiuser.config', 'r').read())
+    params = eval(open(home+'/vdiuser.config', 'r').read())
 except:
     params = {'user' : 'ur4354',
     'JupyterPort' : '8889',
