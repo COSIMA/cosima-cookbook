@@ -12,7 +12,7 @@ uconfigpath=~/vdiuser.config
 
 function get_session(){
     if [ -f ${uconfigpath} ]; then
-	user="$(grep user ${uconfigpath} | cut -d ':' -f2 | tr -d " ',")" 
+	user="$(grep user ${uconfigpath} | cut -d ':' -f2 | tr -d ' ",')" 
     else
 	#Change the user in the following lines and comment the next line.
 	echo Check the user or set up a vdiuser.config at your home directory.
