@@ -32,11 +32,11 @@ import platform
 import json
 OS_c=platform.system()
 OS_V=platform.release()
-from os.path import expanduser
+from os.path import expanduser,join
 home = expanduser("~")
 
 try:
-    params = json.load(open(home+'/.vdiuser.config'))
+    params = json.load(open(join(home,'vdiuser.config')))
 except:
     params = {'user' : 'ur4354',
     'JupyterPort' : '8889',
