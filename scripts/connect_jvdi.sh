@@ -14,8 +14,13 @@ function get_session(){
     if [ -f ${uconfigpath} ]; then
 	user="$(grep user ${uconfigpath} | cut -d '=' -f2 | tr -d ' ')" 
     else
+	user=
         echo "[DEFAULT]" > ${uconfigpath}
-	echo "user = " $USER >> ${uconfigpath}
+	while [[ $user = "" ]]; do
+	    echo 'What is your Raijin username? '
+	    read user
+	done
+	echo "user = " $user >> ${uconfigpath}
 	echo jupyterport = 8889 >> ${uconfigpath}
         echo bokehport = 8787 >> ${uconfigpath}
         echo exechost = vdi.nci.org.au >> ${uconfigpath}

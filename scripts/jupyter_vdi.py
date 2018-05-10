@@ -45,6 +45,7 @@ if OS_c == 'Darwin':
 
 import os
 import configparser
+from builtins import input
 
 DEFAULTS = {
     'user' : getpass.getuser(),
@@ -53,17 +54,20 @@ DEFAULTS = {
     'execHost' :  'vdi.nci.org.au'
 }
 
-parser = configparser.ConfigParser(defaults=DEFAULTS)
 
 config_path = os.path.expanduser('~/cosima_cookbook.conf')
+parser = configparser.ConfigParser(defaults=DEFAULTS)
 
 if os.path.exists(config_path):
     logging.info('Using config file: {}'.format(config_path))
-
     parser.read(config_path)
 else:
-    logging.warn('No config file found. Creating default', config_path, 'file.')
+    logging.warn('No config file found. Creating default {} file.'.format(config_path))
     logging.warn('*** Please edit this file as needed. ***')
+    while DEFAULTS['user']==getpass.getuser() or DEFAULTS['user']=="":
+        DEFAULTS['user']=input('What is your Raijin username? ')
+    parser = configparser.ConfigParser(defaults=DEFAULTS)
+   
     with open(config_path, 'w') as f:
         parser.write(f)
 
