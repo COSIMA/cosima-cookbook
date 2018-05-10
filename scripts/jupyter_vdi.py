@@ -40,30 +40,38 @@ OS_c = platform.system()
 OS_v = platform.release()
 
 # Check Version of MAC OS
-if OS_c == 'Darwin' and OS_v == '16.6.0':
+
+if OS_c == 'Darwin':
+
     import appscript
 
 import os
 import configparser
 
+from builtins import input
+
 DEFAULTS = {
-    'user': getpass.getuser(),
-    'jupyterport': '8889',
-    'bokehport': '8787',
-    'exechost':  'vdi.nci.org.au',
+    'user' : getpass.getuser(),
+    'JupyterPort' : '8889',
+    'BokehPort' : '8787',
+    'execHost' :  'vdi.nci.org.au'
 }
 
-parser = configparser.ConfigParser(defaults=DEFAULTS)
 
 config_path = os.path.expanduser('~/cosima_cookbook.conf')
+parser = configparser.ConfigParser(defaults=DEFAULTS)
 
 if os.path.exists(config_path):
     logging.info('Using config file: {}'.format(config_path))
-
     parser.read(config_path)
 else:
-    logging.warn('No config file found. Creating default', config_path, 'file.')
+    logging.warn('No config file found. Creating default {} file.'.format(config_path))
     logging.warn('*** Please edit this file as needed. ***')
+    while DEFAULTS['user']==getpass.getuser() or DEFAULTS['user']=="":
+        DEFAULTS['user']=input('What is your Raijin username? ')
+    parser = configparser.ConfigParser(defaults=DEFAULTS)
+   
+
     with open(config_path, 'w') as f:
         parser.write(f)
 
@@ -168,21 +176,19 @@ def start_jupyter(s):
     global webbrowser_started
 
     if not webbrowser_started:
-        m = re.search(
-            'The Jupyter Notebook is running at: (?P<url>.*)',
-            s.decode('utf8'))
-
+        m = re.search('http://localhost:(?P<url>.*)',s.decode('utf8'))
         if m is not None:
             params.update(m.groupdict())
-            if not (OS_c == 'Darwin' and OS_v == '16.6.0'):
+            if not (OS_c == 'Darwin'):
                 # Open browser locally
-                webbrowser.open(params['url'])
+                webbrowser.open('http://localhost:'+params['url'])
                 webbrowser_started = True
             else:
-                print('using appscript')
+                print('using appscript',params['url'])
                 safari = appscript.app("Safari")
                 safari.make(new=appscript.k.document, with_properties={
-                            appscript.k.URL: params['url']})
+                            appscript.k.URL: 'http://localhost:'+params['url']})
+
                 webbrowser_started = True
     return s
 
