@@ -40,11 +40,14 @@ OS_c = platform.system()
 OS_v = platform.release()
 
 # Check Version of MAC OS
+
 if OS_c == 'Darwin':
+
     import appscript
 
 import os
 import configparser
+
 from builtins import input
 
 DEFAULTS = {
@@ -68,6 +71,7 @@ else:
         DEFAULTS['user']=input('What is your Raijin username? ')
     parser = configparser.ConfigParser(defaults=DEFAULTS)
    
+
     with open(config_path, 'w') as f:
         parser.write(f)
 
@@ -184,6 +188,7 @@ def start_jupyter(s):
                 safari = appscript.app("Safari")
                 safari.make(new=appscript.k.document, with_properties={
                             appscript.k.URL: 'http://localhost:'+params['url']})
+
                 webbrowser_started = True
     return s
 
