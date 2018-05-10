@@ -48,6 +48,7 @@ if OS_c == 'Darwin':
 import os
 import configparser
 
+# Requires future module https://pypi.org/project/future/
 from builtins import input
 
 DEFAULTS = {
