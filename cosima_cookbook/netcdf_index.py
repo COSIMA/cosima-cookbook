@@ -29,7 +29,7 @@ directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
                        '/g/data1/v45/APE-MOM',
                       ]
 
-cosima_cookbook_dir = '/g/data1/v45/cosima-cookbook'
+cosima_cookbook_dir = '/g/data3/hh5/tmp/cosima/cosima-cookbook'
 database_file = '{}/cosima-cookbook.db'.format(cosima_cookbook_dir)
 database_url = 'sqlite:///{}'.format(database_file)
 
