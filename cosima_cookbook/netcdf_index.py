@@ -54,16 +54,20 @@ def build_index(use_bag=False):
     ncfiles = []
     runs_available = []
 
-    print('Finding runs on disk...', end='')
+    print('Finding runs on disk... ', end='')
     for directoryToSearch in directoriesToSearch:
         #print('Searching {}'.format(directoryToSearch))
 
         # find all subdirectories
-        results = subprocess.check_output(['find', directoryToSearch, '-maxdepth', '3', '-type', 'd',
-            '-name', 'output???'])
+        try:
+            results = subprocess.check_output(['find', directoryToSearch, '-maxdepth', '3', '-type', 'd',
+                '-name', 'output???'])
+            results = [s for s in results.decode('utf-8').split()]
+            runs_available.extend(results)
+        except:
+            print ('{0} exception occurred while finding output directories in {1}'.format(sys.exc_info()[0], directoryToSearch))
 
-        results = [s for s in results.decode('utf-8').split()]
-        runs_available.extend(results)
+        
     print('found {} run directories'.format( len(runs_available)))
 
     #ncfiles.extend(results)
@@ -78,7 +82,7 @@ def build_index(use_bag=False):
 
     # In this database is a single table listing all variables in NetCDF4 seen previously.
     print('Using database {}'.format(database_url))
-    print('Querying database...', end='')
+    print('Querying database... ', end='')
 
     db = dataset.connect(database_url)
 
@@ -96,20 +100,22 @@ def build_index(use_bag=False):
         print("No new runs found.")
         return
 
-    print('{} new run directories found including...'.format(len(runs_to_index)))
+    print('{} new run directories found including... '.format(len(runs_to_index)))
 
     for i in range(min(3, len(runs_to_index))):
         print(runs_to_index[i])
     if len(runs_to_index) > 3:
         print('...')
 
-    print('Finding files on disk...')
+    print('Finding files on disk... ')
     ncfiles = []
     for run in tqdm.tqdm_notebook(runs_to_index, leave=True):
-        results = subprocess.check_output(['find', run, '-name', '*.nc'])
-        results = [s for s in results.decode('utf-8').split()]
-
-        ncfiles.extend(results)
+        try:
+            results = subprocess.check_output(['find', run, '-name', '*.nc'])
+            results = [s for s in results.decode('utf-8').split()]
+            ncfiles.extend(results)
+        except:
+            print ('{0} exception occurred while finding *.nc in {1}'.format(sys.exc_info()[0], run))
 
     IPython.display.clear_output(wait=True)
     
@@ -160,7 +166,7 @@ def build_index(use_bag=False):
                    'chunking' : str(v.chunking()),
                    } for v in ds.variables.values()]
         except:
-            print ('Exception occurred while trying to read {}'.format(ncfile))
+            print ('{0} exception occurred while trying to read {1}'.format(sys.exc_info()[0], ncfile))
             ncvars = []
 
         return ncvars
@@ -169,7 +175,7 @@ def build_index(use_bag=False):
         print("No new .nc files found.")
         return True
 
-    print('Indexing new .nc files...')
+    print('Indexing new .nc files... ')
 
     if use_bag:
         with distributed.Client() as client:
@@ -189,7 +195,7 @@ def build_index(use_bag=False):
     print('')
     print('Found {} new variables'.format(len(ncvars)))
 
-    print('Saving results in database...')
+    print('Saving results in database... ')
     db['ncfiles'].insert_many(ncvars)
 
     print('Indexing complete.')
