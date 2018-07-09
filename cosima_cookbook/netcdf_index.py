@@ -375,7 +375,8 @@ def get_nc_variable(expt, ncfile,
     if 'time' in dataarray.coords:
         if time_units is None:
             time_units = dataarray.time.units
-
+        if dataarray.time[0] > 6.e+5:           ## AH: This is a brazen hack ... sorry!!
+            time_units = dataarray.time.units
         try:
             decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units)
         except:  # for compatibility with older xarray (pre-0.10.2 ?)

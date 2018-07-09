@@ -12,12 +12,12 @@ def annual_scalar(expt, variables):
     darray = get_nc_variable(expt,
                              'ocean_scalar.nc',
                              variables,
-                             time_units='days since 1700-01-01',
+                             time_units='days since 1900-01-01',
                              use_bag=True,
                              )
     
     logging.debug('Resampling in time')
-    annual_average = darray.resample('A', 'time').compute()
+    annual_average = darray.resample(time="A").mean('time')
     
     for v in annual_average.data_vars:
 
@@ -37,16 +37,16 @@ def drake_passage(expt):
                          'ocean_month.nc',
                          'tx_trans_int_z',
                          chunks={'yt_ocean':200},
-                         time_units = 'days since 1700-01-01',
+                         time_units = 'days since 1900-01-01',
                          use_bag=False)
     
     tx_trans = tx.sel(xu_ocean=-69,method='nearest').sel(yt_ocean=slice(-72,-52))
     
     if tx_trans.units == 'Sv (10^9 kg/s)':
-        transport = tx_trans.sum('yt_ocean').resample('A','time')
+        transport = tx_trans.sum('yt_ocean').resample(time="A").mean('time') 
     else:
         #print('WARNING: Changing units for ', expt)
-        transport = tx_trans.sum('yt_ocean').resample('A','time')*1.0e-9
+        transport = tx_trans.sum('yt_ocean').resample(time="A").mean('time')*1.0e-9
 
     transport.load()
     
@@ -57,13 +57,13 @@ def bering_strait(expt):
     ty = get_nc_variable(expt,'ocean_month.nc',
                          'ty_trans_int_z',
                          chunks={'yu_ocean':200},
-                         time_units = 'days since 1700-01-01')
+                         time_units = 'days since 1900-01-01')
     ty_trans = ty.sel(yu_ocean=67,method='nearest').sel(xt_ocean=slice(-171,-167))
     if ty_trans.units == 'Sv (10^9 kg/s)':
-        transport = ty_trans.sum('xt_ocean').resample('A','time')
+        transport = ty_trans.sum('xt_ocean').resample(time="A").mean('time') 
     else:
         #print('WARNING: Changing units for ', expt)
-        transport = ty_trans.sum('xt_ocean').resample('A','time')*1.0e-9
+        transport = ty_trans.sum('xt_ocean').resample(time="A").mean('time')*1.0e-9
 
     transport.load()
     
@@ -74,9 +74,9 @@ def sea_surface_temperature(expt, resolution=1):
     ## Load SST from expt 
     varlist = get_variables(expt, 'ocean_month.nc')
     if 'surface_temp' in varlist:
-        SST = get_nc_variable(expt, 'ocean_month.nc', 'surface_temp',n=10, time_units = 'days since 1700-01-01')
+        SST = get_nc_variable(expt, 'ocean_month.nc', 'surface_temp',n=10, time_units = 'days since 1900-01-01')
     else:
-        SST = get_nc_variable(expt, 'ocean.nc', 'temp',n=10,time_units = 'days since 1700-01-01').isel(st_ocean=0)
+        SST = get_nc_variable(expt, 'ocean.nc', 'temp',n=10,time_units = 'days since 1900-01-01').isel(st_ocean=0)
 
     if SST.units == 'degrees K':
         SST = SST - 273.15
