@@ -41,8 +41,9 @@ OS_v = platform.release()
 
 # Check Version of MAC OS
 
-if OS_c == 'Darwin':
+is_mac == (OS_c == Darwin)
 
+if is_mac:
     import appscript
 
 import os
@@ -180,16 +181,16 @@ def start_jupyter(s):
         m = re.search('http://localhost:(?P<url>.*)',s.decode('utf8'))
         if m is not None:
             params.update(m.groupdict())
-            if not (OS_c == 'Darwin'):
-                # Open browser locally
-                webbrowser.open('http://localhost:'+params['url'])
-                webbrowser_started = True
-            else:
+            if is_mac:
                 print('using appscript',params['url'])
                 safari = appscript.app("Safari")
                 safari.make(new=appscript.k.document, with_properties={
                             appscript.k.URL: 'http://localhost:'+params['url']})
 
+                webbrowser_started = True
+            else:
+                # Open browser locally
+                webbrowser.open('http://localhost:'+params['url'])
                 webbrowser_started = True
     return s
 
