@@ -24,33 +24,25 @@ from __future__ import print_function
 
 import re
 import sys
-import webbrowser
 import time
 import getpass
-
 import pexpect
+import os
+import configparser
+# Requires future module https://pypi.org/project/future/
+from builtins import input
 
 import logging
 logging.basicConfig(format='[%(asctime)s jupyter_vdi.py] %(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.INFO)
-
-import platform
-OS_c = platform.system()
-OS_v = platform.release()
-
-# Check Version of MAC OS
-
-is_mac == (OS_c == Darwin)
-
-if is_mac:
+try:
     import appscript
-
-import os
-import configparser
-
-# Requires future module https://pypi.org/project/future/
-from builtins import input
+except ImportError:
+    import webbrowser
+    is_mac = False
+else:
+    is_mac = True
 
 DEFAULTS = {
     'user' : getpass.getuser(),
@@ -58,7 +50,6 @@ DEFAULTS = {
     'BokehPort' : '8787',
     'execHost' :  'vdi.nci.org.au'
 }
-
 
 config_path = os.path.expanduser('~/cosima_cookbook.conf')
 parser = configparser.ConfigParser(defaults=DEFAULTS)
@@ -70,22 +61,20 @@ else:
     logging.warn('No config file found. Creating default {} file.'.format(config_path))
     logging.warn('*** Please edit this file as needed. ***')
     while DEFAULTS['user']==getpass.getuser() or DEFAULTS['user']=="":
-        DEFAULTS['user']=input('What is your Raijin username? ')
+        DEFAULTS['user']=input('What is your NCI username? ')
     parser = configparser.ConfigParser(defaults=DEFAULTS)
-   
 
     with open(config_path, 'w') as f:
         parser.write(f)
 
 params = parser.defaults()
 
-
 def ssh(cmd, params, login_timeout=10):
     """
     Run a remote command via SSH
     """
 
-    cmd = ("ssh -l {user} {exechost} " + cmd).format(**params)
+    cmd = ("ssh -x -l {user} {exechost} " + cmd).format(**params)
     s = pexpect.spawn(cmd)
 
     # SSH pexpect logic taken from pxshh:
@@ -122,7 +111,6 @@ def ssh(cmd, params, login_timeout=10):
 
     return s
 
-
 def session(func, *args, **kwargs):
     """wrapper for sending session-ctl commands"""
     cmd = '/opt/vdi/bin/session-ctl --configver=20151620513 ' + func
@@ -158,6 +146,9 @@ else:
     r = session('launch --partition main', params)
     m = re.search('#~#id=(?P<jobid>(?P<jobidNumber>.*?))#~#',
                   r.before.decode())
+    if m is None:
+        logging.info('Unable to launch new VDI session:\n'+r.before.decode())
+
     params.update(m.groupdict())
     time.sleep(2)  # TODO: instead of waiting, should check for confirmation
     # use has-started
@@ -170,29 +161,72 @@ m = re.search('#~#host=(?P<exechost>.*?)#~#', r.before.decode())
 params.update(m.groupdict())
 logging.info('exechost: {exechost}'.format(**params))
 
-# wait for jupyter to start running and launch web browser locally
-webbrowser_started = False
+def parse_jupyter_urls(output):
+    """
+    Match notebook URL. Written as a generator to save compiled regex 
+    """
+    recmp = re.compile('http://\S*:(?P<jupyterport>\d+)/\?token=(?P<token>[a-zA-Z0-9]+)')
+    yield re.search(recmp,output)
 
+def open_jupyter_url(params):
+    # Open browser locally
+    status = ''
+    url = 'http://localhost:{jupyterport}/?token={token}'.format(**params)
+    if is_mac:
+        status = "Using appscript to open {}".format(url)
+        safari = appscript.app("Safari")
+        safari.make(new=appscript.k.document, with_properties={appscript.k.URL: url})
+    else:
+        status = "Opening {}".format(url)
+        webbrowser.open(url)
 
-def start_jupyter(s):
-    global webbrowser_started
+    return status
 
-    if not webbrowser_started:
-        m = re.search('http://localhost:(?P<url>.*)',s.decode('utf8'))
-        if m is not None:
-            params.update(m.groupdict())
-            if is_mac:
-                print('using appscript',params['url'])
-                safari = appscript.app("Safari")
-                safari.make(new=appscript.k.document, with_properties={
-                            appscript.k.URL: 'http://localhost:'+params['url']})
+tunnel_started = False
+tunnel = None
 
-                webbrowser_started = True
-            else:
-                # Open browser locally
-                webbrowser.open('http://localhost:'+params['url'])
-                webbrowser_started = True
-    return s
+def filter_notebook_output(s):
+
+    """
+    Check output from Jupyter notebook process. Scrape URL information
+    and start ssh tunnel and local web browser
+    """
+
+    global tunnel_started
+    global tunnel
+
+    if not tunnel_started:
+
+        # Get the port and token information and store in params
+        ret = next(parse_jupyter_urls(s))
+
+        if ret is not None:
+
+            params.update(ret.groupdict())
+            
+            # Create ssh tunnel for local access to jupyter notebook
+            cmd = ' '.join(['-N -f -L {jupyterport}:localhost:{jupyterport}',
+                '-L {bokehport}:localhost:{bokehport}'])
+
+            # This print statement is needed as there are /r/n line endings from
+            # the jupyter notebook output that are difficult to suppress
+            print("\n")
+            logging.info("Starting ssh tunnel...")
+            tunnel = ssh(cmd, params, login_timeout=2)
+            tunnel.expect (pexpect.EOF)
+
+            tunnel_started = True
+
+            print("\n")
+            # Open web browser and log result
+            logging.info(open_jupyter_url(params))
+
+        return ''
+
+    else:
+        s.replace("\r\n","\n")
+        # return '>>>' + s + '<<<'
+        return s
 
 
 logging.info("Running Jupyter on VDI...")
@@ -203,22 +237,17 @@ setupconda = params.get('setupconda',
               """.replace('\n', ' '))
 
 jupyterapp = params.get('jupyterapp',  "notebook")
-
 run_jupyter = "jupyter %s --no-browser --port {jupyterport}" % jupyterapp
-
 run_jupyter = setupconda + ' && ' + run_jupyter
 
-cmd = ' '.join(['-t',
-                '-L {jupyterport}:localhost:{jupyterport}',
-                '-L {bokehport}:localhost:{bokehport}',
-                """'bash -l -c "%s"'""" % run_jupyter])
-
-s = ssh(cmd, params, login_timeout=2)
+cmd = ' '.join(['-t', """'bash -l -c "%s"'""" % run_jupyter])
 
 logging.info("Waiting for Jupyter to start...")
 
+# Launch jupyter on VDI
+s = ssh(cmd, params, login_timeout=2)
 # give control over to user
-s.interact(output_filter=start_jupyter)
+s.interact(output_filter=filter_notebook_output)
 
 logging.info('end of script')
 # optional: terminate to close the vdi session?
