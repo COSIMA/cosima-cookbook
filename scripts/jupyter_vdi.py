@@ -31,6 +31,7 @@ import os
 import configparser
 # Requires future module https://pypi.org/project/future/
 from builtins import input
+import argparse
 
 import logging
 logging.basicConfig(format='[%(asctime)s jupyter_vdi.py] %(message)s',
@@ -51,6 +52,8 @@ DEFAULTS = {
     'execHost' :  'vdi.nci.org.au'
 }
 
+verbose = 0
+
 config_path = os.path.expanduser('~/cosima_cookbook.conf')
 parser = configparser.ConfigParser(defaults=DEFAULTS)
 
@@ -69,12 +72,20 @@ else:
 
 params = parser.defaults()
 
+def parse_args(args):
+
+    parser = argparse.ArgumentParser(description="Log into the VDI, start a jupyter notebook session and ssh tunnel to local machine")
+    parser.add_argument("-v","--verbose", help="Increase verbosity", action='count', default=0)
+
+    return parser.parse_args(args)
+
 def ssh(cmd, params, login_timeout=10):
     """
     Run a remote command via SSH
     """
 
     cmd = ("ssh -x -l {user} {exechost} " + cmd).format(**params)
+    if verbose > 0: logging.info(cmd)
     s = pexpect.spawn(cmd)
 
     # SSH pexpect logic taken from pxshh:
@@ -118,56 +129,6 @@ def session(func, *args, **kwargs):
     s.close()
     return s
 
-
-logging.info("Checking SSH keys to VDI are configured...")
-r = session('hello --partition main', params)
-if r.exitstatus != 0:
-    # suggest setting up SSH keys
-    logging.error("Error with ssh keys/password and VDI.")
-    logging.error("  Incorrect user name in ~/cosima_cookbook.conf file?")
-    logging.error("  Edit ~/cosima_cookbook.conf before continuing.")
-    sys.exit(1)
-logging.info("SSH keys configured OK")
-
-logging.info("Determine if VDI session is already running...")
-r = session('list-avail --partition main', params)
-m = re.search('#~#id=(?P<jobid>(?P<jobidNumber>.*?))#~#state=(?P<state>.*?)(?:#~#time_rem=(?P<remainingWalltime>.*?))?#~#', r.before.decode())
-if m is not None:
-    params.update(m.groupdict())
-    w = int(params['remainingWalltime'])
-    remainingWalltime = '{:02}:{:02}:{:02}'.format(
-        w // 3600, w % 3600 // 60, w % 60)
-    logging.info('Time remaining: %s', remainingWalltime)
-
-    # TODO: should give user option of starting a new session if the remaining walltime is short
-else:
-    logging.info('No VDI session found')
-    logging.info("Launching a new VDI session...")
-    r = session('launch --partition main', params)
-    m = re.search('#~#id=(?P<jobid>(?P<jobidNumber>.*?))#~#',
-                  r.before.decode())
-    if m is None:
-        logging.info('Unable to launch new VDI session:\n'+r.before.decode())
-
-    params.update(m.groupdict())
-    time.sleep(2)  # TODO: instead of waiting, should check for confirmation
-    # use has-started
-
-logging.info("Determine jobid for VDI session...{jobid}".format(**params))
-
-logging.info("Get exechost for VDI session...")
-r = session('get-host --jobid {jobid}', params)
-m = re.search('#~#host=(?P<exechost>.*?)#~#', r.before.decode())
-params.update(m.groupdict())
-logging.info('exechost: {exechost}'.format(**params))
-
-def parse_jupyter_urls(output):
-    """
-    Match notebook URL. Written as a generator to save compiled regex 
-    """
-    recmp = re.compile('http://\S*:(?P<jupyterport>\d+)/\?token=(?P<token>[a-zA-Z0-9]+)')
-    yield re.search(recmp,output)
-
 def open_jupyter_url(params):
     # Open browser locally
     status = ''
@@ -185,69 +146,112 @@ def open_jupyter_url(params):
 tunnel_started = False
 tunnel = None
 
-def filter_notebook_output(s):
+def start_tunnel(params):
 
-    """
-    Check output from Jupyter notebook process. Scrape URL information
-    and start ssh tunnel and local web browser
-    """
+    # Create ssh tunnel for local access to jupyter notebook
+    cmd = ' '.join(['-N -f -L {jupyterport}:localhost:{jupyterport}',
+        '-L {bokehport}:localhost:{bokehport}'])
 
-    global tunnel_started
-    global tunnel
+    # This print statement is needed as there are /r/n line endings from
+    # the jupyter notebook output that are difficult to suppress
+    logging.info("Starting ssh tunnel...")
+    tunnel = ssh(cmd, params, login_timeout=2)
+    tunnel.expect (pexpect.EOF)
 
-    if not tunnel_started:
+    # Open web browser and log result
+    logging.info(open_jupyter_url(params))
 
-        # Get the port and token information and store in params
-        ret = next(parse_jupyter_urls(s))
+def main(args):
 
-        if ret is not None:
+    # global verbose means it doesn't need to be passed to every routine
+    global verbose
 
-            params.update(ret.groupdict())
-            
-            # Create ssh tunnel for local access to jupyter notebook
-            cmd = ' '.join(['-N -f -L {jupyterport}:localhost:{jupyterport}',
-                '-L {bokehport}:localhost:{bokehport}'])
+    verbose = args.verbose
 
-            # This print statement is needed as there are /r/n line endings from
-            # the jupyter notebook output that are difficult to suppress
-            print("\n")
-            logging.info("Starting ssh tunnel...")
-            tunnel = ssh(cmd, params, login_timeout=2)
-            tunnel.expect (pexpect.EOF)
+    logging.info("Checking SSH keys to VDI are configured...")
+    r = session('hello --partition main', params)
+    if r.exitstatus != 0:
+        # suggest setting up SSH keys
+        logging.error("Error with ssh keys/password and VDI.")
+        logging.error("  Incorrect user name in ~/cosima_cookbook.conf file?")
+        logging.error("  Edit ~/cosima_cookbook.conf before continuing.")
+        sys.exit(1)
+    logging.info("SSH keys configured OK")
 
-            tunnel_started = True
-
-            print("\n")
-            # Open web browser and log result
-            logging.info(open_jupyter_url(params))
-
-        return ''
-
+    logging.info("Determine if VDI session is already running...")
+    r = session('list-avail --partition main', params)
+    m = re.search('#~#id=(?P<jobid>(?P<jobidNumber>.*?))#~#state=(?P<state>.*?)(?:#~#time_rem=(?P<remainingWalltime>.*?))?#~#', r.before.decode())
+    if m is not None:
+        params.update(m.groupdict())
+        w = int(params['remainingWalltime'])
+        remainingWalltime = '{:02}:{:02}:{:02}'.format(
+            w // 3600, w % 3600 // 60, w % 60)
+        logging.info('Time remaining: %s', remainingWalltime)
+        # TODO: should give user option of starting a new session if the remaining walltime is short
     else:
-        s.replace("\r\n","\n")
-        # return '>>>' + s + '<<<'
-        return s
+        logging.info('No VDI session found')
+        logging.info("Launching a new VDI session...")
+        r = session('launch --partition main', params)
+        m = re.search('#~#id=(?P<jobid>(?P<jobidNumber>.*?))#~#',
+                  r.before.decode())
+        if m is None:
+            logging.info('Unable to launch new VDI session:\n'+r.before.decode())
 
+        params.update(m.groupdict())
+        time.sleep(2)   # TODO: instead of waiting, should check for confirmation 
+                        # use has-started
 
-logging.info("Running Jupyter on VDI...")
+    logging.info("Determine jobid for VDI session...{jobid}".format(**params))
 
-setupconda = params.get('setupconda',
+    logging.info("Get exechost for VDI session...")
+    r = session('get-host --jobid {jobid}', params)
+    m = re.search('#~#host=(?P<exechost>.*?)#~#', r.before.decode())
+    params.update(m.groupdict())
+    logging.info('exechost: {exechost}'.format(**params))
+
+    logging.info("Running Jupyter on VDI...")
+
+    setupconda = params.get('setupconda',
               """module use /g/data3/hh5/public/modules
                  && module load conda/analysis3
               """.replace('\n', ' '))
 
-jupyterapp = params.get('jupyterapp',  "notebook")
-run_jupyter = "jupyter %s --no-browser --port {jupyterport}" % jupyterapp
-run_jupyter = setupconda + ' && ' + run_jupyter
+    jupyterapp = params.get('jupyterapp',  "notebook")
+    run_jupyter = "jupyter %s --no-browser --port {jupyterport}" % jupyterapp
+    run_jupyter = setupconda + ' && ' + run_jupyter
 
-cmd = ' '.join(['-t', """'bash -l -c "%s"'""" % run_jupyter])
+    cmd = ' '.join(['-t', """'bash -l -c "%s"'""" % run_jupyter])
 
-logging.info("Waiting for Jupyter to start...")
+    logging.info("Waiting for Jupyter to start...")
 
-# Launch jupyter on VDI
-s = ssh(cmd, params, login_timeout=2)
-# give control over to user
-s.interact(output_filter=filter_notebook_output)
+    # Launch jupyter on VDI
+    s = ssh(cmd, params, login_timeout=2)
+    ret = s.expect('http://\S*:(?P<jupyterport>\d+)/\?token=(?P<token>[a-zA-Z0-9]+)')
 
-logging.info('end of script')
-# optional: terminate to close the vdi session?
+    if s.match:
+        params.update(s.match.groupdict())
+        start_tunnel(params)
+    else:
+        logging.info("Could not find url information in jupyter output")
+        sys.exit(1)
+
+    # Grab all the output up to the incorrect URL -- uses the token twice, which is unhelpful
+    ret = s.expect('http://.*')
+
+    logging.info("Use Control-C to stop the Notebook server and shut down all kernels (twice to skip confirmation)\n\n")
+
+    # give control over to user
+    s.interact()
+
+    logging.info('end of script')
+    # optional: terminate to close the vdi session?
+
+def main_argv():
+    
+    args = parse_args(sys.argv[1:])
+
+    main(args)
+
+if __name__ == "__main__":
+
+    main_argv()
