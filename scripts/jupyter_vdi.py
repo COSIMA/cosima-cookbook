@@ -79,10 +79,20 @@ def parse_args(args):
 
     return parser.parse_args(args)
 
+def clean_params(params):
+
+    for key, value in params.items():
+        try:
+            params[key] = value.decode()
+        except AttributeError:
+            pass
+
 def ssh(cmd, params, login_timeout=10):
     """
     Run a remote command via SSH
     """
+
+    clean_params(params)
 
     cmd = ("ssh -x -l {user} {exechost} " + cmd).format(**params)
     if verbose > 0: logging.info(cmd)
