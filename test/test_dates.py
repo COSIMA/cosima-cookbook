@@ -23,6 +23,7 @@ import pdb # Add pdb.set_trace() to set breakpoints
 import xarray as xr
 import numpy as np
 import cftime
+from datetime import datetime, timedelta
 
 from cosima_cookbook.date_utils import rebase_times, rebase_dataset, \
     rebase_variable, rebase_shift_attr
@@ -97,11 +98,41 @@ def test_matching_time_units():
     target_units = 'days since 1800-01-01'
 
     ds1 = rebase_dataset(ds, target_units)
-    ds1.to_netcdf('tmp.nc')
+    # s1.to_netcdf('tmp.nc')
 
     ds2 = rebase_dataset(ds1)
-    ds2.to_netcdf('tmp2.nc')
+    # ds2.to_netcdf('tmp2.nc')
+
+    # Rebasing again without target_units specified should
+    # un-do previous rebase
+    assert(ds.equals(ds2))
+
+    # An offset is required as the target units are ahead of the data in time
+    target_units = 'days since 2000-01-01'
+
+    # Offset can be automatically generated as difference between target and src units
+    ds1 = rebase_dataset(ds, target_units,offset='auto')
+    ds2 = rebase_dataset(ds1)
 
     assert(ds.equals(ds2))
+
+    # Offset can be an integer, but need to know what units are being used, days, hours etc
+    ds1 = rebase_dataset(ds, target_units,offset=100*365)
+    ds2 = rebase_dataset(ds1)
+
+    assert(ds.equals(ds2))
+
+    # Offset can be a datetime.timedelta object, but this would need some knowledge of
+    # the calendar
+    ds1 = rebase_dataset(ds, target_units,offset=timedelta(days=100*365))
+    ds2 = rebase_dataset(ds1)
+
+    # A different offset will yield a different dataset, but upon rebasing a second time
+    # should still be the same as the original regardless of offset.
+    ds1 = rebase_dataset(ds, target_units,offset=timedelta(days=200*365))
+    ds3 = rebase_dataset(ds1)
+
+    assert(ds.equals(ds3))
+    assert(not ds2.equals(ds3))
 
 

@@ -18,8 +18,9 @@ limitations under the License.
 from __future__ import print_function
 
 import xarray as xr
-import cftime
+from cftime import num2date, date2num
 import numpy as np
+import datetime
 
 rebase_attr = '_rebased_units'
 rebase_shift_attr = '_rebased_shift'
@@ -29,8 +30,8 @@ boundsvar = 'bounds_var'
 # Code adapted from https://github.com/spencerahill/aospy/issues/212
 
 def rebase_times(values, input_units, calendar, output_units):
-    dates = cftime.num2date(values, input_units, calendar)
-    return cftime.date2num(dates, output_units, calendar)
+    dates = num2date(values, input_units, calendar)
+    return date2num(dates, output_units, calendar)
 
 def is_bounds(var):
     """
@@ -112,19 +113,22 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
         del attributes[rebase_shift_attr]
     else:
         if offset is not None:
-            try:
-                offset = cftime.date2num(offset,src_units,calendar)
-            except AttributeError:
-                pass
+            # Offset can be an integer, 'auto', or datetime.delta
+
+            if offset == 'auto':
+                # Generate a timedelta offset based on the calendars of src 
+                # and target
+                offset = num2date(0,target_units,calendar) - num2date(0,src_units,calendar) 
+
+            if isinstance(offset,datetime.timedelta):
+                # Add delta to src calendar origin and convert to integer offset
+                offset = date2num(num2date(0,src_units,calendar)+offset,src_units,calendar)
+
             newvar = newvar + offset
             attributes[rebase_shift_attr] = offset
 
     if  newvar.min() < 0:
-        raise ValueError("Rebase creates negative dates, specify offset to shift dates appropriately")
-    # offset = num2date(0,trg_units,calendar) - (0,src_units,calendar)
-    # if offset > 0:
-    #     newvar[:] = newvar.values + offset
-    #     attributes[rebase_shift_attr] = -offset
+        raise ValueError("Rebase creates negative dates, specify offset=auto to shift dates appropriately")
 
     # Save the values back into the variable, put back the attributes and update
     # the units
@@ -133,7 +137,7 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
 
     return newvar
 
-def rebase_dataset(ds, target_units=None, timevar='time'):
+def rebase_dataset(ds, target_units=None, timevar='time', offset=None):
     """
     Rebase the time dimension variable in a dataset to a different start date.
     This is useful to overcome limitations in pandas datetime indices used in 
@@ -156,11 +160,11 @@ def rebase_dataset(ds, target_units=None, timevar='time'):
             # as it will be processed by the variable for which it is the bounds
             continue
         if newds[name].attrs['units'] == units:
-            newds[name] = rebase_variable(newds[name], calendar, target_units)
+            newds[name] = rebase_variable(newds[name], calendar, target_units, offset=offset)
             if bounds in newds[name].attrs:
                 # Must make the same adjustment to the bounds variable
                 bvarname = newds[name].attrs[bounds]
-                newds[bvarname] = rebase_variable(newds[bvarname], calendar, target_units, src_units=units)
+                newds[bvarname] = rebase_variable(newds[bvarname], calendar, target_units, src_units=units, offset=offset)
 
     # Unset bounds flags
     unflag_bounds(newds)
