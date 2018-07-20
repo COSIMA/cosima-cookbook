@@ -129,10 +129,10 @@ def test_matching_time_units():
 
     # A different offset will yield a different dataset, but upon rebasing a second time
     # should still be the same as the original regardless of offset.
-    ds1 = rebase_dataset(ds, target_units,offset=timedelta(days=200*365))
-    ds3 = rebase_dataset(ds1)
+    ds3 = rebase_dataset(ds, target_units,offset=timedelta(days=200*365))
+    ds4 = rebase_dataset(ds3)
 
-    assert(ds.equals(ds3))
-    assert(not ds2.equals(ds3))
+    assert(ds.equals(ds4))
+    assert(not ds1.equals(ds3))
 
 
