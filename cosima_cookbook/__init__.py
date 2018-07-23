@@ -17,6 +17,9 @@ from . netcdf_index import *
 from . import summary
 from . summary import *
 
+from . import date_utils
+from . date_utils import *
+
 from . distributed import start_cluster, compute_by_block
 
 __all__.extend(netcdf_index.__all__)
