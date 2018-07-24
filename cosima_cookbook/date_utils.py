@@ -58,7 +58,12 @@ def flag_bounds(ds):
             continue
         if bounds in ds[name].attrs:
             # Flag bounds variable as such
-            set_bounds(ds[ds[name].attrs[bounds]],name)
+            try:
+                set_bounds(ds[ds[name].attrs[bounds]],name)
+            except KeyError:
+                # Ignore if bounds variable not present
+                pass
+            
 
 def unflag_bounds(ds):
     """

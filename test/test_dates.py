@@ -135,4 +135,12 @@ def test_matching_time_units():
     assert(ds.equals(ds4))
     assert(not ds1.equals(ds3))
 
+    # Test graceful recovery if time_bounds missing.
+    del(ds['time_bounds'])
+    ds3 = rebase_dataset(ds, target_units,offset=timedelta(days=200*365))
+    ds4 = rebase_dataset(ds3)
+
+    assert(ds.equals(ds4))
+    assert(not ds1.equals(ds3))
+
 
