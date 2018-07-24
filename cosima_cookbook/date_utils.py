@@ -58,7 +58,12 @@ def flag_bounds(ds):
             continue
         if bounds in ds[name].attrs:
             # Flag bounds variable as such
-            set_bounds(ds[ds[name].attrs[bounds]],name)
+            try:
+                set_bounds(ds[ds[name].attrs[bounds]],name)
+            except KeyError:
+                # Ignore if bounds variable not present
+                pass
+            
 
 def unflag_bounds(ds):
     """
@@ -164,7 +169,11 @@ def rebase_dataset(ds, target_units=None, timevar='time', offset=None):
             if bounds in newds[name].attrs:
                 # Must make the same adjustment to the bounds variable
                 bvarname = newds[name].attrs[bounds]
-                newds[bvarname] = rebase_variable(newds[bvarname], calendar, target_units, src_units=units, offset=offset)
+                try:
+                    newds[bvarname] = rebase_variable(newds[bvarname], calendar, target_units, src_units=units, offset=offset)
+                except KeyError:
+                    # Ignore if bounds_var missing
+                    pass
 
     # Unset bounds flags
     unflag_bounds(newds)
