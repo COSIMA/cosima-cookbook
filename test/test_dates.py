@@ -143,4 +143,7 @@ def test_matching_time_units():
     assert(ds.equals(ds4))
     assert(not ds1.equals(ds3))
 
+    ds = xr.open_dataset(testfile,decode_times=False)[['sea_level']]
+    target_units = 'days since 1800-01-01'
 
+    ds1 = rebase_dataset(ds, target_units)
