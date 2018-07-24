@@ -164,7 +164,11 @@ def rebase_dataset(ds, target_units=None, timevar='time', offset=None):
             if bounds in newds[name].attrs:
                 # Must make the same adjustment to the bounds variable
                 bvarname = newds[name].attrs[bounds]
-                newds[bvarname] = rebase_variable(newds[bvarname], calendar, target_units, src_units=units, offset=offset)
+                try:
+                    newds[bvarname] = rebase_variable(newds[bvarname], calendar, target_units, src_units=units, offset=offset)
+                except KeyError:
+                    # Ignore if bounds_var missing
+                    pass
 
     # Unset bounds flags
     unflag_bounds(newds)
