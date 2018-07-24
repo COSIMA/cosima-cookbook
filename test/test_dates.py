@@ -147,3 +147,15 @@ def test_matching_time_units():
     target_units = 'days since 1800-01-01'
 
     ds1 = rebase_dataset(ds, target_units)
+
+def test_chunking():
+
+    # An offset is required as the target units are ahead of the data in time
+    target_units = 'days since 2000-01-01'
+
+    testfile = 'test/data/ocean_sealevel.nc'
+
+    ds = xr.open_dataset(testfile,decode_times=False, chunks={'time':10})
+    target_units = 'days since 1800-01-01'
+
+    ds1 = rebase_dataset(ds, target_units)
