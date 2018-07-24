@@ -111,7 +111,7 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
         attributes[rebase_attr] = src_units
 
     # Rebase
-    newvar = xr.apply_ufunc(rebase_times, var, src_units, calendar, target_units)
+    newvar = xr.apply_ufunc(rebase_times, var, src_units, calendar, target_units, dask='allowed')
 
     if rebase_shift_attr in attributes:
         newvar = newvar - attributes[rebase_shift_attr]
