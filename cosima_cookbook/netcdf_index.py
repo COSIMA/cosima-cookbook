@@ -33,7 +33,7 @@ cosima_cookbook_dir = '/g/data3/hh5/tmp/cosima/cosima-cookbook'
 database_file = '{}/cosima-cookbook.db'.format(cosima_cookbook_dir)
 database_url = 'sqlite:///{}'.format(database_file)
 
-def build_index(use_bag=False):
+def build_index(use_bag=False, careful=False):
     """
     An experiment is a collection of outputNNN directories.  Each directory
     represents the output of a single job submission script. These directories
@@ -41,6 +41,13 @@ def build_index(use_bag=False):
 
     This function creates and/or updates an index cache of variables names
     found in all NetCDF4 files.
+    
+    Optional arguments:
+
+        careful: if True, use slower but more thorough method. Use this if some
+             files are missing from index. Default is False.
+
+        use_bag: Default is False.
 
     We can also examine the .nc files directly to infer their contents.
     for each .nc file, get variables -> dimensions
@@ -56,8 +63,6 @@ def build_index(use_bag=False):
 
     print('Finding runs on disk... ', end='')
     for directoryToSearch in directoriesToSearch:
-        #print('Searching {}'.format(directoryToSearch))
-
         # find all subdirectories
         try:
             results = subprocess.check_output(['find', directoryToSearch, '-maxdepth', '3', '-type', 'd',
@@ -66,9 +71,8 @@ def build_index(use_bag=False):
             runs_available.extend(results)
         except:
             print ('{0} exception occurred while finding output directories in {1}'.format(sys.exc_info()[0], directoryToSearch))
-
-        
-    print('found {} run directories'.format( len(runs_available)))
+    runs_available = set(runs_available)
+    print('found {} run directories'.format(len(runs_available)))
 
     #ncfiles.extend(results)
 #
@@ -82,34 +86,41 @@ def build_index(use_bag=False):
 
     # In this database is a single table listing all variables in NetCDF4 seen previously.
     print('Using database {}'.format(database_url))
-    print('Querying database... ', end='')
-
     db = dataset.connect(database_url)
 
-    # find list of all run directories
-    r = db.query('SELECT DISTINCT rootdir, configuration, experiment, run FROM ncfiles')
+    if careful:
+        runs_already_seen = set([])  # filter by filename rather than dir
+        print('Querying database for files... ', end='')
+        rf = db.query('SELECT DISTINCT ncfile FROM ncfiles')
+        files_already_seen = set([row['ncfile'] for row in rf])
+        # files_already_seen = dict.fromkeys(rf) # use a dict for fast lookup
+        # files_already_seen = {n['ncfile']: None for n in rf}  # use a dict for fast lookup
+        print('files already indexed: {}'.format(len(files_already_seen)))
+    else:
+        files_already_seen = set([])  # filter by dir rather than filename
+        # BUG: this can skip dirs even if they contain un-indexed .nc files - see https://github.com/OceansAus/cosima-cookbook/issues/95
+        print('Querying database for directories... ', end='')
+        # find list of all run directories
+        r = db.query('SELECT DISTINCT rootdir, configuration, experiment, run FROM ncfiles')
+        runs_already_seen = set([os.path.join(*row.values()) for row in r])
+        print('run directories already indexed: {}'.format(len(runs_already_seen)))
 
-    runs_already_seen = [os.path.join(*row.values())
-                         for row in r]
-
-    print('runs already indexed: {}'.format(len(runs_already_seen)))
-
-    runs_to_index = list(set(runs_available) - set(runs_already_seen))
+    runs_to_index = list(runs_available - runs_already_seen)
 
     if len(runs_to_index) == 0:
         print("No new runs found.")
-        return
+        return True
+    # 
+    # print('{} new run directories found including... '.format(len(runs_to_index)))
+    # 
+    # for i in range(min(3, len(runs_to_index))):
+    #     print(runs_to_index[i])
+    # if len(runs_to_index) > 3:
+    #     print('...')
 
-    print('{} new run directories found including... '.format(len(runs_to_index)))
-
-    for i in range(min(3, len(runs_to_index))):
-        print(runs_to_index[i])
-    if len(runs_to_index) > 3:
-        print('...')
-
-    print('Finding files on disk... ')
+    print('Finding files in {} run directories... '.format(len(runs_to_index)))
     ncfiles = []
-    for run in tqdm.tqdm_notebook(runs_to_index, leave=True):
+    for run in tqdm.tqdm_notebook(runs_to_index, leave=False):
         try:
             results = subprocess.check_output(['find', run, '-name', '*.nc'])
             results = [s for s in results.decode('utf-8').split()]
@@ -117,12 +128,9 @@ def build_index(use_bag=False):
         except:
             print ('{0} exception occurred while finding *.nc in {1}'.format(sys.exc_info()[0], run))
 
-    IPython.display.clear_output(wait=True)
-    
+    # IPython.display.clear_output(wait=True)
     # NetCDF files found on disk not seen before:
-    #files_to_add = set(ncfiles) - set(files_already_seen)
-
-    files_to_add = ncfiles
+    files_to_add = set(ncfiles) - files_already_seen
 
     print('Files found but not yet indexed: {}'.format(len(files_to_add)))
 
@@ -136,6 +144,8 @@ def build_index(use_bag=False):
     # determine general pattern for ncfile names
     find_basename_pattern = re.compile('(?P<root>[^\d]+)(?P<index>__\d+_\d+)?(?P<indexice>\.\d+\-\d+)?(?P<ext>\.nc)')
 
+    # return #######################################
+
     def index_variables(ncfile):
 
         matched = find_output.match(ncfile)
@@ -145,12 +155,18 @@ def build_index(use_bag=False):
         if not os.path.exists(ncfile):
             return []
 
+# TODO: also exit here if ncfile is already in database - use [NOT] EXISTS ??
+# but this is super slow
+# module load sqlite
+# sqlite3 /g/data3/hh5/tmp/cosima/cosima-cookbook/cosima-cookbook.db
+# select * from ncfiles where ncfile == '/g/data3/hh5/tmp/cosima/access-om2-025/025deg_jra55v13_ryf8485_KDS50/output024/ocean/ocean_scalar.nc';                                                                                             
+
         basename = os.path.basename(ncfile)
         m = find_basename_pattern.match(basename)
         if m is None:
             basename_pattern = basename
         else:
-            basename_pattern = m.group('root') + ('__\d+_\d+' if m.group('index') else '') + ('.\d+-\d+' if m.group('indexice') else '')+ m.group('ext')
+            basename_pattern = m.group('root') + ('__\d+_\d+' if m.group('index') else '') + ('.\d+-\d+' if m.group('indexice') else '') + m.group('ext')
 
         try:
             with netCDF4.Dataset(ncfile) as ds:
@@ -172,10 +188,10 @@ def build_index(use_bag=False):
         return ncvars
 
     if len(files_to_add) == 0:
-        print("No new .nc files found.")
+        print('No new .nc files found.')
         return True
 
-    print('Indexing new .nc files... ')
+    print('Indexing {} new .nc files... '.format(len(files_to_add)))
 
     if use_bag:
         with distributed.Client() as client:
@@ -191,9 +207,9 @@ def build_index(use_bag=False):
         for file_to_add in tqdm.tqdm_notebook(files_to_add, leave=False):
             ncvars.extend(index_variables(file_to_add))
         IPython.display.clear_output()
-        
+
     print('')
-    print('Found {} new variables'.format(len(ncvars)))
+    print('Indexed {} variables found in new files'.format(len(ncvars)))
 
     print('Saving results in database... ')
     db['ncfiles'].insert_many(ncvars)
@@ -278,8 +294,8 @@ def get_nc_variable(expt, ncfile,
     stored in the ncfile. This can be overwritten by passing in a dictionary
     chunks or setting chunks=None for no chunking (load directly into memory).
 
-    n < 0 means only use the last n ncfiles files. 
-    n > 0 means only use the first ncfiles files.
+    n < 0 means only use the last |n| ncfiles files.
+    n > 0 means only use the first n ncfiles files.
 
     op() is function to apply to each variable before concatenating.
 
