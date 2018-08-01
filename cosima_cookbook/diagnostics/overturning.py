@@ -12,7 +12,7 @@ def psi_avg(expt, n=10):
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
                        #   op=op,
                           chunks={'potrho': None}, n=n,
-                          time_units = 'days since 1700-01-01')
+                          time_units = 'days since 1900-01-01')
     psi = psi.sum('grid_xt_ocean')
 
     varlist = get_variables(expt, 'ocean.nc')
@@ -21,7 +21,7 @@ def psi_avg(expt, n=10):
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                           #    op=op,
                               chunks={'potrho': None}, n=n,
-                              time_units = 'days since 1700-01-01')
+                              time_units = 'days since 1900-01-01')
         psiGM = psiGM.sum('grid_xt_ocean')
     else:
         GM = False
@@ -55,7 +55,7 @@ def calc_aabw(expt):
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
                           #op=op,
                           chunks={'potrho': None},
-                          time_units = 'days since 1700-01-01')
+                          time_units = 'days since 1900-01-01')
     psi = psi.sum('grid_xt_ocean')
     
     varlist = get_variables(expt, 'ocean.nc')
@@ -64,7 +64,7 @@ def calc_aabw(expt):
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                               #op=op,
                               chunks={'potrho': None},
-                              time_units = 'days since 1700-01-01')
+                              time_units = 'days since 1900-01-01')
         psiGM = psiGM.sum('grid_xt_ocean')
     else:
         GM = False
@@ -100,7 +100,7 @@ def calc_amoc(expt):
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
                           #op=op,
                           chunks={'potrho': None},
-                          time_units = 'days since 1700-01-01')
+                          time_units = 'days since 1900-01-01')
     psi = psi.sum('grid_xt_ocean')
 
     varlist = get_variables(expt, 'ocean.nc')
@@ -109,7 +109,7 @@ def calc_amoc(expt):
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                               #op=op,
                               chunks={'potrho': None},
-                              time_units = 'days since 1700-01-01')
+                              time_units = 'days since 1900-01-01')
         psiGM = psiGM.sum('grid_xt_ocean')
     else:
         GM = False
@@ -145,7 +145,7 @@ def calc_amoc_south(expt):
     psi = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho',
                           #op=op,
                           chunks={'potrho': None},
-                          time_units = 'days since 1700-01-01')
+                          time_units = 'days since 1900-01-01')
     psi = psi.sum('grid_xt_ocean')
 
     varlist = get_variables(expt, 'ocean.nc')
@@ -154,7 +154,7 @@ def calc_amoc_south(expt):
         psiGM = get_nc_variable(expt, 'ocean.nc', 'ty_trans_rho_gm',
                               #op=op,
                               chunks={'potrho': None},
-                              time_units = 'days since 1700-01-01')
+                              time_units = 'days since 1900-01-01')
         psiGM = psiGM.sum('grid_xt_ocean')
     else:
         GM = False
@@ -182,7 +182,7 @@ def zonal_mean(expt, variable, n=10, resolution=1):
 
     zonal_var = get_nc_variable(expt, 'ocean.nc', variable,
                                 chunks={'st_ocean': None},n=n,
-                                time_units = 'days since 1700-01-01')
+                                time_units = 'days since 1900-01-01')
     
     # Annual Average  WOA13 long-term climatology.
     if resolution==1:

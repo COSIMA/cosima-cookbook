@@ -1,6 +1,6 @@
 # calculate EKE and eddy heat transports from KDS75
 # written by Kial Stewart
-
+ 
 import netCDF4 as nc
 import numpy as np
 import sys

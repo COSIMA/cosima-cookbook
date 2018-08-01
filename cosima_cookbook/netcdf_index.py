@@ -278,7 +278,8 @@ def get_nc_variable(expt, ncfile,
     stored in the ncfile. This can be overwritten by passing in a dictionary
     chunks or setting chunks=None for no chunking (load directly into memory).
 
-    n > 0 means only use the last n ncfiles files. Useful for testing.
+    n < 0 means only use the last n ncfiles files. 
+    n > 0 means only use the first ncfiles files.
 
     op() is function to apply to each variable before concatenating.
 
@@ -343,7 +344,10 @@ def get_nc_variable(expt, ncfile,
 
     if n is not None:
         #print('using last {} ncfiles only'.format(n))
-        ncfiles = ncfiles[-n:]
+        if n<0:
+            ncfiles = ncfiles[n:]
+        else:
+            ncfiles = ncfiles[:n]
 
     if op is None:
         op = lambda x: x
@@ -381,7 +385,8 @@ def get_nc_variable(expt, ncfile,
     if 'time' in dataarray.coords:
         if time_units is None:
             time_units = dataarray.time.units
-
+        if dataarray.time[0] > 6.e+5:           ## AH: This is a brazen hack ... sorry!!
+            time_units = dataarray.time.units
         try:
             decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units)
         except:  # for compatibility with older xarray (pre-0.10.2 ?)
