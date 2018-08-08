@@ -25,6 +25,8 @@ import IPython.display
 import logging
 logging.basicConfig(level=logging.INFO)
 
+from .date_utils import rebase_dataset
+
 directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
                        '/g/data1/v45/APE-MOM',
                       ]
@@ -280,7 +282,7 @@ def get_variables(expt, ncfile):
 def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
                     op=None, 
-                    time_units="days since 1900-01-01",
+                    time_units="days since 1900-01-01", offset = None,
                     use_bag = False):
     """
     For a given experiment, concatenate together
@@ -301,6 +303,9 @@ def get_nc_variable(expt, ncfile,
 
     time_units (e.g. "days since 1600-01-01") can be used to override
     the original time.units.  If time_units=None, no overriding is performed.
+    
+    offset shifts the data by the specified number of days, to allow different
+    experiments to be aligned in time. Use with care ...
 
     if variable is a list, then return a dataset for all given variables
     """
@@ -401,8 +406,8 @@ def get_nc_variable(expt, ncfile,
     if 'time' in dataarray.coords:
         if time_units is None:
             time_units = dataarray.time.units
-        if dataarray.time[0] > 6.e+5:           ## AH: This is a brazen hack ... sorry!!
-            time_units = dataarray.time.units
+        if offset is not None:
+            dataarray = rebase_dataset(dataarray, time_units, offset=offset)
         try:
             decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units)
         except:  # for compatibility with older xarray (pre-0.10.2 ?)
