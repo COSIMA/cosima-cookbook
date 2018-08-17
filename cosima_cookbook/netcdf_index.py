@@ -27,15 +27,16 @@ logging.basicConfig(level=logging.INFO)
 
 from .date_utils import rebase_dataset
 
+def database_url_from_path(path):
+    return 'sqlite:///'+os.path.join(path, 'cosima-cookbook.db')
+
 directoriesToSearch = ['/g/data3/hh5/tmp/cosima/',
                        '/g/data1/v45/APE-MOM',
                       ]
 
-cosima_cookbook_dir = '/g/data3/hh5/tmp/cosima/cosima-cookbook'
-database_file = '{}/cosima-cookbook.db'.format(cosima_cookbook_dir)
-database_url = 'sqlite:///{}'.format(database_file)
+database_url = database_url_from_path('/g/data3/hh5/tmp/cosima/cosima-cookbook')
 
-def build_index(use_bag=False, careful=False):
+def build_index(use_bag=False, careful=False, expt_dir_list=None):
     """
     An experiment is a collection of outputNNN directories.  Each directory
     represents the output of a single job submission script. These directories
@@ -43,13 +44,18 @@ def build_index(use_bag=False, careful=False):
 
     This function creates and/or updates an index cache of variables names
     found in all NetCDF4 files.
-    
+
     Optional arguments:
 
         careful: if True, use slower but more thorough method. Use this if some
              files are missing from index. Default is False.
 
         use_bag: Default is False.
+
+        expt_dir_list: list of experiment directories in which cosima-cookbook.db 
+             will be created/updated. At present this is used only in get_nc_variable.
+             You must have write access to all these directories.
+             If expt_dir_list=None (the default), a central database is used.
 
     We can also examine the .nc files directly to infer their contents.
     for each .nc file, get variables -> dimensions
@@ -60,161 +66,174 @@ def build_index(use_bag=False, careful=False):
 
     # Build index of all NetCDF files found in directories to search.
 
-    ncfiles = []
-    runs_available = []
+# dir_dbs dict keys are directories to search, values are corresponding db url
+    if expt_dir_list is None:  # one db for all expts
+        dir_dbs = {d:database_url for d in directoriesToSearch}
+        maxdepth = 3
+    else:  # a separate db at root of each expt dir
+        if not isinstance(expt_dir_list, list):
+            expt_dir_list = [expt_dir_list]
+        dir_dbs = {d:database_url_from_path(d) for d in expt_dir_list}
+        maxdepth = 1
 
-    print('Finding runs on disk... ', end='')
-    for directoryToSearch in directoriesToSearch:
-        # find all subdirectories
+    prev_db_url = ''
+    for directoryToSearch, db_url in dir_dbs.items():
+        print('Finding runs in {}... '.format(directoryToSearch), end='')
+        ncfiles = []
+        runs_available = []
+        # find all output subdirectories
         try:
-            results = subprocess.check_output(['find', directoryToSearch, '-maxdepth', '3', '-type', 'd',
+            results = subprocess.check_output(['find', directoryToSearch, '-maxdepth', str(maxdepth), '-type', 'd',
                 '-name', 'output???'])
             results = [s for s in results.decode('utf-8').split()]
             runs_available.extend(results)
         except:
             print ('{0} exception occurred while finding output directories in {1}'.format(sys.exc_info()[0], directoryToSearch))
-    runs_available = set(runs_available)
-    print('found {} run directories'.format(len(runs_available)))
 
-    #ncfiles.extend(results)
-#
-#    results = subprocess.check_output(['find', directoryToSearch, '-name', '*.nc'])
-#
-#    print('Found {} .nc files'.format(len(ncfiles)))
+        runs_available = set(runs_available)
+        print('found {} run directories'.format(len(runs_available)))
 
-    # We can persist this index by storing it in a sqlite database placed in a centrally available location.
+        #ncfiles.extend(results)
+    #
+    #    results = subprocess.check_output(['find', directoryToSearch, '-name', '*.nc'])
+    #
+    #    print('Found {} .nc files'.format(len(ncfiles)))
 
-    # The use of the `dataset` module hides the details of working with SQL directly.
+        # We can persist this index by storing it in a sqlite database placed in a centrally available location.
 
-    # In this database is a single table listing all variables in NetCDF4 seen previously.
-    print('Using database {}'.format(database_url))
-    db = dataset.connect(database_url)
+        # The use of the `dataset` module hides the details of working with SQL directly.
 
-    if careful:
-        runs_already_seen = set([])  # filter by filename rather than dir
-        print('Querying database for files... ', end='')
-        rf = db.query('SELECT DISTINCT ncfile FROM ncfiles')
-        files_already_seen = set([row['ncfile'] for row in rf])
-        # files_already_seen = dict.fromkeys(rf) # use a dict for fast lookup
-        # files_already_seen = {n['ncfile']: None for n in rf}  # use a dict for fast lookup
-        print('files already indexed: {}'.format(len(files_already_seen)))
-    else:
-        files_already_seen = set([])  # filter by dir rather than filename
-        # BUG: this can skip dirs even if they contain un-indexed .nc files - see https://github.com/OceansAus/cosima-cookbook/issues/95
-        print('Querying database for directories... ', end='')
-        # find list of all run directories
-        r = db.query('SELECT DISTINCT rootdir, configuration, experiment, run FROM ncfiles')
-        runs_already_seen = set([os.path.join(*row.values()) for row in r])
-        print('run directories already indexed: {}'.format(len(runs_already_seen)))
+        # In this database is a single table listing all variables in NetCDF4 seen previously.
+        print('Using database {}'.format(db_url))
+        db = dataset.connect(db_url)
+        db['ncfiles']
+        # db.create_table('ncfiles')  # has no effect if 'ncfiles' table already exists
 
-    runs_to_index = list(runs_available - runs_already_seen)
+        if not (db_url == prev_db_url):  # avoid repeating db query when expt_dir_list is None
+            runs_already_seen = set([])
+            files_already_seen = set([]) 
+            if db['ncfiles'].count() > 0:  # this also creates 'ncfiles' table if db is new
+                if careful:  # filter by filename rather than dir
+                    print('Querying database for files... ', end='')
+                    rf = db.query('SELECT DISTINCT ncfile FROM ncfiles')
+                    files_already_seen = set([row['ncfile'] for row in rf])
+                    # files_already_seen = dict.fromkeys(rf) # use a dict for fast lookup
+                    # files_already_seen = {n['ncfile']: None for n in rf}  # use a dict for fast lookup
+                    print('files already indexed: {}'.format(len(files_already_seen)))
+                else:  # filter by dir rather than filename
+                    # BUG: this can skip dirs even if they contain un-indexed .nc files - see https://github.com/OceansAus/cosima-cookbook/issues/95
+                    print('Querying database for directories... ', end='')
+                    # find list of all run directories
+                    r = db.query('SELECT DISTINCT rootdir, configuration, experiment, run FROM ncfiles')
+                    runs_already_seen = set([os.path.join(*row.values()) for row in r])
+                    print('run directories already indexed: {}'.format(len(runs_already_seen)))
+        prev_db_url = db_url
 
-    if len(runs_to_index) == 0:
-        print("No new runs found.")
-        return True
-    # 
-    # print('{} new run directories found including... '.format(len(runs_to_index)))
-    # 
-    # for i in range(min(3, len(runs_to_index))):
-    #     print(runs_to_index[i])
-    # if len(runs_to_index) > 3:
-    #     print('...')
+        runs_to_index = list(runs_available - runs_already_seen)
+        if len(runs_to_index) == 0:
+            print('No new runs found in {}'.format(directoryToSearch))
+            continue
+        # 
+        # print('{} new run directories found including... '.format(len(runs_to_index)))
+        # 
+        # for i in range(min(3, len(runs_to_index))):
+        #     print(runs_to_index[i])
+        # if len(runs_to_index) > 3:
+        #     print('...')
 
-    print('Finding files in {} run directories... '.format(len(runs_to_index)))
-    ncfiles = []
-    for run in tqdm.tqdm_notebook(runs_to_index, leave=False):
-        try:
-            results = subprocess.check_output(['find', run, '-name', '*.nc'])
-            results = [s for s in results.decode('utf-8').split()]
-            ncfiles.extend(results)
-        except:
-            print ('{0} exception occurred while finding *.nc in {1}'.format(sys.exc_info()[0], run))
+        print('Finding files in {} run directories... '.format(len(runs_to_index)))
+        ncfiles = []
+        for run in tqdm.tqdm_notebook(runs_to_index, leave=False):
+            try:
+                results = subprocess.check_output(['find', run, '-name', '*.nc'])
+                results = [s for s in results.decode('utf-8').split()]
+                ncfiles.extend(results)
+            except:
+                print ('{0} exception occurred while finding *.nc in {1}'.format(sys.exc_info()[0], run))
 
-    # IPython.display.clear_output(wait=True)
-    # NetCDF files found on disk not seen before:
-    files_to_add = set(ncfiles) - files_already_seen
+        # IPython.display.clear_output(wait=True)
+        # NetCDF files found on disk not seen before:
+        files_to_add = set(ncfiles) - files_already_seen
 
-    print('Files found but not yet indexed: {}'.format(len(files_to_add)))
+        print('Files found but not yet indexed: {}'.format(len(files_to_add)))
 
-    # For these new files, we can determine their configuration, experiment, and run.
-    # Using NetCDF4 to get list of all variables in each file.
+        # For these new files, we can determine their configuration, experiment, and run.
+        # Using NetCDF4 to get list of all variables in each file.
 
-    # output* directories
-    # match the parent and grandparent directory to configuration/experiment
-    find_output = re.compile('(.*)/([^/]*)/([^/]*)/(output\d+)/.*\.nc')
+        # output* directories
+        # match the parent and grandparent directory to configuration/experiment
+        find_output = re.compile('(.*)/([^/]*)/([^/]*)/(output\d+)/.*\.nc')
 
-    # determine general pattern for ncfile names
-    find_basename_pattern = re.compile('(?P<root>[^\d]+)(?P<index>__\d+_\d+)?(?P<indexice>\.\d+\-\d+)?(?P<ext>\.nc)')
+        # determine general pattern for ncfile names
+        find_basename_pattern = re.compile('(?P<root>[^\d]+)(?P<index>__\d+_\d+)?(?P<indexice>\.\d+\-\d+)?(?P<ext>\.nc)')
 
-    # return #######################################
+        def index_variables(ncfile):
 
-    def index_variables(ncfile):
+            matched = find_output.match(ncfile)
+            if matched is None:
+                return []
 
-        matched = find_output.match(ncfile)
-        if matched is None:
-            return []
+            if not os.path.exists(ncfile):
+                return []
 
-        if not os.path.exists(ncfile):
-            return []
+    # TODO: also exit here if ncfile is already in database - use [NOT] EXISTS ??
+    # but this is super slow
+    # module load sqlite
+    # sqlite3 /g/data3/hh5/tmp/cosima/cosima-cookbook/cosima-cookbook.db
+    # select * from ncfiles where ncfile == '/g/data3/hh5/tmp/cosima/access-om2-025/025deg_jra55v13_ryf8485_KDS50/output024/ocean/ocean_scalar.nc';
 
-# TODO: also exit here if ncfile is already in database - use [NOT] EXISTS ??
-# but this is super slow
-# module load sqlite
-# sqlite3 /g/data3/hh5/tmp/cosima/cosima-cookbook/cosima-cookbook.db
-# select * from ncfiles where ncfile == '/g/data3/hh5/tmp/cosima/access-om2-025/025deg_jra55v13_ryf8485_KDS50/output024/ocean/ocean_scalar.nc';                                                                                             
+            basename = os.path.basename(ncfile)
+            m = find_basename_pattern.match(basename)
+            if m is None:
+                basename_pattern = basename
+            else:
+                basename_pattern = m.group('root') + ('__\d+_\d+' if m.group('index') else '') + ('.\d+-\d+' if m.group('indexice') else '') + m.group('ext')
 
-        basename = os.path.basename(ncfile)
-        m = find_basename_pattern.match(basename)
-        if m is None:
-            basename_pattern = basename
+            try:
+                with netCDF4.Dataset(ncfile) as ds:
+                    ncvars = [ {'ncfile': ncfile,
+                       'rootdir': matched.group(1),
+                       'configuration': matched.group(2),
+                       'experiment' : matched.group(3),
+                       'run' : matched.group(4),
+                       'basename' : basename,
+                       'basename_pattern' : basename_pattern,
+                       'variable' : v.name,
+                       'dimensions' : str(v.dimensions),
+                       'chunking' : str(v.chunking()),
+                       } for v in ds.variables.values()]
+            except:
+                print ('{0} exception occurred while trying to read {1}'.format(sys.exc_info()[0], ncfile))
+                ncvars = []
+
+            return ncvars
+
+        if len(files_to_add) == 0:
+            print('No new .nc files found in {}'.format(directoryToSearch))
+            continue
+
+        print('Indexing {} new .nc files... '.format(len(files_to_add)))
+
+        if use_bag:
+            with distributed.Client() as client:
+                bag = dask.bag.from_sequence(files_to_add)
+                bag = bag.map(index_variables).flatten()
+
+                futures = client.compute(bag)
+                progress(futures, notebook=False)
+
+                ncvars = futures.result()
         else:
-            basename_pattern = m.group('root') + ('__\d+_\d+' if m.group('index') else '') + ('.\d+-\d+' if m.group('indexice') else '') + m.group('ext')
-
-        try:
-            with netCDF4.Dataset(ncfile) as ds:
-                ncvars = [ {'ncfile': ncfile,
-                   'rootdir': matched.group(1),
-                   'configuration': matched.group(2),
-                   'experiment' : matched.group(3),
-                   'run' : matched.group(4),
-                   'basename' : basename,
-                   'basename_pattern' : basename_pattern,
-                   'variable' : v.name,
-                   'dimensions' : str(v.dimensions),
-                   'chunking' : str(v.chunking()),
-                   } for v in ds.variables.values()]
-        except:
-            print ('{0} exception occurred while trying to read {1}'.format(sys.exc_info()[0], ncfile))
             ncvars = []
+            for file_to_add in tqdm.tqdm_notebook(files_to_add, leave=False):
+                ncvars.extend(index_variables(file_to_add))
+            IPython.display.clear_output()
 
-        return ncvars
+        print('')
+        print('Indexed {} variables found in new files'.format(len(ncvars)))
 
-    if len(files_to_add) == 0:
-        print('No new .nc files found.')
-        return True
-
-    print('Indexing {} new .nc files... '.format(len(files_to_add)))
-
-    if use_bag:
-        with distributed.Client() as client:
-            bag = dask.bag.from_sequence(files_to_add)
-            bag = bag.map(index_variables).flatten()
-
-            futures = client.compute(bag)
-            progress(futures, notebook=False)
-
-            ncvars = futures.result()
-    else:
-        ncvars = []
-        for file_to_add in tqdm.tqdm_notebook(files_to_add, leave=False):
-            ncvars.extend(index_variables(file_to_add))
-        IPython.display.clear_output()
-
-    print('')
-    print('Indexed {} variables found in new files'.format(len(ncvars)))
-
-    print('Saving results in database... ')
-    db['ncfiles'].insert_many(ncvars)
+        print('Saving results in database {}... '.format(db_url))
+        db['ncfiles'].insert_many(ncvars)
 
     print('Indexing complete.')
 
@@ -262,8 +281,7 @@ def get_variables(expt, ncfile):
     """
     Returns list of variables available in given experiment
     and ncfile basename pattern
-    
-    
+
     ncfile can use glob syntax http://www.sqlitetutorial.net/sqlite-glob/
     and regular expressions also work in some limited cases.
     """
@@ -278,7 +296,7 @@ def get_variables(expt, ncfile):
         variables = [row['variable'] for row in rows]
 
     return variables
-    
+
 def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
                     op=None, 
@@ -287,6 +305,12 @@ def get_nc_variable(expt, ncfile,
     """
     For a given experiment, concatenate together
     variable over all time given a basename ncfile.
+    If variable is a list, then return a dataset for all given variables.
+
+    If expt is an experiment name, a central database is used.
+    If expt is the absolute path of the experiment directory, a separate
+    database in that directory will be used instead. This must be
+    created beforehand (and updated) via build_index(expt_dir_list=expt).
 
     Since some NetCDF4 files have trailing integers (e.g. ocean_123_456.nc)
     ncfile can use glob syntax http://www.sqlitetutorial.net/sqlite-glob/
@@ -300,20 +324,19 @@ def get_nc_variable(expt, ncfile,
     n > 0 means only use the first n ncfiles files.
 
     op() is function to apply to each variable before concatenating.
+    TODO: implement this - currently does nothing.
 
     time_units (e.g. "days since 1600-01-01") can be used to override
     the original time.units.  If time_units=None, no overriding is performed.
-    
+
     offset shifts the data by the specified number of days, to allow different
     experiments to be aligned in time. Use with care ...
 
-    if variable is a list, then return a dataset for all given variables
     """
 
-    if '/' in expt:
-        configuration, experiment = expt.split('/')
-    else:
-        experiment = expt
+    if expt.endswith('/'):
+        expt = expt[:-1]  # assumes only one trailing slash...
+    experiment = os.path.basename(expt)
 
     if not isinstance(variable, list):
         variables = [variable]
@@ -322,7 +345,12 @@ def get_nc_variable(expt, ncfile,
         variables = variable
         return_dataarray = False
 
-    db = dataset.connect(database_url)
+    if os.path.isabs(expt):
+        db_url = database_url_from_path(expt)
+    else:
+        db_url = database_url
+    print('Using database {}'.format(db_url))
+    db = dataset.connect(db_url)
 
     var_list = ",".join(['"{}"'.format(v) for v in variables])
 
@@ -342,9 +370,9 @@ def get_nc_variable(expt, ncfile,
     rows = list(res)
 
     ncfiles = [row['ncfile'] for row in rows]
-    
+
     #res.close()
-    
+
     if len(ncfiles) == 0:
         raise ValueError("No variable {} found for {} in {}".format(variable, expt, ncfile))
 
@@ -379,13 +407,13 @@ def get_nc_variable(expt, ncfile,
 
     if use_bag:
         bag = dask.bag.from_sequence(ncfiles)
-        
+
         load_variable = lambda ncfile: xr.open_dataset(ncfile, 
                            chunks=chunks, 
                            decode_times=False)[variables]
         #bag = bag.map(load_variable, chunks, time_units, variables)
         bag = bag.map(load_variable)
-        
+
         dataarrays = bag.compute()
     else:
         dataarrays = []
@@ -397,12 +425,11 @@ def get_nc_variable(expt, ncfile,
 
             dataarrays.append(dataarray)
 
-    #print ('Building dataarray.')
+    # print ('Building dataarray.')
 
     dataarray = xr.concat(dataarrays,
                           dim='time', coords='all', )
 
-    
     if 'time' in dataarray.coords:
         if time_units is None:
             time_units = dataarray.time.units
@@ -416,7 +443,7 @@ def get_nc_variable(expt, ncfile,
                                     {'long_name' : 'time', 'decoded_using' : time_units }
                                    )
 
-    #print ('Dataarray constructed.')
+    # print ('Dataarray constructed.')
 
     if return_dataarray:
         return dataarray[variable]
