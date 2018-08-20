@@ -21,6 +21,7 @@ import xarray as xr
 import subprocess
 import tqdm
 import IPython.display
+import pickle
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -299,9 +300,9 @@ def get_variables(expt, ncfile):
 
 def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
-                    op=None, 
-                    time_units="days since 1900-01-01", offset = None,
-                    use_bag = False):
+                    op=None,
+                    time_units="days since 1900-01-01", offset=None,
+                    use_bag=False, use_cache=False):
     """
     For a given experiment, concatenate together
     variable over all time given a basename ncfile.
@@ -332,6 +333,10 @@ def get_nc_variable(expt, ncfile,
     offset shifts the data by the specified number of days, to allow different
     experiments to be aligned in time. Use with care ...
 
+    use_cache determines whether to use cached result, which is much faster,
+    but possibly out of date. If use_cache=False, the cache is created/updated
+    but not read (this is the default).
+
     """
 
     if expt.endswith('/'):
@@ -345,110 +350,128 @@ def get_nc_variable(expt, ncfile,
         variables = variable
         return_dataarray = False
 
-    if os.path.isabs(expt):
-        db_url = database_url_from_path(expt)
+    if time_units is None:
+        tunits = str(time_units)
     else:
-        db_url = database_url
-    print('Using database {}'.format(db_url))
-    db = dataset.connect(db_url)
+        tunits = time_units.replace(' ', '-')
+# BUG: cachefname doesn't include chunks or op
+# TODO: use all args in filename, perhaps via args = locals()  ...?
+    cachefname = 'cache_get_nc_variable_'+'_'.join([experiment, ncfile,
+                       '_'.join(variables), str(n), tunits, str(offset),
+                       str(use_bag)])+'.pkl'
 
-    var_list = ",".join(['"{}"'.format(v) for v in variables])
-
-    sql = " ".join(['SELECT DISTINCT ncfile, dimensions, chunking ',
-                    'FROM ncfiles',
-                    f'WHERE experiment = "{experiment}"',
-                    'AND (',
-                    f'basename_pattern = "{ncfile}"',
-                    f'OR basename GLOB "{ncfile}"',
-                    ')',
-                    f'AND variable in ({var_list})',
-                    'ORDER BY ncfile'])
-
-    logging.debug(sql)
-
-    res = db.query(sql)
-    rows = list(res)
-
-    ncfiles = [row['ncfile'] for row in rows]
-
-    #res.close()
-
-    if len(ncfiles) == 0:
-        raise ValueError("No variable {} found for {} in {}".format(variable, expt, ncfile))
-
-    #print('Found {} ncfiles'.format(len(ncfiles)))
-
-    dimensions = eval(rows[0]['dimensions'])
-    chunking = eval(rows[0]['chunking'])
-
-    #print ('chunking info', dimensions, chunking)
-    if chunking is not None:
-        default_chunks = dict(zip(dimensions, chunking))
+    if use_cache and os.path.isfile(cachefname):
+        print('Reading from cache file {}'.format(cachefname))
+        with open(cachefname, 'rb') as cachefile:
+            return pickle.load(cachefile)
     else:
-        default_chunks = {}
-
-    if chunks is not None:
-        default_chunks.update(chunks)
-        chunks = default_chunks
-
-    if n is not None:
-        #print('using last {} ncfiles only'.format(n))
-        if n<0:
-            ncfiles = ncfiles[n:]
+        if os.path.isabs(expt):
+            db_url = database_url_from_path(expt)
         else:
-            ncfiles = ncfiles[:n]
+            db_url = database_url
+        print('Using database {}'.format(db_url))
+        db = dataset.connect(db_url)
 
-    if op is None:
-        op = lambda x: x
+        var_list = ",".join(['"{}"'.format(v) for v in variables])
+
+        sql = " ".join(['SELECT DISTINCT ncfile, dimensions, chunking ',
+                        'FROM ncfiles',
+                        f'WHERE experiment = "{experiment}"',
+                        'AND (',
+                        f'basename_pattern = "{ncfile}"',
+                        f'OR basename GLOB "{ncfile}"',
+                        ')',
+                        f'AND variable in ({var_list})',
+                        'ORDER BY ncfile'])
+
+        logging.debug(sql)
+
+        res = db.query(sql)
+        rows = list(res)
+
+        ncfiles = [row['ncfile'] for row in rows]
+
+        #res.close()
+
+        if len(ncfiles) == 0:
+            raise ValueError("No variable {} found for {} in {}".format(variable, expt, ncfile))
+
+        #print('Found {} ncfiles'.format(len(ncfiles)))
+
+        dimensions = eval(rows[0]['dimensions'])
+        chunking = eval(rows[0]['chunking'])
+
+        #print ('chunking info', dimensions, chunking)
+        if chunking is not None:
+            default_chunks = dict(zip(dimensions, chunking))
+        else:
+            default_chunks = {}
+
+        if chunks is not None:
+            default_chunks.update(chunks)
+            chunks = default_chunks
+
+        if n is not None:
+            #print('using last {} ncfiles only'.format(n))
+            if n<0:
+                ncfiles = ncfiles[n:]
+            else:
+                ncfiles = ncfiles[:n]
+
+        if op is None:
+            op = lambda x: x
 
 
-    #print ('Opening {} ncfiles...'.format(len(ncfiles)))
-    logging.debug(f'Opening {len(ncfiles)} ncfiles...')
+        #print ('Opening {} ncfiles...'.format(len(ncfiles)))
+        logging.debug(f'Opening {len(ncfiles)} ncfiles...')
 
-    if use_bag:
-        bag = dask.bag.from_sequence(ncfiles)
+        if use_bag:
+            bag = dask.bag.from_sequence(ncfiles)
 
-        load_variable = lambda ncfile: xr.open_dataset(ncfile, 
-                           chunks=chunks, 
-                           decode_times=False)[variables]
-        #bag = bag.map(load_variable, chunks, time_units, variables)
-        bag = bag.map(load_variable)
+            load_variable = lambda ncfile: xr.open_dataset(ncfile, 
+                               chunks=chunks, 
+                               decode_times=False)[variables]
+            #bag = bag.map(load_variable, chunks, time_units, variables)
+            bag = bag.map(load_variable)
 
-        dataarrays = bag.compute()
-    else:
-        dataarrays = []
-        for ncfile in tqdm.tqdm_notebook(ncfiles,
-            desc='get_nc_variable:', leave=False):
-            dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variables]
+            dataarrays = bag.compute()
+        else:
+            dataarrays = []
+            for ncfile in tqdm.tqdm_notebook(ncfiles,
+                desc='get_nc_variable:', leave=False):
+                dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variables]
 
-            #dataarray = op(dataarray)
+                #dataarray = op(dataarray)
 
-            dataarrays.append(dataarray)
+                dataarrays.append(dataarray)
 
-    # print ('Building dataarray.')
+        # print ('Building dataarray.')
 
-    dataarray = xr.concat(dataarrays,
-                          dim='time', coords='all', )
+        dataarray = xr.concat(dataarrays,
+                              dim='time', coords='all', )
 
-    if 'time' in dataarray.coords:
-        if time_units is None:
-            time_units = dataarray.time.units
-        if offset is not None:
-            dataarray = rebase_dataset(dataarray, time_units, offset=offset)
-        try:
-            decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units)
-        except:  # for compatibility with older xarray (pre-0.10.2 ?)
-            decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
-        dataarray.coords['time'] = ('time', decoded_time,
-                                    {'long_name' : 'time', 'decoded_using' : time_units }
-                                   )
+        if 'time' in dataarray.coords:
+            if time_units is None:
+                time_units = dataarray.time.units
+            if offset is not None:
+                dataarray = rebase_dataset(dataarray, time_units, offset=offset)
+            try:
+                decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units)
+            except:  # for compatibility with older xarray (pre-0.10.2 ?)
+                decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
+            dataarray.coords['time'] = ('time', decoded_time,
+                                        {'long_name': 'time', 'decoded_using': time_units }
+                                       )
 
-    # print ('Dataarray constructed.')
+        if return_dataarray:
+            out = dataarray[variable]
+        else:
+            out = dataarray
 
-    if return_dataarray:
-        return dataarray[variable]
-    else:
-        return dataarray
+        print('Updating cache file {}'.format(cachefname))
+        with open(cachefname, 'wb') as cachefile:
+            pkl = pickle.dump(out, cachefile, protocol=-1)
+        return out
 
 def get_scalar_variables(configuration):
     db = dataset.connect(database_url)
