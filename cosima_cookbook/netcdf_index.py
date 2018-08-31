@@ -333,9 +333,11 @@ def get_nc_variable(expt, ncfile,
     offset shifts the data by the specified number of days, to allow different
     experiments to be aligned in time. Use with care ...
 
-    use_cache determines whether to use cached result, which is much faster,
-    but possibly out of date. If use_cache=False, the cache is created/updated
-    but not read (this is the default).
+    use_cache determines whether to return a cached result, which is faster,
+    but is not kept up to date with the .nc files. The cache file is persistent
+    across kernel restarts. It can be deleted to save space or force an update.
+    Switching to use_cache=False will also delete the cache file if it exists.
+    The default is use_cache=False.
 
     """
 
@@ -467,10 +469,14 @@ def get_nc_variable(expt, ncfile,
             out = dataarray[variable]
         else:
             out = dataarray
-
-        print('Updating cache file {}'.format(cachefname))
-        with open(cachefname, 'wb') as cachefile:
-            pkl = pickle.dump(out, cachefile, protocol=-1)
+        if use_cache:
+            print('Saving cache file {}'.format(cachefname))
+            with open(cachefname, 'wb') as cachefile:
+                pkl = pickle.dump(out, cachefile, protocol=-1)
+        else:
+            if os.path.exists(cachefname):
+                print('Deleting cache file {}'.format(cachefname))
+                os.remove(cachefname)
         return out
 
 def get_scalar_variables(configuration):
