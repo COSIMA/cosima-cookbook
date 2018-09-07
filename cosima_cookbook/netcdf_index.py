@@ -441,7 +441,9 @@ def get_nc_variable(expt, ncfile,
             dataarrays = []
             for ncfile in tqdm.tqdm_notebook(ncfiles,
                 desc='get_nc_variable:', leave=False):
-                dataarray = xr.open_dataset(ncfile, chunks=chunks, decode_times=False)[variables]
+                dataarray = xr.open_dataset(ncfile, chunks=chunks,
+                                            decode_times=False,
+                                            autoclose=True)[variables]
 
                 #dataarray = op(dataarray)
 
