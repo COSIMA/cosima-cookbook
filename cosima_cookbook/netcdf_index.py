@@ -455,12 +455,17 @@ def get_nc_variable(expt, ncfile,
                               dim='time', coords='all', )
 
         if 'time' in dataarray.coords:
+            calendar = None
             if time_units is None:
                 time_units = dataarray.time.units
+                if 'calendar' in dataarray.time.attrs:
+                    calendar = dataarray.time.calendar
+                elif 'calendar_type' in dataarray.time.attrs:
+                    calendar = dataaray.time.calendar_type
             if offset is not None:
                 dataarray = rebase_dataset(dataarray, time_units, offset=offset)
             try:
-                decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units)
+                decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units, calendar=calendar)
             except:  # for compatibility with older xarray (pre-0.10.2 ?)
                 decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
             dataarray.coords['time'] = ('time', decoded_time,
