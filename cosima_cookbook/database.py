@@ -7,7 +7,7 @@ import cftime
 from dask.distributed import as_completed
 import netCDF4
 from sqlalchemy import create_engine, select, exists, sql
-from sqlalchemy import Table, Column, Integer, String, Boolean, MetaData, ForeignKey
+from sqlalchemy import Table, Column, Integer, Text, Boolean, MetaData, ForeignKey
 
 from . import netcdf_utils
 
@@ -23,23 +23,23 @@ def create_database(db, debug=False):
 
     ncfiles = Table('ncfiles', metadata,
                     Column('id', Integer, primary_key=True),
-                    Column('ncfile', String, index=True, unique=True),
+                    Column('ncfile', Text, index=True, unique=True),
                     Column('present', Boolean),
-                    Column('experiment', String, index=True),
+                    Column('experiment', Text, index=True),
                     Column('run', Integer),
-                    Column('timeunits', String),
-                    Column('calendar', String),
-                    Column('time_start', String),
-                    Column('time_end', String),
-                    Column('frequency', String),
+                    Column('timeunits', Text),
+                    Column('calendar', Text),
+                    Column('time_start', Text),
+                    Column('time_end', Text),
+                    Column('frequency', Text),
                     )
 
     ncvars = Table('ncvars', metadata,
                    Column('id', Integer, primary_key=True),
                    Column('ncfile', None, ForeignKey('ncfiles.id'), nullable=False, index=True),
-                   Column('variable', String),
-                   Column('dimensions', String),
-                   Column('chunking', String))
+                   Column('variable', Text),
+                   Column('dimensions', Text),
+                   Column('chunking', Text))
 
     metadata.create_all(engine)
     return engine.connect(), {'ncfiles': ncfiles, 'ncvars': ncvars}
