@@ -17,12 +17,12 @@ setup(
         'joblib',
         'matplotlib',
         'bokeh',
-        'dataset',
         'dask',
-        'distributed',
         'netcdf4',
         'f90nml',
-        'tqdm'
+        'tqdm',
+        'sqlalchemy',
+        'cftime'
         ],
     test_suite='nose.collector',
     tests_require=['nose'],
