@@ -11,6 +11,8 @@ from sqlalchemy import Table, Column, Integer, Text, Boolean, MetaData, ForeignK
 
 from . import netcdf_utils
 
+__DB_VERSION__ = 1
+
 def create_database(db, debug=False):
     """Create new database file with the target schema.
 
@@ -42,7 +44,17 @@ def create_database(db, debug=False):
                    Column('chunking', Text))
 
     metadata.create_all(engine)
-    return engine.connect(), {'ncfiles': ncfiles, 'ncvars': ncvars}
+
+    # if database version is 0, we've created it anew
+    conn = engine.connect()
+    ver = conn.execute('PRAGMA user_version').fetchone()[0]
+    if ver == 0:
+        # seems we can't use usual SQL parameter strings, so we'll just format the version in...
+        conn.execute('PRAGMA user_version={}'.format(__DB_VERSION__))
+    elif ver < __DB_VERSION__:
+        raise Exception('Incompatible database versions, expected {}, got {}'.format(ver, __DB_VERSION__))
+
+    return conn, {'ncfiles': ncfiles, 'ncvars': ncvars}
 
 def file_timeinfo(f):
     """Extract time information from a single netCDF file: units, calendar,
