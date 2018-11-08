@@ -298,6 +298,29 @@ def get_variables(expt, ncfile):
 
     return variables
 
+def decode_time(dataset, time_units, offset):
+    """Decode and offset time axis for a single dataset (preprocessing step for open_mfdataset)."""
+
+    if 'time' in dataset.coords:
+        calendar = None
+        if time_units is None:
+            time_units = dataset.time.units
+            if 'calendar' in dataset.time.attrs:
+                calendar = dataset.time.calendar
+            elif 'calendar_type' in dataset.time.attrs:
+                calendar = dataaray.time.calendar_type
+        if offset is not None:
+            dataset = rebase_dataset(dataset, time_units, offset=offset)
+        try:
+            decoded_time = xr.conventions.times.decode_cf_datetime(dataset.time, time_units, calendar=calendar)
+        except:  # for compatibility with older xarray (pre-0.10.2 ?)
+            decoded_time = xr.conventions.decode_cf_datetime(dataset.time, time_units)
+        dataset.coords['time'] = ('time', decoded_time,
+                                    {'long_name': 'time', 'decoded_using': time_units }
+                                   )
+
+    return dataset
+
 def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
                     op=None,
@@ -437,40 +460,13 @@ def get_nc_variable(expt, ncfile,
             bag = bag.map(load_variable)
 
             dataarrays = bag.compute()
+            dataarray = xr.concat(dataarrays,
+                                  dim='time', coords='all', )
+            dataarray = decode_time(dataarray, time_units, offset)
         else:
-            dataarrays = []
-            for ncfile in tqdm.tqdm_notebook(ncfiles,
-                desc='get_nc_variable:', leave=False):
-                dataarray = xr.open_dataset(ncfile, chunks=chunks,
-                                            decode_times=False,
-                                            autoclose=True)[variables]
-
-                #dataarray = op(dataarray)
-
-                dataarrays.append(dataarray)
-
-        # print ('Building dataarray.')
-
-        dataarray = xr.concat(dataarrays,
-                              dim='time', coords='all', )
-
-        if 'time' in dataarray.coords:
-            calendar = None
-            if time_units is None:
-                time_units = dataarray.time.units
-                if 'calendar' in dataarray.time.attrs:
-                    calendar = dataarray.time.calendar
-                elif 'calendar_type' in dataarray.time.attrs:
-                    calendar = dataaray.time.calendar_type
-            if offset is not None:
-                dataarray = rebase_dataset(dataarray, time_units, offset=offset)
-            try:
-                decoded_time = xr.conventions.times.decode_cf_datetime(dataarray.time, time_units, calendar=calendar)
-            except:  # for compatibility with older xarray (pre-0.10.2 ?)
-                decoded_time = xr.conventions.decode_cf_datetime(dataarray.time, time_units)
-            dataarray.coords['time'] = ('time', decoded_time,
-                                        {'long_name': 'time', 'decoded_using': time_units }
-                                       )
+            dataarray = xr.open_mfdataset(ncfiles, parallel=True, chunks=chunks,
+                                          autoclose=True, decode_times=False,
+                                          preprocess=lambda d: decode_time(d[variables], time_units, offset))
 
         if return_dataarray:
             out = dataarray[variable]
