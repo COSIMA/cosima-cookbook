@@ -123,7 +123,7 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
             if offset == 'auto':
                 # Generate a timedelta offset based on the calendars of src 
                 # and target
-                offset = num2date(0,target_units,calendar) - num2date(0,src_units,calendar) 
+                offset = num2date(0,target_units,calendar) - num2date(0,src_units,calendar)
 
             if isinstance(offset,datetime.timedelta):
                 # Add delta to src calendar origin and convert to integer offset
@@ -131,6 +131,8 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
 
             newvar = newvar + offset
             attributes[rebase_shift_attr] = offset
+
+    newvar = newvar.round(8)
 
     if  newvar.min() < 0:
         raise ValueError("Rebase creates negative dates, specify offset=auto to shift dates appropriately")
