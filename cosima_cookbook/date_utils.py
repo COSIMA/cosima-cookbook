@@ -31,7 +31,7 @@ boundsvar = 'bounds_var'
 
 def rebase_times(values, input_units, calendar, output_units):
     dates = num2date(values, input_units, calendar)
-    return date2num(dates, output_units, calendar)
+    return np.round(date2num(dates, output_units, calendar),8)
 
 def is_bounds(var):
     """
@@ -131,8 +131,6 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
 
             newvar = newvar + offset
             attributes[rebase_shift_attr] = offset
-
-    newvar = newvar.round(8)
 
     if  newvar.min() < 0:
         raise ValueError("Rebase creates negative dates, specify offset=auto to shift dates appropriately")

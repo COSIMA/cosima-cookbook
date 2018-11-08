@@ -42,7 +42,7 @@ def setup_module(module):
     global times
     for y in range(1,6):
         for m in range(1,13):
-            times.append(cftime.date2num(cftime.datetime(y,m,1),units='days since 01-01-01',calendar='noleap'))
+            times.append(np.round(cftime.date2num(cftime.datetime(y,m,1),units='days since 01-01-01',calendar='noleap'),8))
     times = np.array(times)
 
 def teardown_module(module):
