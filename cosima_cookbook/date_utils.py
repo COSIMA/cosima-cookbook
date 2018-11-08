@@ -29,9 +29,12 @@ boundsvar = 'bounds_var'
 
 # Code adapted from https://github.com/spencerahill/aospy/issues/212
 
+def date2num_round(dates, units, calendar):
+    return np.round(date2num(dates, units, calendar),8)
+
 def rebase_times(values, input_units, calendar, output_units):
     dates = num2date(values, input_units, calendar)
-    return np.round(date2num(dates, output_units, calendar),8)
+    return date2num_round(dates, output_units, calendar)
 
 def is_bounds(var):
     """
@@ -127,7 +130,7 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
 
             if isinstance(offset,datetime.timedelta):
                 # Add delta to src calendar origin and convert to integer offset
-                offset = date2num(num2date(0,src_units,calendar)+offset,src_units,calendar)
+                offset = date2num_round(num2date(0,src_units,calendar)+offset,src_units,calendar)
 
             newvar = newvar + offset
             attributes[rebase_shift_attr] = offset
