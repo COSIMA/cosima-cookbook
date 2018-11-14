@@ -298,7 +298,7 @@ def get_variables(expt, ncfile):
 
     return variables
 
-def decode_time(dataset, time_units, offset):
+def decode_time(dataset, time_units, offset, from_bounds):
     """Decode and offset time axis for a single dataset (preprocessing step for open_mfdataset)."""
 
     if 'time' in dataset.coords:
@@ -309,12 +309,23 @@ def decode_time(dataset, time_units, offset):
                 calendar = dataset.time.calendar
             elif 'calendar_type' in dataset.time.attrs:
                 calendar = dataaray.time.calendar_type
+
         if offset is not None:
             dataset = rebase_dataset(dataset, time_units, offset=offset)
+
+        time = dataset.time
+        if from_bounds:
+            # use mean of bounds as time axis
+            if 'bounds' in time.attrs:
+                time = dataset[dataset.time.attrs['bounds']].mean(axis=-1)
+            elif 'time_bounds' in dataset:
+                time = dataset['time_bounds'].mean(axis=-1)
+            else:
+                logging.warning('from_bounds specified, but no bounds found!')
         try:
-            decoded_time = xr.conventions.times.decode_cf_datetime(dataset.time, time_units, calendar=calendar)
+            decoded_time = xr.conventions.times.decode_cf_datetime(time, time_units, calendar=calendar)
         except:  # for compatibility with older xarray (pre-0.10.2 ?)
-            decoded_time = xr.conventions.decode_cf_datetime(dataset.time, time_units)
+            decoded_time = xr.conventions.decode_cf_datetime(time, time_units)
         dataset.coords['time'] = ('time', decoded_time,
                                     {'long_name': 'time', 'decoded_using': time_units }
                                    )
@@ -325,6 +336,7 @@ def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
                     op=None,
                     time_units="days since 1900-01-01", offset=None,
+                    from_bounds=False,
                     use_bag=False, use_cache=False):
     """
     For a given experiment, concatenate together
@@ -355,6 +367,11 @@ def get_nc_variable(expt, ncfile,
 
     offset shifts the data by the specified number of days, to allow different
     experiments to be aligned in time. Use with care ...
+
+    If from_bounds is set, decode times as the mean of the bounds for each
+    given period. This may be useful if data is saved with the time axis
+    at the beginning or end of averaging period, causing slight adjustment
+    problems.
 
     use_cache determines whether to return a cached result, which is faster,
     but is not kept up to date with the .nc files. The cache file is persistent
@@ -462,11 +479,11 @@ def get_nc_variable(expt, ncfile,
             dataarrays = bag.compute()
             dataarray = xr.concat(dataarrays,
                                   dim='time', coords='all', )
-            dataarray = decode_time(dataarray, time_units, offset)
+            dataarray = decode_time(dataarray, time_units, offset, from_bounds)
         else:
             dataarray = xr.open_mfdataset(ncfiles, parallel=True, chunks=chunks,
                                           autoclose=True, decode_times=False,
-                                          preprocess=lambda d: decode_time(d[variables], time_units, offset))
+                                          preprocess=lambda d: decode_time(d, time_units, offset, from_bounds)[variables])
 
         if return_dataarray:
             out = dataarray[variable]
