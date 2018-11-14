@@ -7,7 +7,7 @@ from . import database
 
 def getvar(expt, variable, db, ncfile=None, n=None,
            start_time=None, end_time=None, chunks=None,
-           time_units=None, offset=None):
+           time_units=None, offset=None, decode_times=True):
     """For a given experiment, return an xarray DataArray containing the
     specified variable.
 
@@ -19,6 +19,7 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     file.
     Override any chunking by passing a chunks dictionary.
     A time offset in days can also be applied.
+    Time decoding can be disabled by passing decode_times=False
     """
 
     conn, tables = database.create_database(db)
@@ -68,7 +69,7 @@ def getvar(expt, variable, db, ncfile=None, n=None,
 
     # handle time offsetting and decoding
     # TODO: use helper function to find the time variable name
-    if 'time' in (c.lower() for c in ds.coords):
+    if 'time' in (c.lower() for c in ds.coords) and decode_times:
         calendar = ncfiles[0][4]
         tvar = 'time'
         # if dataset uses capitalised variant
