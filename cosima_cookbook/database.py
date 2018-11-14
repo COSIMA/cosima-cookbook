@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from pathlib import Path
 import re
@@ -6,8 +7,8 @@ import subprocess
 import cftime
 from dask.distributed import as_completed
 import netCDF4
-from sqlalchemy import create_engine, select, exists, sql
-from sqlalchemy import Table, Column, Integer, Text, Boolean, MetaData, ForeignKey
+from sqlalchemy import create_engine, select, exists, sql, MetaData
+from sqlalchemy import Table, Column, Integer, Text, Boolean, DateTime, ForeignKey
 
 from . import netcdf_utils
 
@@ -25,6 +26,7 @@ def create_database(db, debug=False):
 
     ncfiles = Table('ncfiles', metadata,
                     Column('id', Integer, primary_key=True),
+                    Column('index_time', DateTime),
                     Column('ncfile', Text, index=True, unique=True),
                     Column('present', Boolean),
                     Column('experiment', Text, index=True),
@@ -272,6 +274,7 @@ def build_index(directories, client, db, update=False, debug=False):
         if result is None: continue
 
         for ncfile in result:
+            ncfile['index_time'] = datetime.now()
             r = conn.execute(tables['ncfiles'].insert(), ncfile)
 
             if not ncfile['present']: continue
