@@ -25,7 +25,7 @@ function get_session(){
         echo bokehport = 8787 >> ${uconfigpath}
         echo exechost = vdi.nci.org.au >> ${uconfigpath}
     fi
-    pingin="$(ssh -o LogLevel=QUIET -t $user@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 hello --partition main")"
+    pingin="$(ssh -o LogLevel=QUIET -t $user@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 list-avail --partition main")"
     if [ ! -z "$pingin" ];then
         echo -n "Determine if VDI session is already running..."
         running="$(ssh -o LogLevel=QUIET -t $user@vdi.nci.org.au "/opt/vdi/bin/session-ctl --configver=20151620513 list-avail --partition main")"
