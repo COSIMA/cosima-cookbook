@@ -299,7 +299,11 @@ def get_variables(expt, ncfile):
     return variables
 
 def decode_time(dataset, time_units, offset):
-    """Decode and offset time axis for a single dataset (preprocessing step for open_mfdataset)."""
+    """
+    Decode and offset time axis for a single dataset (preprocessing step for open_mfdataset).
+
+    See get_nc_variable for documentation on the arguments.
+    """
 
     if 'time' in dataset.coords:
         calendar = None
@@ -351,10 +355,24 @@ def get_nc_variable(expt, ncfile,
     TODO: implement this - currently does nothing.
 
     time_units (e.g. "days since 1600-01-01") can be used to override
-    the original time.units.  If time_units=None, no overriding is performed.
+    the time units specified in the .nc files.
+    Default is "days since 1900-01-01".
+    If time_units=None, no overriding is performed.
+    NB: The effect of time_units depends on whether offset=None.
+    If offset=None, time_units alters the interpretation of numerical time data
+    in terms of dates, i.e. dates are changed if time_units differs from that
+    in the .nc files.
+    If offset!=None, the time data is altered to use time_units, so time_units
+    no longer alters the dates if time_units differs from that
+    in the .nc files. In particular, offset=None (the default) is not
+    equivalent to offset=0 unless time_units matches what is in the .nc files.
 
     offset shifts the data by the specified number of days, to allow different
-    experiments to be aligned in time. Use with care ...
+    experiments to be aligned in time and/or to work within the 2^64 nanosecond
+    pandas time range. Valid values are None, a number, or 'auto'.
+    Use with care ...
+    NB: offset=None (the default) is not equivalent to offset=0 since it alters
+    the interpretation of time_offset (see above).
 
     use_cache determines whether to return a cached result, which is faster,
     but is not kept up to date with the .nc files. The cache file is persistent
