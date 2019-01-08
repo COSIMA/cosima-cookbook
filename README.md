@@ -20,6 +20,8 @@ Once you have an account on the VDI, you should:
 ```
  3. Navigate to one of the COSIMA recipes and run the analysis.
  
+ Alternatively, you might prefer to download our [jupyter VDI](https://github.com/OceansAus/cosima-cookbook/blob/master/scripts/jupyter_vdi.py) script to your local machine to open a jupyer notebook in your local browser window.
+ 
 ## Using the Cookbook
 The COSIMA Cookbook relies on several components:
  1. There needs to be a database of simulations -- on the NCI system, model output that is stored in the COSIMA space on the hh5 directory.
