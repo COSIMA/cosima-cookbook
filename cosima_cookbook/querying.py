@@ -71,7 +71,7 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     ds = xr.open_mfdataset((f[0] for f in ncfiles), parallel=True,
                            chunks=file_chunks, autoclose=True,
                            decode_times=False,
-                           preprocess=lambda d: d[variable].to_dataset())
+                           preprocess=lambda d: d[variable].to_dataset() if variable not in d.coords else d)
 
     # handle time offsetting and decoding
     # TODO: use helper function to find the time variable name
