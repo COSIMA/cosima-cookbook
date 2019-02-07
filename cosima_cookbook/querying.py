@@ -52,11 +52,17 @@ def getvar(expt, variable, db, ncfile=None, n=None,
         else:
             ncfiles = ncfiles[n:]
 
+    file_chunks = None
+
     # chunking -- use first row/file
-    file_chunks = dict(zip(eval(ncfiles[0][1]), eval(ncfiles[0][2])))
-    # apply caller overrides
-    if chunks is not None:
-        file_chunks.update(chunks)
+    try:
+        file_chunks = dict(zip(eval(ncfiles[0][1]), eval(ncfiles[0][2])))
+        # apply caller overrides
+        if chunks is not None:
+            file_chunks.update(chunks)
+    except NameError:
+        # chunking could be 'contiguous', which doesn't evaluate
+        pass
 
     # the "dreaded" open_mfdata can actually be quite efficient
     # I found that it was important to "preprocess" to select only
