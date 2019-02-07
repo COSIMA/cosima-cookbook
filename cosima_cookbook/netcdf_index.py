@@ -372,7 +372,7 @@ def get_nc_variable(expt, ncfile,
     pandas time range. Valid values are None, a number, or 'auto'.
     Use with care ...
     NB: offset=None (the default) is not equivalent to offset=0 since it alters
-    the interpretation of time_offset (see above).
+    the interpretation of time_units (see above).
 
     use_cache determines whether to return a cached result, which is faster,
     but is not kept up to date with the .nc files. The cache file is persistent
