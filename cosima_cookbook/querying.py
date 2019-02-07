@@ -1,13 +1,15 @@
 import logging
+import os.path
 
-from sqlalchemy import select
+from sqlalchemy import select, bindparam
 import xarray as xr
 
 from . import database
 
 def getvar(expt, variable, db, ncfile=None, n=None,
            start_time=None, end_time=None, chunks=None,
-           time_units=None, offset=None, decode_times=True):
+           time_units=None, offset=None, decode_times=True,
+           check_present=False):
     """For a given experiment, return an xarray DataArray containing the
     specified variable.
 
@@ -29,10 +31,12 @@ def getvar(expt, variable, db, ncfile=None, n=None,
                 tables['ncvars'].c.dimensions,
                 tables['ncvars'].c.chunking,
                 tables['ncfiles'].c.timeunits,
-                tables['ncfiles'].c.calendar]) \
+                tables['ncfiles'].c.calendar,
+                tables['ncfiles'].c.id]) \
             .select_from(tables['ncvars'].join(tables['ncfiles'])) \
             .where(tables['ncvars'].c.variable == variable) \
             .where(tables['ncfiles'].c.experiment == expt) \
+            .where(tables['ncfiles'].c.present) \
             .order_by(tables['ncfiles'].c.time_start)
 
     # further constraints
@@ -44,6 +48,18 @@ def getvar(expt, variable, db, ncfile=None, n=None,
         s = s.where(tables['ncfiles'].c.time_start <= end_time)
 
     ncfiles = conn.execute(s).fetchall()
+
+    if check_present:
+        u = tables['ncfiles'].update().where(tables['ncfiles'].c.id == bindparam('ncfile_id')).values(present=False)
+
+        for f in ncfiles.copy():
+            # check whether file exists
+            if os.path.isfile(f[0]):
+                continue
+
+            # doesn't exist, update in database
+            conn.execute(u, ncfile_id=f[-1])
+            ncfiles.remove(f)
 
     # restrict number of files directly
     if n is not None:
