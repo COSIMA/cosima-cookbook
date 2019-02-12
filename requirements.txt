@@ -4,9 +4,9 @@ nbconvert==5.1.1 # rg.filter: >= 4.2, <5.2
 
 # notebook
 #   https://jupyter-notebook.readthedocs.io/en/latest/changelog.html
-# The ~> notation specifies a minimum version but pins to same major 
-# version
-notebook ~> 5.4.1
+# The ~= notation specifies a minimum version but pins to same major 
+# version: https://www.python.org/dev/peps/pep-0440/#compatible-release
+notebook ~= 5.7.2
 
 # Sphinx
 #   http://www.sphinx-doc.org/en/stable/changes.html
