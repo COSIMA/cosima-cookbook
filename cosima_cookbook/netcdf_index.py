@@ -329,7 +329,7 @@ def get_nc_variable(expt, ncfile,
                     variable, chunks={}, n=None,
                     op=None,
                     time_units="days since 1900-01-01", offset=None,
-                    use_bag=False, use_cache=False):
+                    use_bag=False, use_cache=False, **kwargs):
     """
     For a given experiment, concatenate together
     variable over all time given a basename ncfile.
@@ -484,7 +484,8 @@ def get_nc_variable(expt, ncfile,
         else:
             dataarray = xr.open_mfdataset(ncfiles, parallel=True, chunks=chunks,
                                           autoclose=True, decode_times=False,
-                                          preprocess=lambda d: decode_time(d[variables], time_units, offset))
+                                          preprocess=lambda d: decode_time(d[variables], time_units, offset),
+                                          **kwargs)
 
         if return_dataarray:
             out = dataarray[variable]
