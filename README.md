@@ -25,8 +25,7 @@ Once you have an account on the VDI, you should:
 ## Using the Cookbook
 The COSIMA Cookbook relies on several components:
  1. There needs to be a database of simulations -- on the NCI system, model output that is stored in the COSIMA space on the hh5 directory.
- 2. Once you have access to data, the best place to start is the [cosima-recipes](https://github.com/OceansAus/cosima-recipes) repository. Here, there are a series of jupyter notebooks containing examples which explain how you can use the cookbook.
-
+ 2. Once you have access to data, the best place to start is the [cosima-recipes](https://github.com/OceansAus/cosima-recipes) repository. Here, there are a series of jupyter notebooks containing examples which explain how you can use the cookbook. There are also some example notebooks [here](https://github.com/OceansAus/ACCESS-OM2-1-025-010deg-report/tree/master/figures). There's some documentation [here](http://cosima-cookbook.readthedocs.io) but it's  very out-of-date - caveat lector.
 
 ## Contributing to the Cookbook
 If you like the cookbook, you may like to interact more closely with us:
