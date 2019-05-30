@@ -4,7 +4,7 @@ package:
 
 source:
     git_rev: master
-    git_url: https://github.com/OceansAus/cosima-cookbook
+    git_url: https://github.com/COSIMA/cosima-cookbook
 
 #build:
 #    number: 0
