@@ -202,16 +202,16 @@ def index_run(run_dir, db, update=False):
             logging.info('Unable to find file: %s', f)
         except Exception as e:
             logging.error('Error indexing %s: %s', f, e)
+        else:
+            info = {'ncfile': f,
+                    'experiment': expt,
+                    'run': run,
+                    'present': file_present,
+                    'vars': ncvars}
+            if timeinfo is not None:
+                info.update(timeinfo)
 
-        info = {'ncfile': f,
-                'experiment': expt,
-                'run': run,
-                'present': file_present,
-                'vars': ncvars}
-        if timeinfo is not None:
-            info.update(timeinfo)
-
-        results.append(info)
+            results.append(info)
 
     if update:
         query_conn.close()
