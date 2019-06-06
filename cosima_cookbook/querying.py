@@ -96,7 +96,7 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     # the relevant variable, because chunking doesn't apply to
     # all variables present in the file
     ds = xr.open_mfdataset((f[0] for f in ncfiles), parallel=True,
-                           chunks=file_chunks, autoclose=True,
+                           chunks=file_chunks,
                            decode_times=False,
                            preprocess=lambda d: d[variable].to_dataset() if variable not in d.coords else d)
 
