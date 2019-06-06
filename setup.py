@@ -14,16 +14,15 @@ setup(
         'dask',
         'xarray',
         'numpy',
-        'joblib',
         'matplotlib',
         'bokeh',
-        'dask',
         'netcdf4',
-        'f90nml',
         'tqdm',
         'sqlalchemy',
         'cftime'
-        ],
-    test_suite='nose.collector',
-    tests_require=['nose'],
+    ],
+
+    extras_require = {
+        'build': ['distributed', 'pytest']
+    }
 )

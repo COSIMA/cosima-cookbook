@@ -6,12 +6,12 @@ from cosima_cookbook import database
 
 from sqlalchemy import select, func
 
-def test_broken(client, tmp_path):
-    db = tmp_path / 'test.db'
+def test_broken(client, tmpdir):
+    db = tmpdir.join('test.db')
     database.build_index('test/data/indexing/broken_file', client, str(db))
 
     # make sure the database was created
-    assert(db.exists())
+    assert(db.check())
 
     conn, schema = database.create_database(str(db))
 
@@ -26,8 +26,8 @@ def test_broken(client, tmp_path):
 
     assert(r.first()[0] == 0)
 
-def test_single_broken(client, tmp_path):
-    db = tmp_path / 'test.db'
+def test_single_broken(client, tmpdir):
+    db = tmpdir.join('test.db')
     database.build_index('test/data/indexing/single_broken_file', client, str(db))
 
     # make sure the database was created
