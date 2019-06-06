@@ -18,3 +18,6 @@ def test_valid_query(database):
     with cc.querying.getvar('querying', 'temp', database, decode_times=False) as v:
         assert(isinstance(v, xr.DataArray))
     
+def test_invalid_query(database):
+    with pytest.raises(cc.querying.VariableNotFoundError):
+        cc.querying.getvar('querying', 'notfound', database, decode_times=False)

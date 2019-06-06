@@ -6,6 +6,9 @@ import xarray as xr
 
 from . import database
 
+class VariableNotFoundError(Exception):
+    pass
+
 def getvar(expt, variable, db, ncfile=None, n=None,
            start_time=None, end_time=None, chunks=None,
            time_units=None, offset=None, decode_times=True,
@@ -59,6 +62,10 @@ def getvar(expt, variable, db, ncfile=None, n=None,
         s = s.where(tables['ncfiles'].c.time_start <= end_time)
 
     ncfiles = conn.execute(s).fetchall()
+
+    # ensure we actually got a result
+    if not ncfiles:
+        raise VariableNotFoundError("No files were found containing {} in the '{}' experiment".format(variable, expt))
 
     if check_present:
         u = tables['ncfiles'].update().where(tables['ncfiles'].c.id == bindparam('ncfile_id')).values(present=False)
