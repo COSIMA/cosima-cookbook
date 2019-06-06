@@ -2,6 +2,7 @@ import logging
 import os.path
 
 import xarray as xr
+from sqlalchemy import select, bindparam, func
 
 from . import database
 
@@ -139,3 +140,49 @@ def _parse_chunks(ncvar):
     except NameError:
         # chunking could be 'contiguous', which doesn't evaluate
         return None
+
+def get_experiments(session):
+    """Return a list of all (experiment, netcdf file count) pairs in the database."""
+
+    # create a subquery to count the netcdf files per experiment
+    stmt = (session
+            .query(database.NCFile.experiment_id,
+                   func.count().label('file_count'))
+            .group_by(database.NCFile.experiment_id)
+            .subquery())
+
+    q = (session
+         .query(database.NCExperiment.experiment,
+                stmt.c.file_count)
+         .outerjoin(stmt)
+         .order_by(database.NCExperiment.experiment))
+
+    return q.all()
+
+def get_variables(expt, session):
+    """Return a list of all unique variables for a given experiment."""
+
+    q = (session
+         .query(database.CFVariable.name,
+                database.CFVariable.long_name)
+         .join(database.NCVar)
+         .join(database.NCFile)
+         .join(database.NCExperiment)
+         .filter(database.NCExperiment.experiment == expt)
+         .group_by(database.CFVariable.id))
+
+    return q.all()
+
+def get_time_range(expt, variable, session, ncfile=None):
+    """Return the time span of data for the given variable in the given experiment."""
+
+    q = (session
+         .query(func.min(database.NCFile.time_start),
+                func.max(database.NCFile.time_end))
+          .join(database.NCVar).join(database.NCExperiment)
+         .filter(database.NCVar.varname == variable)
+         .filter(database.NCExperiment.experiment == expt))
+    if ncfile is not None:
+        q = q.filter(database.NCFile.like("%" + ncfile))
+
+    return q.one_or_none()

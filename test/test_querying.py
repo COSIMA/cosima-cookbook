@@ -20,7 +20,7 @@ def session(tmpdir_factory):
 def test_valid_query(session):
     with cc.querying.getvar('querying', 'temp', session, decode_times=False) as v:
         assert(isinstance(v, xr.DataArray))
-    
+
 def test_invalid_query(session):
     with pytest.raises(cc.querying.VariableNotFoundError):
         cc.querying.getvar('querying', 'notfound', session, decode_times=False)
@@ -59,3 +59,22 @@ def test_chunk_parsing_unchunked(session):
 
     assert(var.chunking == 'None')
     assert(cc.querying._parse_chunks(var) is None)
+
+def test_get_experiments(session):
+    expts = cc.querying.get_experiments(session)
+
+    assert(expts == [('querying', 3)])
+
+def test_get_variables(session):
+    vars = cc.querying.get_variables('querying', session)
+
+    assert(len(vars) == 45)
+
+    names = [v[0] for v in vars]
+    assert('temp' in names)
+    assert('notfound' not in names)
+
+def test_get_time_range(session):
+    time_range = cc.querying.get_time_range('querying', 'ty_trans', session)
+
+    assert(time_range == ('0166-01-01 00:00:00', '0168-01-01 00:00:00'))
