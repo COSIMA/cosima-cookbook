@@ -3,15 +3,8 @@ import os
 import shutil
 import xarray as xr
 from cosima_cookbook import database
-from dask.distributed import Client
 
 from sqlalchemy import select, func
-
-@pytest.fixture(scope='module')
-def client():
-    client = Client()
-    yield client
-    client.close()
 
 def test_broken(client, tmp_path):
     db = tmp_path / 'test.db'
