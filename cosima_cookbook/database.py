@@ -8,14 +8,16 @@ import cftime
 from dask.distributed import as_completed
 import netCDF4
 from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Index
 from sqlalchemy import MetaData, Table, select, sql, exists
 
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 
 from . import netcdf_utils
+from .database_utils import *
 
 __DB_VERSION__ = 2
 
@@ -50,6 +52,44 @@ class NCFile(Base):
     #: variables in this file
     ncvars = relationship('NCVar', back_populates='ncfile')
 
+class CFVariable(UniqueMixin, Base):
+    __tablename__ = 'variables'
+    __table_args__ = (Index('ix_variables_name_long_name', 'name', 'long_name', unique=True),)
+
+    id = Column(Integer, primary_key=True)
+
+    #: Attributes associated with the variable that should
+    #: be stored in the database
+    attributes = ['long_name', 'standard_name', 'units']
+
+    #: The variable name
+    name = Column(String, nullable=False, index=True)
+    #: The variable long name (CF Conventions §3.2)
+    long_name = Column(String)
+    #: The variable long name (CF Conventions §3.3)
+    standard_name = Column(String)
+    #: The variable long name (CF Conventions §3.1)
+    units = Column(String)
+
+    #: Back-populate a list of ncvars that use this variable
+    ncvars = relationship('NCVar', back_populates='variable')
+
+    def __init__(self, name, long_name=None, standard_name=None, units=None):
+        self.name = name
+        self.long_name = long_name
+        self.standard_name = standard_name
+        self.units = units
+
+    @classmethod
+    def unique_hash(cls, name, long_name, *arg):
+        return '{}_{}'.format(name, long_name)
+
+    @classmethod
+    def unique_filter(cls, query, name, long_name, *arg):
+        return (query
+                .filter(CFVariable.name == name)
+                .filter(CFVariable.long_name == long_name))
+
 class NCVar(Base):
     __tablename__ = 'ncvars'
 
@@ -58,8 +98,11 @@ class NCVar(Base):
     #: The ncfile to which this variable belongs
     ncfile_id = Column(Integer, ForeignKey('ncfiles.id'), nullable=False, index=True)
     ncfile = relationship('NCFile', back_populates='ncvars')
-    #: The name of this variable
-    variable = Column(String)
+    #: The generic form of this variable (name and attributes)
+    variable_id = Column(Integer, ForeignKey('variables.id'), nullable=False)
+    variable = relationship('CFVariable', back_populates='ncvars', uselist=False)
+    #: Proxy for the variable name
+    varname = association_proxy('variable', 'name')
     #: Serialised tuple of variable dimensions
     dimensions = Column(String)
     #: Serialised tuple of chunking along each dimension
@@ -168,10 +211,22 @@ def index_file(f):
     Returns a list of dictionaries."""
 
     with netCDF4.Dataset(f, 'r') as ds:
-        ncvars = [NCVar(variable=v.name,
-                        dimensions=str(v.dimensions),
-                        chunking=str(v.chunking()))
-                  for v in ds.variables.values()]
+        ncvars = []
+        for v in ds.variables.values():
+            # create the generic cf variable structure
+            cfvar = CFVariable(name=v.name)
+
+            # check for other attributes
+            for att in CFVariable.attributes:
+                if att in v.ncattrs():
+                    setattr(cfvar, att, v.getncattr(att))
+
+            # fill in the specifics for this file: dimensions and chunking
+            ncvar = NCVar(variable=cfvar,
+                          dimensions=str(v.dimensions),
+                          chunking=str(v.chunking()))
+
+            ncvars.append(ncvar)
 
     return ncvars
 
@@ -197,7 +252,7 @@ def index_run(run_dir):
     if m:
         run = int(m.group())
     else:
-        logging.warning('Unconvention run directory: %s', run_dir)
+        logging.warning('Unconventional run directory: %s', run_dir)
 
     results = []
 
@@ -290,6 +345,14 @@ def build_index(directories, client, session, update=False, debug=False):
         print('\r{}/{}'.format(i, n), end='', flush=True)
 
         if result is None: continue
+
+        # update all variables to be unique
+        for ncfile in result:
+            for ncvar in ncfile.ncvars:
+                v = ncvar.variable
+                ncvar.variable = CFVariable.as_unique(session,
+                                                  v.name, v.long_name,
+                                                  v.standard_name, v.units)
 
         session.add_all(result)
 

@@ -44,9 +44,6 @@ def test_single_broken(client, session_db):
     session, db = session_db
     database.build_index('test/data/indexing/single_broken_file', client, session)
 
-    # make sure the database was created
-    assert(db.exists())
-
     # query ncfiles table -- should have two entries
     q = session.query(func.count(database.NCFile.id))
     assert(q.scalar() == 2)
@@ -54,3 +51,17 @@ def test_single_broken(client, session_db):
     # query ncvars table -- should have a single entry
     q = session.query(func.count(database.NCVar.id))
     assert(q.scalar() == 1)
+
+def test_longnames(client, session_db):
+    session, db = session_db
+    database.build_index('test/data/indexing/longnames', client, session)
+
+    # query ncvars table -- should have two entries
+    q = session.query(func.count(database.NCVar.id))
+    assert(q.scalar() == 2)
+
+    # query generic table -- should only be a single variable
+    q = session.query(database.CFVariable)
+    r = q.all()
+    assert(len(r) == 1)
+    assert(r[0].long_name == 'Test Variable')
