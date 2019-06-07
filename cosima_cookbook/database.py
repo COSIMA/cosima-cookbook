@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -20,6 +21,7 @@ from . import netcdf_utils
 from .database_utils import *
 
 __DB_VERSION__ = 2
+__DEFAULT_DB__ = '/g/data/hh5/tmp/cosima/database/access-om2.db'
 
 Base = declarative_base()
 
@@ -108,11 +110,14 @@ class NCVar(Base):
     #: Serialised tuple of chunking along each dimension
     chunking = Column(String)
 
-def create_session(db, debug=False):
+def create_session(db=None, debug=False):
     """Create a session for the specified database file.
 
     If debug=True, the session will output raw SQL whenever it is executed on the database.
     """
+
+    if db is None:
+        db = os.getenv('COSIMA_COOKBOOK_DB', __DEFAULT_DB__)
 
     engine = create_engine('sqlite:///' + db, echo=debug)
     Base.metadata.create_all(engine)
