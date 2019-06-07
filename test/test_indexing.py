@@ -3,40 +3,54 @@ import os
 import shutil
 import xarray as xr
 from cosima_cookbook import database
+from sqlalchemy import func
 
-from sqlalchemy import select, func
-
-def test_broken(client, tmpdir):
+@pytest.fixture
+def session_db(tmpdir):
     db = tmpdir.join('test.db')
-    database.build_index('test/data/indexing/broken_file', client, str(db))
+    s = database.create_session(str(db))
+    yield s, db
+
+    s.close()
+
+def test_broken(client, session_db):
+    session, db = session_db
+    database.build_index('test/data/indexing/broken_file', client, session)
 
     # make sure the database was created
     assert(db.check())
 
-    conn, schema = database.create_database(str(db))
+    # query ncfiles table -- should have a single file, marked as empty
+    q = session.query(database.NCFile)
+    r = q.all()
+    assert(len(r) == 1)
+    assert(not r[0].present)
 
-    # query ncfiles table
-    q = select([func.count()]).select_from(schema['ncfiles'])
-    r = conn.execute(q)
+    # query ncvars table -- should be empty
+    q = session.query(func.count(database.NCVar.id))
 
-    assert(r.first()[0] == 0)
+    assert(q.scalar() == 0)
 
-    q = select([func.count()]).select_from(schema['ncvars'])
-    r = conn.execute(q)
+def test_update(client, session_db):
+    session, db = session_db
+    database.build_index('test/data/indexing/broken_file', client, session)
+    assert(db.check())
 
-    assert(r.first()[0] == 0)
+    # re-run the index, make sure we don't re-index anything
+    reindexed = database.build_index('test/data/indexing/broken_file', client, session, update=True)
+    assert(reindexed == 0)
 
-def test_single_broken(client, tmpdir):
-    db = tmpdir.join('test.db')
-    database.build_index('test/data/indexing/single_broken_file', client, str(db))
+def test_single_broken(client, session_db):
+    session, db = session_db
+    database.build_index('test/data/indexing/single_broken_file', client, session)
 
     # make sure the database was created
     assert(db.exists())
 
-    conn, schema = database.create_database(str(db))
+    # query ncfiles table -- should have two entries
+    q = session.query(func.count(database.NCFile.id))
+    assert(q.scalar() == 2)
 
-    # query ncfiles table
-    q = select([func.count()]).select_from(schema['ncfiles'])
-    r = conn.execute(q)
-
-    assert(r.first()[0] == 1)
+    # query ncvars table -- should have a single entry
+    q = session.query(func.count(database.NCVar.id))
+    assert(q.scalar() == 1)

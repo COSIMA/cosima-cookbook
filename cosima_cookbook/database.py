@@ -7,45 +7,72 @@ import subprocess
 import cftime
 from dask.distributed import as_completed
 import netCDF4
-from sqlalchemy import create_engine, select, exists, sql, MetaData
-from sqlalchemy import Table, Column, Integer, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import create_engine
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import MetaData, Table, select, sql, exists
+
+from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.declarative import declarative_base
 
 from . import netcdf_utils
 
-__DB_VERSION__ = 1
+__DB_VERSION__ = 2
 
-def create_database(db, debug=False):
-    """Create new database file with the target schema.
+Base = declarative_base()
 
-    We create a foreign key constraint on the ncfile column in
-    the ncvars table, but it won't be enforced without `PRAGMA
-    foreign_keys = 1' in sqlite."""
+class NCFile(Base):
+    __tablename__ = 'ncfiles'
+
+    id = Column(Integer, primary_key=True)
+
+    #: When this file was indexed
+    index_time = Column(DateTime)
+    #: The file name
+    ncfile = Column(String, index=True, unique=True)
+    #: Is the file actually present on the filesystem?
+    present = Column(Boolean)
+    #: The experiment to which the file belongs
+    experiment = Column(String, index=True)
+    #: The run number to which the file belongs
+    run = Column(Integer)
+    #: CF timeunits attribute
+    timeunits = Column(String)
+    #: CF calendar attribute
+    calendar = Column(String)
+    #: Start time of data in the file
+    time_start = Column(String)
+    #: End time of data in the file
+    time_end = Column(String)
+    #: Temporal frequency of the file
+    frequency = Column(String)
+
+    #: variables in this file
+    ncvars = relationship('NCVar', back_populates='ncfile')
+
+class NCVar(Base):
+    __tablename__ = 'ncvars'
+
+    id = Column(Integer, primary_key=True)
+
+    #: The ncfile to which this variable belongs
+    ncfile_id = Column(Integer, ForeignKey('ncfiles.id'), nullable=False, index=True)
+    ncfile = relationship('NCFile', back_populates='ncvars')
+    #: The name of this variable
+    variable = Column(String)
+    #: Serialised tuple of variable dimensions
+    dimensions = Column(String)
+    #: Serialised tuple of chunking along each dimension
+    chunking = Column(String)
+
+def create_session(db, debug=False):
+    """Create a session for the specified database file.
+
+    If debug=True, the session will output raw SQL whenever it is executed on the database.
+    """
 
     engine = create_engine('sqlite:///' + db, echo=debug)
-    metadata = MetaData()
-
-    ncfiles = Table('ncfiles', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('index_time', DateTime),
-                    Column('ncfile', Text, index=True, unique=True),
-                    Column('present', Boolean),
-                    Column('experiment', Text, index=True),
-                    Column('run', Integer),
-                    Column('timeunits', Text),
-                    Column('calendar', Text),
-                    Column('time_start', Text),
-                    Column('time_end', Text),
-                    Column('frequency', Text),
-                    )
-
-    ncvars = Table('ncvars', metadata,
-                   Column('id', Integer, primary_key=True),
-                   Column('ncfile', None, ForeignKey('ncfiles.id'), nullable=False, index=True),
-                   Column('variable', Text),
-                   Column('dimensions', Text),
-                   Column('chunking', Text))
-
-    metadata.create_all(engine)
+    Base.metadata.create_all(engine)
 
     # if database version is 0, we've created it anew
     conn = engine.connect()
@@ -55,14 +82,14 @@ def create_database(db, debug=False):
         conn.execute('PRAGMA user_version={}'.format(__DB_VERSION__))
     elif ver < __DB_VERSION__:
         raise Exception('Incompatible database versions, expected {}, got {}'.format(ver, __DB_VERSION__))
+    conn.close()
 
-    return conn, {'ncfiles': ncfiles, 'ncvars': ncvars}
+    Session = sessionmaker(bind=engine)
+    return Session()
 
-def file_timeinfo(f):
+def update_timeinfo(f, ncfile):
     """Extract time information from a single netCDF file: units, calendar,
     start time, end time, and frequency."""
-
-    timeinfo = {}
 
     with netCDF4.Dataset(f, 'r') as ds:
         # we assume the record dimension corresponds to time
@@ -77,31 +104,25 @@ def file_timeinfo(f):
             return None
 
         if hasattr(time_var, 'units'):
-            timeinfo['timeunits'] = time_var.units
-        else:
-            timeinfo['timeunits'] = None
+            ncfile.timeunits = time_var.units
         if hasattr(time_var, 'calendar'):
-            timeinfo['calendar'] = time_var.calendar
-        else:
-            timeinfo['calendar'] = None
+            ncfile.calendar = time_var.calendar
 
-        if timeinfo['timeunits'] is None or timeinfo['calendar'] is None:
-            # non CF-compliant file
-            timeinfo['time_start'] = None
-            timeinfo['time_end'] = None
-            timeinfo['frequency'] = None
-            return timeinfo
+        if ncfile.timeunits is None or ncfile.calendar is None:
+            # non CF-compliant file -- don't process further
+            return
 
+        # Helper function to get a date
         def todate(t):
             return cftime.num2date(t, time_var.units, calendar=time_var.calendar)
 
         if has_bounds:
             bounds_var = ds.variables[time_var.bounds]
-            timeinfo['time_start'] = todate(bounds_var[0,0])
-            timeinfo['time_end'] = todate(bounds_var[-1,1])
+            ncfile.time_start = todate(bounds_var[0,0])
+            ncfile.time_end = todate(bounds_var[-1,1])
         else:
-            timeinfo['time_start'] = todate(time_var[0])
-            timeinfo['time_end'] = todate(time_var[-1])
+            ncfile.time_start = todate(time_var[0])
+            ncfile.time_end = todate(time_var[-1])
 
         if len(time_var) > 1 or has_bounds:
             # calculate frequency -- I don't see any easy way to do this, so
@@ -115,20 +136,20 @@ def file_timeinfo(f):
             else:
                 next_time = todate(time_var[1])
 
-            dt = next_time - timeinfo['time_start']
+            dt = next_time - ncfile.time_start
             if dt.days >= 365:
                 years = round(dt.days / 365)
-                timeinfo['frequency'] = '{} yearly'.format(years)
+                ncfile.frequency = '{} yearly'.format(years)
             elif dt.days >= 28:
                 months = round(dt.days / 30)
-                timeinfo['frequency'] = '{} monthly'.format(months)
+                ncfile.frequency = '{} monthly'.format(months)
             elif dt.days >= 1:
-                timeinfo['frequency'] = '{} daily'.format(dt.days)
+                ncfile.frequency = '{} daily'.format(dt.days)
             else:
-                timeinfo['frequency'] = '{} hourly'.format(dt.seconds // 3600)
+                ncfile.frequency = '{} hourly'.format(dt.seconds // 3600)
         else:
             # single time value in this file and no averaging
-            timeinfo['frequency'] = 'static'
+            ncfile.frequency = 'static'
 
         # convert start/end times to timestamps
         # strftime doesn't like years with fewer than 4 digits (pads with spaces
@@ -137,10 +158,8 @@ def file_timeinfo(f):
             ss = s.lstrip()
             return (len(s)-len(ss))*'0' + ss
 
-        timeinfo['time_start'] = zeropad(timeinfo['time_start'].strftime('%Y-%m-%d %H:%M:%S'))
-        timeinfo['time_end'] = zeropad(timeinfo['time_end'].strftime('%Y-%m-%d %H:%M:%S'))
-
-    return timeinfo
+        ncfile.time_start = zeropad(ncfile.time_start.strftime('%Y-%m-%d %H:%M:%S'))
+        ncfile.time_end = zeropad(ncfile.time_end.strftime('%Y-%m-%d %H:%M:%S'))
 
 def index_file(f):
     """Index a single netCDF file by retrieving all variables, their dimensions
@@ -149,14 +168,14 @@ def index_file(f):
     Returns a list of dictionaries."""
 
     with netCDF4.Dataset(f, 'r') as ds:
-        ncvars = [{'variable': v.name,
-                   'dimensions': str(v.dimensions),
-                   'chunking': str(v.chunking())}
+        ncvars = [NCVar(variable=v.name,
+                        dimensions=str(v.dimensions),
+                        chunking=str(v.chunking()))
                   for v in ds.variables.values()]
 
     return ncvars
 
-def index_run(run_dir, db, update=False):
+def index_run(run_dir):
     """Index all output files for a single run (i.e. an outputNNN directory).
 
     Pass update=True to try to optimise by not touching files already in the
@@ -181,48 +200,33 @@ def index_run(run_dir, db, update=False):
         logging.warning('Unconvention run directory: %s', run_dir)
 
     results = []
-    if update:
-        query_conn, tables = create_database(db)
 
     for f in files:
-        # skip processing file if it's already in the database
-        # (since we treat files atomically, it's either there or not)
-        if update and query_conn.execute(select([tables['ncfiles'].c.id]) \
-                                         .where(tables['ncfiles'].c.ncfile == f)).fetchone() is not None:
-            continue
-
         # try to index this file, and mark it 'present' if indexing succeeds
-        file_present = False
-        timeinfo = None
+        ncfile = NCFile(index_time=datetime.now(),
+                        ncfile=f,
+                        present=False,
+                        experiment=expt)
+        ncvars = []
         try:
-            ncvars = index_file(f)
-            file_present = True
-            timeinfo = file_timeinfo(f)
+            ncfile.ncvars = index_file(f)
+            ncfile.present = True
+            update_timeinfo(f, ncfile)
         except FileNotFoundError:
             logging.info('Unable to find file: %s', f)
         except Exception as e:
             logging.error('Error indexing %s: %s', f, e)
-        else:
-            info = {'ncfile': f,
-                    'experiment': expt,
-                    'run': run,
-                    'present': file_present,
-                    'vars': ncvars}
-            if timeinfo is not None:
-                info.update(timeinfo)
 
-            results.append(info)
-
-    if update:
-        query_conn.close()
+        results.append(ncfile)
 
     return results
 
-def build_index(directories, client, db, update=False, debug=False):
+def build_index(directories, client, session, update=False, debug=False):
     """Index all runs contained within a directory. Requires a distributed client for processing,
-    and the filename of a database that's been created with the create_database() function.
+    and a session for the database that's been created with the create_session() function.
 
-    May scan for only new entries to add to database with the update flag."""
+    May scan for only new entries to add to database with the update flag.
+    """
 
     # make the assumption that everything has been created with payu -- all output data is a
     # child of an `output???' directory
@@ -240,29 +244,43 @@ def build_index(directories, client, db, update=False, debug=False):
             logging.error('Error occurred while finding output directories: %s', e)
             return None
 
-    conn, tables = create_database(db, debug=debug)
-
     if update:
-        # this is a bit of a crazy optimisation:
-        # pop all the output directories in a temporary table in the database
-        # select out only those that haven't already had a file indexed
-        # instead of using a 'like' clause, we manually do the string comparison,
-        # because sqlite doesn't realise it can use our index on the ncfile column...
+        # prune the list of runs to only contain those we haven't already seen
+
+        # create an in-memory database that can be used across all threads
+        engine = create_engine('sqlite:///:memory:',
+                               connect_args={'check_same_thread': False},
+                               poolclass=StaticPool)
+
         metadata = MetaData()
+        conn = engine.connect()
+
+        # create tables
+        ncfiles = Table('ncfiles', metadata,
+                        Column('ncfile', String, index=True))
         cand = Table('candidates', metadata,
                      Column('id', Integer, primary_key=True),
-                     Column('rundir', Text),
-                     Column('rundir2', Text))
-        conn.execute('CREATE TEMP TABLE candidates (id INTEGER PRIMARY KEY, rundir TEXT, rundir2 TEXT)')
+                     Column('rundir', String),
+                     Column('rundir2', String))
+        metadata.create_all(engine)
+
+        # insert all files from the existing database
+        files = session.query(NCFile.ncfile).all()
+        conn.execute(ncfiles.insert(), [{'ncfile': f[0]} for f in files])
+
         conn.execute(cand.insert(), [{'rundir': run, 'rundir2': run[:-1] + chr(ord(run[-1]) + 1)} for run in runs])
         s = select([cand.c.rundir]).where(sql.not_(exists()
-                                                   .where(tables['ncfiles'].c.ncfile >= cand.c.rundir)
-                                                   .where(tables['ncfiles'].c.ncfile < cand.c.rundir2)))
+                                                   .where(ncfiles.c.ncfile >= cand.c.rundir)
+                                                   .where(ncfiles.c.ncfile < cand.c.rundir2)))
         r = conn.execute(s)
+
+        # prune the list of runs
         runs = [run[0] for run in r.fetchall()]
 
+        conn.close()
+
     # perform the indexing on the client that we've been provided
-    futures = client.map(index_run, runs, db=db, update=update)
+    futures = client.map(index_run, runs)
     i = 0
     n = len(runs)
     print('{}/{}'.format(i, n), end='', flush=True)
@@ -273,14 +291,8 @@ def build_index(directories, client, db, update=False, debug=False):
 
         if result is None: continue
 
-        for ncfile in result:
-            ncfile['index_time'] = datetime.now()
-            r = conn.execute(tables['ncfiles'].insert(), ncfile)
+        session.add_all(result)
 
-            if not ncfile['present']: continue
-            file_id = r.inserted_primary_key[0]
+    session.commit()
 
-            ncvars = ncfile['vars']
-            for v in ncvars:
-                v.update(ncfile=file_id)
-            conn.execute(tables['ncvars'].insert(), ncvars)
+    return i
