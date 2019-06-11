@@ -21,3 +21,10 @@ def test_valid_query(database):
 def test_invalid_query(database):
     with pytest.raises(cc.querying.VariableNotFoundError):
         cc.querying.getvar('querying', 'notfound', database, decode_times=False)
+
+def test_time_attribute_args(database):
+    with cc.querying.getvar('querying', 'Heat', database,
+                            time_units='days since 0001-01-01 00:00:00',
+                            calendar='JULIAN',
+                            rebase_times=False) as v:
+        assert(isinstance(v, xr.DataArray))

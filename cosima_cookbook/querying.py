@@ -12,7 +12,8 @@ class VariableNotFoundError(Exception):
 def getvar(expt, variable, db, ncfile=None, n=None,
            start_time=None, end_time=None, chunks=None,
            time_units=None, offset=None, decode_times=True,
-           check_present=False):
+           rebase_times=True,
+           calendar=None, check_present=False):
     """For a given experiment, return an xarray DataArray containing the
     specified variable.
     
@@ -23,7 +24,7 @@ def getvar(expt, variable, db, ncfile=None, n=None,
         up to data
 
     ncfile - If disambiguation based on filename is required, pass the ncfile
-    argument.
+        argument.
     n - A subset of output data can be obtained by restricting the number of 
         netcdf files to load (use a negative value of n to get the last n 
         files, or a positive n to get the first n files).
@@ -32,10 +33,19 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     start_time - Only load data before this date. Specify the date as a text string
         (e.g. '1900-1-1')
     chunks - Override any chunking by passing a chunks dictionary.
-    offset - A time offset (in an integer number of days) can also be applied.
-    decode_times - Time decoding can be disabled by passing decode_times=False
+
     check_present - indicates whether to check the presence of the file before 
         loading.
+
+    decode_times - Time decoding can be disabled by passing decode_times=False
+    rebase_times - If True (default), and time_units is specified, rebase times
+        to time_units before applying offset. Otherwise, time_units is simply
+        overridden for decoding of times from the file.
+    time_units - Either a time unit on which to rebase time coordinate variable,
+        or an override for the units attribute (see above).
+    calendar - Override the calendar specified in the attributes of the time
+        coordinate variable.
+    offset - A time offset (in an integer number of days) can also be applied.
     """
 
     conn, tables = database.create_database(db)
@@ -110,25 +120,28 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     # handle time offsetting and decoding
     # TODO: use helper function to find the time variable name
     if 'time' in (c.lower() for c in ds.coords) and decode_times:
-        calendar = ncfiles[0][4]
+        if calendar is None:
+            calendar = ncfiles[0][4]
+
         tvar = 'time'
         # if dataset uses capitalised variant
         if 'Time' in ds.coords:
             tvar = 'Time'
 
         # first rebase times onto new units if required
-        if time_units is not None:
+        if time_units is not None and rebase_times:
             dates = xr.conventions.times.decode_cf_datetime(ds[tvar], ncfiles[0][3], calendar)
             times = xr.conventions.times.encode_cf_datetime(dates, time_units, calendar)
             ds[tvar] = times[0]
-        else:
+
+        # after rebasing, just use time units from file unless specified
+        if time_units is None:
             time_units = ncfiles[0][3]
 
         # time offsetting - mimic one aspect of old behaviour by adding
         # a fixed number of days
         if offset is not None:
             ds[tvar] += offset
-
 
         # decode time - we assume that we're getting units and a calendar from a file
         try:
