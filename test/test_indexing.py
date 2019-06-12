@@ -15,10 +15,13 @@ def session_db(tmpdir):
 
 def test_broken(session_db):
     session, db = session_db
-    database.build_index('test/data/indexing/broken_file', session)
+    indexed = database.build_index('test/data/indexing/broken_file', session)
 
     # make sure the database was created
     assert(db.check())
+
+    # we indexed a single file
+    assert(indexed == 1)
 
     # query ncfiles table -- should have a single file, marked as empty
     q = session.query(database.NCFile)
@@ -28,17 +31,12 @@ def test_broken(session_db):
 
     # query ncvars table -- should be empty
     q = session.query(func.count(database.NCVar.id))
-
     assert(q.scalar() == 0)
 
 def test_update(client, session_db):
     session, db = session_db
     database.build_index('test/data/indexing/broken_file', session)
     assert(db.check())
-
-    # make sure we can't update in parallel
-    with pytest.raises(database.IndexingError):
-        database.build_index('test/data/indexing/broken_file', session, client, update=True)
 
     # re-run the index, make sure we don't re-index anything
     reindexed = database.build_index('test/data/indexing/broken_file', session, update=True)

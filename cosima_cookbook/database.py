@@ -230,35 +230,49 @@ def update_timeinfo(f, ncfile):
         ncfile.time_start = zeropad(ncfile.time_start.strftime('%Y-%m-%d %H:%M:%S'))
         ncfile.time_end = zeropad(ncfile.time_end.strftime('%Y-%m-%d %H:%M:%S'))
 
-def index_file(f):
-    """Index a single netCDF file by retrieving all variables, their dimensions
+def index_file(ncfile_name, experiment):
+    """Index a single netCDF file within an experiment by retrieving all variables, their dimensions
     and chunking.
+    """
 
-    Returns a list of dictionaries."""
+    # construct absolute path to file
+    f = str(Path(experiment.root_dir) / ncfile_name)
 
-    with netCDF4.Dataset(f, 'r') as ds:
-        ncvars = []
-        for v in ds.variables.values():
-            # create the generic cf variable structure
-            cfvar = CFVariable(name=v.name)
+    # try to index this file, and mark it 'present' if indexing succeeds
+    ncfile = NCFile(index_time=datetime.now(),
+                    ncfile=ncfile_name,
+                    present=False,
+                    experiment=experiment)
+    try:
+        with netCDF4.Dataset(f, 'r') as ds:
+            for v in ds.variables.values():
+                # create the generic cf variable structure
+                cfvar = CFVariable(name=v.name)
 
-            # check for other attributes
-            for att in CFVariable.attributes:
-                if att in v.ncattrs():
-                    setattr(cfvar, att, v.getncattr(att))
+                # check for other attributes
+                for att in CFVariable.attributes:
+                    if att in v.ncattrs():
+                        setattr(cfvar, att, v.getncattr(att))
 
-            # fill in the specifics for this file: dimensions and chunking
-            ncvar = NCVar(variable=cfvar,
-                          dimensions=str(v.dimensions),
-                          chunking=str(v.chunking()))
+                # fill in the specifics for this file: dimensions and chunking
+                ncvar = NCVar(variable=cfvar,
+                              dimensions=str(v.dimensions),
+                              chunking=str(v.chunking()))
 
-            ncvars.append(ncvar)
+                ncfile.ncvars.append(ncvar)
 
-    return ncvars
+        ncfile.present = True
+        update_timeinfo(f, ncfile)
+    except FileNotFoundError:
+        logging.info('Unable to find file: %s', f)
+    except Exception as e:
+        logging.error('Error indexing %s: %s', f, e)
+
+    return ncfile
 
 class IndexingError(Exception): pass
 
-def index_experiment(experiment_dir, update=False, session=None):
+def index_experiment(experiment_dir, session=None, client=None, update=False):
     """Index all output files for a single experiment."""
 
     # find all netCDF files in the hierarchy below this directory
@@ -274,88 +288,59 @@ def index_experiment(experiment_dir, update=False, session=None):
     expt = NCExperiment(experiment=str(expt_path.name),
                         root_dir=str(expt_path.absolute()))
 
+    # make all files relative to the experiment path
+    files = [str(Path(f).relative_to(expt_path)) for f in files]
+
+    if update:
+        # prune file list to only new files
+        # first construct a query for the current experiment
+        q = (session
+             .query(NCFile.ncfile)
+             .filter(NCExperiment.experiment == expt.experiment)
+             .filter(NCExperiment.root_dir == expt.root_dir))
+
+        # we can't really leverage the database to do this query, so we'll
+        # just have to iterate over files and see if they're in the database
+        # already. ncfile is an indexed column, so it's not too bad
+        files = [f for f in files if not q.filter(NCFile.ncfile == f).count()]
+
     results = []
 
-    for f in files:
-        ncfile_name = str(Path(f).relative_to(expt_path))
-        if update:
-            q = (session
-                 .query(NCFile)
-                 .filter(NCExperiment.experiment == expt.experiment)
-                 .filter(NCExperiment.root_dir == expt.root_dir)
-                 .filter(NCFile.ncfile == ncfile_name))
+    # index in parallel or serial, depending on whether we have a client
+    if client is not None:
+        futures = client.map(index_file, files, experiment=expt)
+        results = client.gather(futures)
+    else:
+        results = [index_file(f, experiment=expt) for f in files]
 
-            if q.count():
-                continue
+    # update all variables to be unique
+    for ncfile in results:
+        for ncvar in ncfile.ncvars:
+            v = ncvar.variable
+            ncvar.variable = CFVariable.as_unique(session,
+                                                  v.name, v.long_name,
+                                                  v.standard_name, v.units)
 
-        # try to index this file, and mark it 'present' if indexing succeeds
-        ncfile = NCFile(index_time=datetime.now(),
-                        ncfile=ncfile_name,
-                        present=False,
-                        experiment=expt)
-        ncvars = []
-        try:
-            ncfile.ncvars = index_file(f)
-            ncfile.present = True
-            update_timeinfo(f, ncfile)
-        except FileNotFoundError:
-            logging.info('Unable to find file: %s', f)
-        except Exception as e:
-            logging.error('Error indexing %s: %s', f, e)
+    session.add_all(results)
+    return len(results)
 
-        results.append(ncfile)
+def build_index(directories, session, client=None, update=False):
+    """Index all netcdf files contained within experiment directories.
 
-    return results
-
-def build_index(directories, session, client=None, update=False, debug=False):
-    """Index all netcdf files contained within experiment directories. Requires a distributed client for processing,
-    and a session for the database that's been created with the create_session() function.
-
+    Requires a session for the database that's been created with the create_session() function.
+    If client is not None, use a distributed client for processing files in parallel.
     May scan for only new entries to add to database with the update flag.
 
     Returns the number of files that were indexed.
     """
 
-    if update and client is not None:
-        raise IndexingError('Cannot update database in parallel')
-
     if not isinstance(directories, list):
         directories = [directories]
 
-    i = 0
     indexed = 0
-    n = len(directories)
-    print('{}/{}'.format(i, n), end='', flush=True)
-    i += 1
+    for directory in directories:
+        indexed += index_experiment(directory, session, client, update)
 
-    def process_result(i, result):
-        if result is None: return 0
-
-        print('\r{}/{}'.format(i, n), end='', flush=True)
-
-        # update all variables to be unique
-        for ncfile in result:
-            for ncvar in ncfile.ncvars:
-                v = ncvar.variable
-                ncvar.variable = CFVariable.as_unique(session,
-                                                  v.name, v.long_name,
-                                                  v.standard_name, v.units)
-
-        session.add_all(result)
-        return len(result)
-
-    if client is not None:
-        # perform the indexing on the client that we've been provided
-        futures = client.map(index_experiment, directories)
-
-        for future, result in as_completed(futures, with_results=True):
-            indexed += process_result(i, result)
-
-    else:
-        # index in serial
-        for directory in directories:
-            indexed += process_result(i, index_experiment(directory, update=update, session=session))
-
+    # if everything went smoothly, commit these changes to the database
     session.commit()
-
     return indexed
