@@ -256,35 +256,41 @@ def index_file(f):
 
     return ncvars
 
-def index_run(run_dir):
-    """Index all output files for a single run (i.e. an outputNNN directory).
+class IndexingError(Exception): pass
 
-    Pass update=True to try to optimise by not touching files already in the
-    database (may run into sqlite concurrency errors)."""
+def index_experiment(experiment_dir, update=False, session=None):
+    """Index all output files for a single experiment."""
 
     # find all netCDF files in the hierarchy below this directory
     files = []
     try:
-        results = subprocess.check_output(['find', run_dir, '-name', '*.nc'])
+        results = subprocess.check_output(['find', experiment_dir, '-name', '*.nc'])
         results = [s for s in results.decode('utf-8').split()]
         files.extend(results)
     except Exception as e:
         logging.error('Error occurred while finding output files: %s', e)
 
-    # extract experiment and run from path
-    expt_path = Path(run_dir).parent
+    expt_path = Path(experiment_dir)
     expt = NCExperiment(experiment=str(expt_path.name),
                         root_dir=str(expt_path.absolute()))
-    m = re.search(r'\d+$', Path(run_dir).name)
-    if not m:
-        logging.warning('Unconventional run directory: %s', run_dir)
 
     results = []
 
     for f in files:
+        ncfile_name = str(Path(f).relative_to(expt_path))
+        if update:
+            q = (session
+                 .query(NCFile)
+                 .filter(NCExperiment.experiment == expt.experiment)
+                 .filter(NCExperiment.root_dir == expt.root_dir)
+                 .filter(NCFile.ncfile == ncfile_name))
+
+            if q.count():
+                continue
+
         # try to index this file, and mark it 'present' if indexing succeeds
         ncfile = NCFile(index_time=datetime.now(),
-                        ncfile=str(Path(f).relative_to(expt_path)),
+                        ncfile=ncfile_name,
                         present=False,
                         experiment=expt)
         ncvars = []
@@ -301,76 +307,31 @@ def index_run(run_dir):
 
     return results
 
-def build_index(directories, client, session, update=False, debug=False):
-    """Index all runs contained within a directory. Requires a distributed client for processing,
+def build_index(directories, session, client=None, update=False, debug=False):
+    """Index all netcdf files contained within experiment directories. Requires a distributed client for processing,
     and a session for the database that's been created with the create_session() function.
 
     May scan for only new entries to add to database with the update flag.
+
+    Returns the number of files that were indexed.
     """
 
-    # make the assumption that everything has been created with payu -- all output data is a
-    # child of an `output???' directory
-    runs = []
+    if update and client is not None:
+        raise IndexingError('Cannot update database in parallel')
+
     if not isinstance(directories, list):
         directories = [directories]
 
-    for directory in directories:
-        try:
-            dir_absolute = str(Path(directory).absolute())
-            results = subprocess.check_output(['find', dir_absolute, '-maxdepth', '3', '-type', 'd',
-                                               '-name', 'output???', '-prune'])
-            results = [s for s in results.decode('utf-8').split()]
-            runs.extend(results)
-        except Exception as e:
-            logging.error('Error occurred while finding output directories: %s', e)
-            return None
-
-    if update:
-        # prune the list of runs to only contain those we haven't already seen
-
-        # create an in-memory database that can be used across all threads
-        engine = create_engine('sqlite:///:memory:',
-                               connect_args={'check_same_thread': False},
-                               poolclass=StaticPool)
-
-        metadata = MetaData()
-        conn = engine.connect()
-
-        # create tables
-        ncfiles = Table('ncfiles', metadata,
-                        Column('ncfile', String, index=True))
-        cand = Table('candidates', metadata,
-                     Column('id', Integer, primary_key=True),
-                     Column('rundir', String),
-                     Column('rundir2', String))
-        metadata.create_all(engine)
-
-        # insert all files from the existing database
-        files = session.query(NCFile).all()
-        conn.execute(ncfiles.insert(), [{'ncfile': str(f.ncfile_path)} for f in files])
-
-        conn.execute(cand.insert(), [{'rundir': run, 'rundir2': run[:-1] + chr(ord(run[-1]) + 1)} for run in runs])
-        s = select([cand.c.rundir]).where(sql.not_(exists()
-                                                   .where(ncfiles.c.ncfile >= cand.c.rundir)
-                                                   .where(ncfiles.c.ncfile < cand.c.rundir2)))
-        r = conn.execute(s)
-
-        # prune the list of runs
-        runs = [run[0] for run in r.fetchall()]
-
-        conn.close()
-
-    # perform the indexing on the client that we've been provided
-    futures = client.map(index_run, runs)
     i = 0
-    n = len(runs)
+    indexed = 0
+    n = len(directories)
     print('{}/{}'.format(i, n), end='', flush=True)
+    i += 1
 
-    for future, result in as_completed(futures, with_results=True):
-        i += 1
+    def process_result(i, result):
+        if result is None: return 0
+
         print('\r{}/{}'.format(i, n), end='', flush=True)
-
-        if result is None: continue
 
         # update all variables to be unique
         for ncfile in result:
@@ -381,7 +342,20 @@ def build_index(directories, client, session, update=False, debug=False):
                                                   v.standard_name, v.units)
 
         session.add_all(result)
+        return len(result)
+
+    if client is not None:
+        # perform the indexing on the client that we've been provided
+        futures = client.map(index_experiment, directories)
+
+        for future, result in as_completed(futures, with_results=True):
+            indexed += process_result(i, result)
+
+    else:
+        # index in serial
+        for directory in directories:
+            indexed += process_result(i, index_experiment(directory, update=update, session=session))
 
     session.commit()
 
-    return i
+    return indexed

@@ -13,9 +13,9 @@ def session_db(tmpdir):
 
     s.close()
 
-def test_broken(client, session_db):
+def test_broken(session_db):
     session, db = session_db
-    database.build_index('test/data/indexing/broken_file', client, session)
+    database.build_index('test/data/indexing/broken_file', session)
 
     # make sure the database was created
     assert(db.check())
@@ -33,16 +33,20 @@ def test_broken(client, session_db):
 
 def test_update(client, session_db):
     session, db = session_db
-    database.build_index('test/data/indexing/broken_file', client, session)
+    database.build_index('test/data/indexing/broken_file', session)
     assert(db.check())
 
+    # make sure we can't update in parallel
+    with pytest.raises(database.IndexingError):
+        database.build_index('test/data/indexing/broken_file', session, client, update=True)
+
     # re-run the index, make sure we don't re-index anything
-    reindexed = database.build_index('test/data/indexing/broken_file', client, session, update=True)
+    reindexed = database.build_index('test/data/indexing/broken_file', session, update=True)
     assert(reindexed == 0)
 
-def test_single_broken(client, session_db):
+def test_single_broken(session_db):
     session, db = session_db
-    database.build_index('test/data/indexing/single_broken_file', client, session)
+    database.build_index('test/data/indexing/single_broken_file', session)
 
     # query ncfiles table -- should have two entries
     q = session.query(func.count(database.NCFile.id))
@@ -52,9 +56,9 @@ def test_single_broken(client, session_db):
     q = session.query(func.count(database.NCVar.id))
     assert(q.scalar() == 1)
 
-def test_longnames(client, session_db):
+def test_longnames(session_db):
     session, db = session_db
-    database.build_index('test/data/indexing/longnames', client, session)
+    database.build_index('test/data/indexing/longnames', session)
 
     # query ncvars table -- should have two entries
     q = session.query(func.count(database.NCVar.id))
@@ -65,3 +69,12 @@ def test_longnames(client, session_db):
     r = q.all()
     assert(len(r) == 1)
     assert(r[0].long_name == 'Test Variable')
+
+def test_distributed(client, session_db):
+    session, db = session_db
+    database.build_index('test/data/indexing/broken_file', session, client)
+
+    assert(db.check())
+    q = session.query(database.NCExperiment)
+    r = q.all()
+    assert(len(r) == 1)
