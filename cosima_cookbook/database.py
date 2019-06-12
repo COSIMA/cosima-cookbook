@@ -38,8 +38,6 @@ class NCFile(Base):
     present = Column(Boolean)
     #: The experiment to which the file belongs
     experiment = Column(String, index=True)
-    #: The run number to which the file belongs
-    run = Column(Integer)
     #: CF timeunits attribute
     timeunits = Column(String)
     #: CF calendar attribute
@@ -252,11 +250,8 @@ def index_run(run_dir):
 
     # extract experiment and run from path
     expt = Path(run_dir).parent.name
-    run = 0
     m = re.search(r'\d+$', Path(run_dir).name)
-    if m:
-        run = int(m.group())
-    else:
+    if not m:
         logging.warning('Unconventional run directory: %s', run_dir)
 
     results = []
