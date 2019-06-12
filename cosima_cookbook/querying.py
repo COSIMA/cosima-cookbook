@@ -40,7 +40,7 @@ def getvar(expt, variable, session, ncfile=None, n=None,
          .query(f, v)
          .join()
          .filter(v.varname == variable)
-         .filter(f.experiment == expt)
+         .filter(database.NCExperiment.experiment == expt)
          .filter(f.present)
          .order_by(f.time_start))
 

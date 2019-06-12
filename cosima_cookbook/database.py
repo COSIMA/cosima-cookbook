@@ -25,6 +25,23 @@ __DEFAULT_DB__ = '/g/data/hh5/tmp/cosima/database/access-om2.db'
 
 Base = declarative_base()
 
+class NCExperiment(Base):
+    __tablename__ = 'experiments'
+    # composite index since an experiment name may not be unique
+    __table_args__ = (Index('ix_experiments_experiment_rootdir', 'experiment', 'root_dir', unique=True),)
+
+    id = Column(Integer, primary_key=True)
+
+    #: Experiment name
+    experiment = Column(String)
+    #: Root directory containing 'output???' directories
+    root_dir = Column(String)
+    #: Human-readable experiment description
+    description = Column(String)
+
+    #: Files in this experiment
+    ncfiles = relationship('NCFile', back_populates='experiment')
+
 class NCFile(Base):
     __tablename__ = 'ncfiles'
 
@@ -37,7 +54,8 @@ class NCFile(Base):
     #: Is the file actually present on the filesystem?
     present = Column(Boolean)
     #: The experiment to which the file belongs
-    experiment = Column(String, index=True)
+    experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False, index=True)
+    experiment = relationship('NCExperiment', back_populates='ncfiles')
     #: CF timeunits attribute
     timeunits = Column(String)
     #: CF calendar attribute
@@ -249,7 +267,8 @@ def index_run(run_dir):
         logging.error('Error occurred while finding output files: %s', e)
 
     # extract experiment and run from path
-    expt = Path(run_dir).parent.name
+    expt = NCExperiment(experiment=str(Path(run_dir).parent.name),
+                        root_dir=str(Path(run_dir).parent.absolute()))
     m = re.search(r'\d+$', Path(run_dir).name)
     if not m:
         logging.warning('Unconventional run directory: %s', run_dir)
