@@ -38,7 +38,7 @@ def getvar(expt, variable, session, ncfile=None, n=None,
     f, v = database.NCFile, database.NCVar
     q = (session
          .query(f, v)
-         .join()
+         .join(f.ncvars).join(f.experiment)
          .filter(v.varname == variable)
          .filter(database.NCExperiment.experiment == expt)
          .filter(f.present)
@@ -64,7 +64,7 @@ def getvar(expt, variable, session, ncfile=None, n=None,
 
         for f in ncfiles_full:
             # check whether file exists
-            if os.path.isfile(f.NCFile.ncfile):
+            if f.NCFile.ncfile_path.exists():
                 ncfiles.append(f)
                 continue
 
@@ -96,7 +96,7 @@ def getvar(expt, variable, session, ncfile=None, n=None,
     # I found that it was important to "preprocess" to select only
     # the relevant variable, because chunking doesn't apply to
     # all variables present in the file
-    ds = xr.open_mfdataset((f.NCFile.ncfile for f in ncfiles), parallel=True,
+    ds = xr.open_mfdataset((str(f.NCFile.ncfile_path) for f in ncfiles), parallel=True,
                            chunks=file_chunks,
                            decode_times=False,
                            preprocess=lambda d: d[variable].to_dataset() if variable not in d.coords else d)

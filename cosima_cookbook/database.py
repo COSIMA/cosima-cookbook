@@ -33,9 +33,9 @@ class NCExperiment(Base):
     id = Column(Integer, primary_key=True)
 
     #: Experiment name
-    experiment = Column(String)
+    experiment = Column(String, nullable=False)
     #: Root directory containing 'output???' directories
-    root_dir = Column(String)
+    root_dir = Column(String, nullable=False)
     #: Human-readable experiment description
     description = Column(String)
 
@@ -44,13 +44,14 @@ class NCExperiment(Base):
 
 class NCFile(Base):
     __tablename__ = 'ncfiles'
+    __table_args__ = (Index('ix_ncfiles_experiment_ncfile', 'experiment_id', 'ncfile', unique=True),)
 
     id = Column(Integer, primary_key=True)
 
     #: When this file was indexed
     index_time = Column(DateTime)
     #: The file name
-    ncfile = Column(String, index=True, unique=True)
+    ncfile = Column(String, index=True)
     #: Is the file actually present on the filesystem?
     present = Column(Boolean)
     #: The experiment to which the file belongs
@@ -69,6 +70,10 @@ class NCFile(Base):
 
     #: variables in this file
     ncvars = relationship('NCVar', back_populates='ncfile')
+
+    @property
+    def ncfile_path(self):
+        return Path(self.experiment.root_dir) / Path(self.ncfile)
 
 class CFVariable(UniqueMixin, Base):
     __tablename__ = 'variables'
@@ -267,8 +272,9 @@ def index_run(run_dir):
         logging.error('Error occurred while finding output files: %s', e)
 
     # extract experiment and run from path
-    expt = NCExperiment(experiment=str(Path(run_dir).parent.name),
-                        root_dir=str(Path(run_dir).parent.absolute()))
+    expt_path = Path(run_dir).parent
+    expt = NCExperiment(experiment=str(expt_path.name),
+                        root_dir=str(expt_path.absolute()))
     m = re.search(r'\d+$', Path(run_dir).name)
     if not m:
         logging.warning('Unconventional run directory: %s', run_dir)
@@ -278,7 +284,7 @@ def index_run(run_dir):
     for f in files:
         # try to index this file, and mark it 'present' if indexing succeeds
         ncfile = NCFile(index_time=datetime.now(),
-                        ncfile=f,
+                        ncfile=str(Path(f).relative_to(expt_path)),
                         present=False,
                         experiment=expt)
         ncvars = []
@@ -310,7 +316,8 @@ def build_index(directories, client, session, update=False, debug=False):
 
     for directory in directories:
         try:
-            results = subprocess.check_output(['find', directory, '-maxdepth', '3', '-type', 'd',
+            dir_absolute = str(Path(directory).absolute())
+            results = subprocess.check_output(['find', dir_absolute, '-maxdepth', '3', '-type', 'd',
                                                '-name', 'output???', '-prune'])
             results = [s for s in results.decode('utf-8').split()]
             runs.extend(results)
@@ -339,8 +346,8 @@ def build_index(directories, client, session, update=False, debug=False):
         metadata.create_all(engine)
 
         # insert all files from the existing database
-        files = session.query(NCFile.ncfile).all()
-        conn.execute(ncfiles.insert(), [{'ncfile': f[0]} for f in files])
+        files = session.query(NCFile).all()
+        conn.execute(ncfiles.insert(), [{'ncfile': str(f.ncfile_path)} for f in files])
 
         conn.execute(cand.insert(), [{'rundir': run, 'rundir2': run[:-1] + chr(ord(run[-1]) + 1)} for run in runs])
         s = select([cand.c.rundir]).where(sql.not_(exists()
