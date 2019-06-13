@@ -104,7 +104,6 @@ def getvar(expt, variable, session, ncfile=None, n=None,
     # handle time offsetting and decoding
     # TODO: use helper function to find the time variable name
     if 'time' in (c.lower() for c in ds.coords) and decode_times:
-        calendar = ncfiles[0].NCFile.calendar
         tvar = 'time'
         # if dataset uses capitalised variant
         if 'Time' in ds.coords:
@@ -112,21 +111,20 @@ def getvar(expt, variable, session, ncfile=None, n=None,
 
         # first rebase times onto new units if required
         if time_units is not None:
-            dates = xr.conventions.times.decode_cf_datetime(ds[tvar], ncfiles[0].NCFile.timeunits, calendar)
-            times = xr.conventions.times.encode_cf_datetime(dates, time_units, calendar)
+            dates = xr.conventions.times.decode_cf_datetime(ds[tvar], ds[tvar].units, ds[tvar].calendar)
+            times = xr.conventions.times.encode_cf_datetime(dates, time_units, ds[tvar].calendar)
             ds[tvar] = times[0]
         else:
-            time_units = ncfiles[0].NCFile.timeunits
+            time_units = ds[tvar].units
 
         # time offsetting - mimic one aspect of old behaviour by adding
         # a fixed number of days
         if offset is not None:
             ds[tvar] += offset
 
-
         # decode time - we assume that we're getting units and a calendar from a file
         try:
-            decoded_time = xr.conventions.times.decode_cf_datetime(ds[tvar], time_units, calendar)
+            decoded_time = xr.conventions.times.decode_cf_datetime(ds[tvar], time_units, ds[tvar].calendar)
             ds[tvar] = decoded_time
         except Exception as e:
             logging.error('Unable to decode time: %s', e)

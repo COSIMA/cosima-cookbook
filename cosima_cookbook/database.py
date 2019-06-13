@@ -57,10 +57,6 @@ class NCFile(Base):
     #: The experiment to which the file belongs
     experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False, index=True)
     experiment = relationship('NCExperiment', back_populates='ncfiles')
-    #: CF timeunits attribute
-    timeunits = Column(String)
-    #: CF calendar attribute
-    calendar = Column(String)
     #: Start time of data in the file
     time_start = Column(String)
     #: End time of data in the file
@@ -157,8 +153,7 @@ def create_session(db=None, debug=False):
     return Session()
 
 def update_timeinfo(f, ncfile):
-    """Extract time information from a single netCDF file: units, calendar,
-    start time, end time, and frequency."""
+    """Extract time information from a single netCDF file: start time, end time, and frequency."""
 
     with netCDF4.Dataset(f, 'r') as ds:
         # we assume the record dimension corresponds to time
@@ -172,12 +167,7 @@ def update_timeinfo(f, ncfile):
         if len(time_var) == 0:
             return None
 
-        if hasattr(time_var, 'units'):
-            ncfile.timeunits = time_var.units
-        if hasattr(time_var, 'calendar'):
-            ncfile.calendar = time_var.calendar
-
-        if ncfile.timeunits is None or ncfile.calendar is None:
+        if not hasattr(time_var, 'units') or not hasattr(time_var, 'calendar'):
             # non CF-compliant file -- don't process further
             return
 
