@@ -24,3 +24,7 @@ def test_valid_query(session):
 def test_invalid_query(session):
     with pytest.raises(cc.querying.VariableNotFoundError):
         cc.querying.getvar('querying', 'notfound', session, decode_times=False)
+
+def test_query_times(session):
+    with cc.querying.getvar('querying', 'ty_trans', session) as v:
+        assert(isinstance(v, xr.DataArray))
