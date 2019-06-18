@@ -1,0 +1,16 @@
+contact: The ACCESS Oracle
+email: oracle@example.com
+created: 2018-01-01
+description: >-
+  Attempted spinup, using salt flux fix
+  https://arccss.slack.com/archives/C6PP0GU9Y/p1515460656000124 and
+  https://github.com/mom-ocean/MOM5/pull/208/commits/9f4ee6f8b72b76c96a25bf26f3f6cdf773b424d2
+  from the start. Used mushy ice from July year 1 onwards to avoid
+  vertical thermo error in cice
+  https://arccss.slack.com/archives/C6PP0GU9Y/p1515842016000079
+notes: >-
+  Stripy salt restoring:
+  https://github.com/OceansAus/access-om2/issues/74 tripole seam bug:
+  https://github.com/OceansAus/access-om2/issues/86 requires dt=300s
+  in May, dt=240s in Aug to maintain CFL in CICE near tripoles (storms
+  in those months in 8485RYF); all other months work with dt=400s

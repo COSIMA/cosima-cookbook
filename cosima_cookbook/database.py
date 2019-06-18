@@ -9,8 +9,9 @@ from tqdm import tqdm
 import cftime
 from dask.distributed import as_completed
 import netCDF4
+import yaml
 from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index
 from sqlalchemy import MetaData, Table, select, sql, exists
 
 from sqlalchemy.orm import relationship, sessionmaker
@@ -37,8 +38,16 @@ class NCExperiment(Base):
     experiment = Column(String, nullable=False)
     #: Root directory containing 'output???' directories
     root_dir = Column(String, nullable=False)
+
+    # Other experiment metadata (populated from metadata.yaml)
+    metadata_keys = ['contact', 'email', 'created', 'description', 'notes']
+    contact = Column(String)
+    email = Column(String)
+    created = Column(DateTime)
     #: Human-readable experiment description
-    description = Column(String)
+    description = Column(Text)
+    #: Any other notes
+    notes = Column(Text)
 
     #: Files in this experiment
     ncfiles = relationship('NCFile', back_populates='experiment')
@@ -261,6 +270,22 @@ def index_file(ncfile_name, experiment):
 
     return ncfile
 
+def update_metadata(experiment):
+    """Look for a metadata.yaml for a given experiment, and populate
+    the row with any data found."""
+
+    metadata_file = Path(experiment.root_dir) / 'metadata.yaml'
+    if not metadata_file.exists():
+        return
+
+    try:
+        metadata = yaml.safe_load(metadata_file.open())
+        for k in NCExperiment.metadata_keys:
+            if k in metadata:
+                setattr(experiment, k, metadata[k])
+    except yaml.YAMLError as e:
+        logging.warning('Error reading metadata file %s: %s', metadata_file, e)
+
 class IndexingError(Exception): pass
 
 def index_experiment(experiment_dir, session=None, client=None, update=False):
@@ -280,6 +305,8 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
                         root_dir=str(expt_path.absolute()))
 
     print('Indexing experiment: {}'.format(expt_path.name))
+
+    update_metadata(expt)
 
     # make all files relative to the experiment path
     files = [str(Path(f).relative_to(expt_path)) for f in files]
