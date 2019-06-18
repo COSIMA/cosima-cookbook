@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+from tqdm import tqdm
 
 import cftime
 from dask.distributed import as_completed
@@ -278,6 +279,8 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
     expt = NCExperiment(experiment=str(expt_path.name),
                         root_dir=str(expt_path.absolute()))
 
+    print('Indexing experiment: {}'.format(expt_path.name))
+
     # make all files relative to the experiment path
     files = [str(Path(f).relative_to(expt_path)) for f in files]
 
@@ -301,7 +304,7 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
         futures = client.map(index_file, files, experiment=expt)
         results = client.gather(futures)
     else:
-        results = [index_file(f, experiment=expt) for f in files]
+        results = [index_file(f, experiment=expt) for f in tqdm(files)]
 
     # update all variables to be unique
     for ncfile in results:
