@@ -69,6 +69,31 @@ def test_longnames(session_db):
     assert(len(r) == 1)
     assert(r[0].long_name == 'Test Variable')
 
+def test_multiple_experiments(session_db):
+    session, db = session_db
+    # index multiple experiments, which have duplicate data and therefore push
+    # against some unique constraints
+    database.build_index(['test/data/indexing/multiple/experiment_a', 'test/data/indexing/multiple/experiment_b'], session)
+
+    q = session.query(database.NCExperiment)
+    assert(q.count() == 2)
+
+def test_same_expt_name(session_db):
+    session, db = session_db
+    # index multiple experiments with different root directories, but the same
+    # final path component (experiment name)
+    database.build_index(['test/data/indexing/multiple/experiment_a', 'test/data/indexing/alternate/experiment_a'], session)
+
+    # the indexing shouldn't fail, and we should have two distinct experiments
+    # with the same name
+
+    q = (session
+         .query(database.NCExperiment)
+         .filter(database.NCExperiment.experiment == 'experiment_a'))
+    r = q.all()
+    assert(len(r) == 2)
+    assert(r[0].root_dir != r[1].root_dir)
+
 def test_metadata(session_db):
     session, db = session_db
     database.build_index('test/data/indexing/metadata', session)
