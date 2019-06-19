@@ -129,7 +129,7 @@ class NCVar(Base):
     ncfile = relationship('NCFile', back_populates='ncvars')
     #: The generic form of this variable (name and attributes)
     variable_id = Column(Integer, ForeignKey('variables.id'), nullable=False)
-    variable = relationship('CFVariable', back_populates='ncvars', uselist=False)
+    variable = relationship('CFVariable', back_populates='ncvars', uselist=False, cascade="merge")
     #: Proxy for the variable name
     varname = association_proxy('variable', 'name')
     #: Serialised tuple of variable dimensions
