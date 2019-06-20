@@ -5,19 +5,26 @@ import cosima_cookbook as cc
 from dask.distributed import Client
 
 @pytest.fixture(scope='module')
-def database(client, tmpdir_factory):
+def session(tmpdir_factory):
     # create dask client to index
     # index test directory into temp database
     d = tmpdir_factory.mktemp('database')
     db = d.join('test.db')
-    cc.database.build_index('test/data/querying', client, str(db))
+    session = cc.database.create_session(str(db))
 
-    return str(db)
+    # build index for entire module
+    cc.database.build_index('test/data/querying', session)
 
-def test_valid_query(database):
-    with cc.querying.getvar('querying', 'temp', database, decode_times=False) as v:
+    return session
+
+def test_valid_query(session):
+    with cc.querying.getvar('querying', 'temp', session, decode_times=False) as v:
         assert(isinstance(v, xr.DataArray))
     
-def test_invalid_query(database):
+def test_invalid_query(session):
     with pytest.raises(cc.querying.VariableNotFoundError):
-        cc.querying.getvar('querying', 'notfound', database, decode_times=False)
+        cc.querying.getvar('querying', 'notfound', session, decode_times=False)
+
+def test_query_times(session):
+    with cc.querying.getvar('querying', 'ty_trans', session) as v:
+        assert(isinstance(v, xr.DataArray))

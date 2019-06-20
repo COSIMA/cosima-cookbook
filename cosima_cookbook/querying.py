@@ -1,7 +1,6 @@
 import logging
 import os.path
 
-from sqlalchemy import select, bindparam
 import xarray as xr
 
 from . import database
@@ -9,7 +8,7 @@ from . import database
 class VariableNotFoundError(Exception):
     pass
 
-def getvar(expt, variable, db, ncfile=None, n=None,
+def getvar(expt, variable, session, ncfile=None, n=None,
            start_time=None, end_time=None, chunks=None,
            time_units=None, offset=None, decode_times=True,
            check_present=False):
@@ -18,9 +17,7 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     
     expt - text string indicating the name of the experiment
     variable - text string indicating the name of the variable to load
-    db - text string indicating the file path of the database. The default 
-        database includes many available experiments, and is usually kept
-        up to data
+    session - a database session created by cc.database.create_session()
 
     ncfile - If disambiguation based on filename is required, pass the ncfile
     argument.
@@ -38,46 +35,43 @@ def getvar(expt, variable, db, ncfile=None, n=None,
         loading.
     """
 
-    conn, tables = database.create_database(db)
-
-    # find candidate vars -- base query
-    s = select([tables['ncfiles'].c.ncfile,
-                tables['ncvars'].c.dimensions,
-                tables['ncvars'].c.chunking,
-                tables['ncfiles'].c.timeunits,
-                tables['ncfiles'].c.calendar,
-                tables['ncfiles'].c.id]) \
-            .select_from(tables['ncvars'].join(tables['ncfiles'])) \
-            .where(tables['ncvars'].c.variable == variable) \
-            .where(tables['ncfiles'].c.experiment == expt) \
-            .where(tables['ncfiles'].c.present) \
-            .order_by(tables['ncfiles'].c.time_start)
+    f, v = database.NCFile, database.NCVar
+    q = (session
+         .query(f, v)
+         .join(f.ncvars).join(f.experiment)
+         .filter(v.varname == variable)
+         .filter(database.NCExperiment.experiment == expt)
+         .filter(f.present)
+         .order_by(f.time_start))
 
     # further constraints
     if ncfile is not None:
-        s = s.where(tables['ncfiles'].c.ncfile.like('%' + ncfile))
+        q = q.filter(f.ncfile.like('%' + ncfile))
     if start_time is not None:
-        s = s.where(tables['ncfiles'].c.time_end >= start_time)
+        q = q.filter(f.time_end >= start_time)
     if end_time is not None:
-        s = s.where(tables['ncfiles'].c.time_start <= end_time)
+        q = q.filter(f.time_start <= end_time)
 
-    ncfiles = conn.execute(s).fetchall()
+    ncfiles = q.all()
 
     # ensure we actually got a result
     if not ncfiles:
         raise VariableNotFoundError("No files were found containing {} in the '{}' experiment".format(variable, expt))
 
     if check_present:
-        u = tables['ncfiles'].update().where(tables['ncfiles'].c.id == bindparam('ncfile_id')).values(present=False)
+        ncfiles_full = ncfiles
+        ncfiles = []
 
-        for f in ncfiles.copy():
+        for f in ncfiles_full:
             # check whether file exists
-            if os.path.isfile(f[0]):
+            if f.NCFile.ncfile_path.exists():
+                ncfiles.append(f)
                 continue
 
             # doesn't exist, update in database
-            conn.execute(u, ncfile_id=f[-1])
-            ncfiles.remove(f)
+            session.delete(f.NCFile)
+
+        session.commit()
 
     # restrict number of files directly
     if n is not None:
@@ -90,7 +84,7 @@ def getvar(expt, variable, db, ncfile=None, n=None,
 
     # chunking -- use first row/file
     try:
-        file_chunks = dict(zip(eval(ncfiles[0][1]), eval(ncfiles[0][2])))
+        file_chunks = dict(zip(eval(ncfiles[0].NCVar.dimensions), eval(ncfiles[0].NCVar.chunking)))
         # apply caller overrides
         if chunks is not None:
             file_chunks.update(chunks)
@@ -102,7 +96,7 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     # I found that it was important to "preprocess" to select only
     # the relevant variable, because chunking doesn't apply to
     # all variables present in the file
-    ds = xr.open_mfdataset((f[0] for f in ncfiles), parallel=True,
+    ds = xr.open_mfdataset((str(f.NCFile.ncfile_path) for f in ncfiles), parallel=True,
                            chunks=file_chunks,
                            decode_times=False,
                            preprocess=lambda d: d[variable].to_dataset() if variable not in d.coords else d)
@@ -110,7 +104,6 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     # handle time offsetting and decoding
     # TODO: use helper function to find the time variable name
     if 'time' in (c.lower() for c in ds.coords) and decode_times:
-        calendar = ncfiles[0][4]
         tvar = 'time'
         # if dataset uses capitalised variant
         if 'Time' in ds.coords:
@@ -118,21 +111,20 @@ def getvar(expt, variable, db, ncfile=None, n=None,
 
         # first rebase times onto new units if required
         if time_units is not None:
-            dates = xr.conventions.times.decode_cf_datetime(ds[tvar], ncfiles[0][3], calendar)
-            times = xr.conventions.times.encode_cf_datetime(dates, time_units, calendar)
+            dates = xr.conventions.times.decode_cf_datetime(ds[tvar], ds[tvar].units, ds[tvar].calendar)
+            times = xr.conventions.times.encode_cf_datetime(dates, time_units, ds[tvar].calendar)
             ds[tvar] = times[0]
         else:
-            time_units = ncfiles[0][3]
+            time_units = ds[tvar].units
 
         # time offsetting - mimic one aspect of old behaviour by adding
         # a fixed number of days
         if offset is not None:
             ds[tvar] += offset
 
-
         # decode time - we assume that we're getting units and a calendar from a file
         try:
-            decoded_time = xr.conventions.times.decode_cf_datetime(ds[tvar], time_units, calendar)
+            decoded_time = xr.conventions.times.decode_cf_datetime(ds[tvar], time_units, ds[tvar].calendar)
             ds[tvar] = decoded_time
         except Exception as e:
             logging.error('Unable to decode time: %s', e)
