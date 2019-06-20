@@ -34,7 +34,7 @@ def test_broken(session_db):
     q = session.query(func.count(database.NCVar.id))
     assert(q.scalar() == 0)
 
-def test_update(client, session_db):
+def test_update_nonew(session_db):
     session, db = session_db
     database.build_index('test/data/indexing/broken_file', session)
     assert(db.check())
@@ -42,6 +42,26 @@ def test_update(client, session_db):
     # re-run the index, make sure we don't re-index anything
     reindexed = database.build_index('test/data/indexing/broken_file', session, update=True)
     assert(reindexed == 0)
+
+def test_reindex_noupdate(session_db):
+    session, db = session_db
+    database.build_index('test/data/indexing/broken_file', session)
+    assert(db.check())
+
+    # re-run the index, make sure we don't re-index anything
+    reindexed = database.build_index('test/data/indexing/broken_file', session)
+    assert(reindexed == 0)
+
+def test_update_newfile(session_db, tmpdir):
+    session, db = session_db
+    shutil.copy('test/data/indexing/longnames/output000/test1.nc',
+                str(tmpdir / 'test1.nc'))
+    database.build_index(str(tmpdir), session)
+
+    # add another file
+    shutil.copy('test/data/indexing/longnames/output000/test2.nc',
+                str(tmpdir / 'test2.nc'))
+    database.build_index(str(tmpdir), session, update=True)
 
 def test_single_broken(session_db):
     session, db = session_db

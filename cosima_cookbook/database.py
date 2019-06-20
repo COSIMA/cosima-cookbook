@@ -304,6 +304,20 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
     expt = NCExperiment(experiment=str(expt_path.name),
                         root_dir=str(expt_path.absolute()))
 
+    # look for this experiment in the database
+    q = (session
+         .query(NCExperiment)
+         .filter(NCExperiment.experiment == expt.experiment)
+         .filter(NCExperiment.root_dir == expt.root_dir))
+    r = q.one_or_none()
+    if r is not None:
+        if update:
+            expt = r
+        else:
+            print('Not re-indexing experiment: {}\nPass `update=True` to build_index()'
+                  .format(expt_path.name))
+            return 0
+
     print('Indexing experiment: {}'.format(expt_path.name))
 
     update_metadata(expt)
