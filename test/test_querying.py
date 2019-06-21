@@ -28,3 +28,34 @@ def test_invalid_query(session):
 def test_query_times(session):
     with cc.querying.getvar('querying', 'ty_trans', session) as v:
         assert(isinstance(v, xr.DataArray))
+
+def test_chunk_parsing_chunked(session):
+    var = (session
+           .query(cc.database.NCVar)
+           .filter(cc.database.NCVar.varname == 'salt')
+           .first())
+
+    chunk_dict = {'time': 1,
+                  'st_ocean': 15,
+                  'yt_ocean': 216,
+                  'xt_ocean': 288,}
+
+    assert(cc.querying._parse_chunks(var) == chunk_dict)
+
+def test_chunk_parsing_contiguous(session):
+    var = (session
+           .query(cc.database.NCVar)
+           .filter(cc.database.NCVar.varname == 'potrho')
+           .first())
+
+    assert(var.chunking == 'contiguous')
+    assert(cc.querying._parse_chunks(var) is None)
+
+def test_chunk_parsing_unchunked(session):
+    var = (session
+           .query(cc.database.NCVar)
+           .filter(cc.database.NCVar.varname == 'hi_m')
+           .first())
+
+    assert(var.chunking == 'None')
+    assert(cc.querying._parse_chunks(var) is None)

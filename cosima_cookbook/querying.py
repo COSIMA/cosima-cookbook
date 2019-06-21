@@ -80,17 +80,11 @@ def getvar(expt, variable, session, ncfile=None, n=None,
         else:
             ncfiles = ncfiles[n:]
 
-    file_chunks = None
-
-    # chunking -- use first row/file
-    try:
-        file_chunks = dict(zip(eval(ncfiles[0].NCVar.dimensions), eval(ncfiles[0].NCVar.chunking)))
-        # apply caller overrides
-        if chunks is not None:
-            file_chunks.update(chunks)
-    except NameError:
-        # chunking could be 'contiguous', which doesn't evaluate
-        pass
+    # chunking -- use first row/file and assume it's the same across the whole dataset
+    file_chunks = _parse_chunks(ncfiles[0].NCVar)
+    # apply caller overrides
+    if chunks is not None:
+        file_chunks.update(chunks)
 
     # the "dreaded" open_mfdata can actually be quite efficient
     # I found that it was important to "preprocess" to select only
@@ -130,3 +124,18 @@ def getvar(expt, variable, session, ncfile=None, n=None,
             logging.error('Unable to decode time: %s', e)
 
     return ds[variable]
+
+def _parse_chunks(ncvar):
+    """Parse an NCVar, returning a dictionary mapping dimensions to chunking along that dimension."""
+
+    try:
+        # this should give either a list, or 'None' (other values will raise an exception)
+        var_chunks = eval(ncvar.chunking)
+        if var_chunks is not None:
+            return dict(zip(eval(ncvar.dimensions), var_chunks))
+
+        return None
+
+    except NameError:
+        # chunking could be 'contiguous', which doesn't evaluate
+        return None
