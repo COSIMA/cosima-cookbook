@@ -14,24 +14,25 @@ def getvar(expt, variable, session, ncfile=None, n=None,
            check_present=False):
     """For a given experiment, return an xarray DataArray containing the
     specified variable.
-    
+
     expt - text string indicating the name of the experiment
     variable - text string indicating the name of the variable to load
     session - a database session created by cc.database.create_session()
 
     ncfile - If disambiguation based on filename is required, pass the ncfile
     argument.
-    n - A subset of output data can be obtained by restricting the number of 
-        netcdf files to load (use a negative value of n to get the last n 
-        files, or a positive n to get the first n files).
-    start_time - Only load data after this date. Specify the date as a text string
-        (e.g. '1900-1-1')
-    start_time - Only load data before this date. Specify the date as a text string
-        (e.g. '1900-1-1')
+    n - A subset of output data can be obtained by restricting the number of
+        netcdf files to load (use a negative value of n to get the last n
+        files, or a positive n to get the first n files; n=0 or None gets all
+        files).
+    start_time - Only load data on or after this date. Specify the date as a
+        text string (e.g. '1900-1-1').
+    end_time - Only load data on or before this date. Specify the date as a
+        text string (e.g. '1900-1-1').
     chunks - Override any chunking by passing a chunks dictionary.
     offset - A time offset (in an integer number of days) can also be applied.
     decode_times - Time decoding can be disabled by passing decode_times=False
-    check_present - indicates whether to check the presence of the file before 
+    check_present - indicates whether to check the presence of the file before
         loading.
     """
 
