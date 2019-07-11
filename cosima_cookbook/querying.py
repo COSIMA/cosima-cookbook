@@ -95,13 +95,15 @@ def getvar(expt, variable, session, ncfile=None, n=None,
                            decode_times=False,
                            preprocess=lambda d: d[variable].to_dataset() if variable not in d.coords else d)
 
+    # identify time coordinate name (if any)
+    try:
+        tvar = [i for i in ds.coords if i.lower() == 'time'][0]  # assumes either 1 or 0 coords named 'time' (case-insensitive)
+    except IndexError:
+        tvar = None
+
     # handle time offsetting and decoding
     # TODO: use helper function to find the time variable name
-    if 'time' in (c.lower() for c in ds.coords) and decode_times:
-        tvar = 'time'
-        # if dataset uses capitalised variant
-        if 'Time' in ds.coords:
-            tvar = 'Time'
+    if tvar and decode_times:
 
         # first rebase times onto new units if required
         if time_units is not None:
