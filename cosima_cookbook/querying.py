@@ -125,7 +125,12 @@ def getvar(expt, variable, session, ncfile=None, n=None,
         except Exception as e:
             logging.error('Unable to decode time: %s', e)
 
-    return ds[variable]
+    if tvar:
+        result = eval('ds[variable].sel('+tvar+'=slice(start_time, end_time))')
+    else:
+        result = ds[variable]
+
+    return result
 
 def _parse_chunks(ncvar):
     """Parse an NCVar, returning a dictionary mapping dimensions to chunking along that dimension."""
