@@ -127,7 +127,7 @@ def getvar(expt, variable, session, ncfile=None, n=None,
             logging.error('Unable to decode time: %s', e)
 
     if tvar:
-        result = eval('ds[variable].sel('+tvar+'=slice(start_time, end_time))')
+        result = ds[variable].sel(**{tvar: slice(start_time, end_time)})
     else:
         result = ds[variable]
 
