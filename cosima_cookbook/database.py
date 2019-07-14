@@ -330,6 +330,7 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
         # first construct a query for the current experiment
         q = (session
              .query(NCFile.ncfile)
+             .join(NCExperiment)
              .filter(NCExperiment.experiment == expt.experiment)
              .filter(NCExperiment.root_dir == expt.root_dir))
 
