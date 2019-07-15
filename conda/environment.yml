@@ -1,0 +1,17 @@
+name: ncimonitor
+
+channels:
+    - coecms
+    - conda-forge
+    - defaults
+
+dependencies:
+    - python
+    - numpy
+    - dask
+    - distributed
+    - xarray
+    - netcdf4
+    - joblib
+    - tqdm
+
