@@ -25,6 +25,7 @@ requirements:
         - netcdf4
         - joblib
         - tqdm
+        - sqlalchemy
 
 about:
     home: http://cosima-cookbook.readthedocs.io
