@@ -8,6 +8,19 @@ from . import database
 class VariableNotFoundError(Exception):
     pass
 
+def get_experiments(session):
+    """
+    Returns list of all experiments
+    """
+    Expt = database.NCExperiment
+
+    rows = session.query(Expt.experiment).all()
+
+    experiments = [row[0] for row in rows]
+
+    return experiments
+
+
 def getvar(expt, variable, session, ncfile=None, n=None,
            start_time=None, end_time=None, chunks=None,
            time_units=None, offset=None, decode_times=True,
