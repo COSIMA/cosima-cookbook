@@ -170,6 +170,16 @@ def test_broken_metadata(session_db):
 
     assert(indexed == 1)
 
+def test_time_dimension(session_db):
+    session, db = session_db
+    database.build_index('test/data/indexing/time', session)
+
+    q = session.query(database.NCFile.time_start, database.NCFile.time_end)
+    assert(q.count() == 4) # should pick up 4 files
+
+    q = q.filter((database.NCFile.time_start is None) | (database.NCFile.time_end is None))
+    assert(q.count() == 0) # but all of them should have times populated
+
 def test_distributed(client, session_db):
     session, db = session_db
     database.build_index('test/data/indexing/broken_file', session, client)
