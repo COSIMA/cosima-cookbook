@@ -379,3 +379,17 @@ def build_index(directories, session, client=None, update=False):
     # if everything went smoothly, commit these changes to the database
     session.commit()
     return indexed
+
+def delete_missing(session, ncfiles):
+    """Given a database session and a list of NCFile objects,
+    ensure the file backing each NCFile exists, else delete
+    it from the database.
+    """
+
+    for f in ncfiles:
+        # check whether file exists
+        if not f.NCFile.ncfile_path.exists():
+            # doesn't exist, update in database
+            session.delete(f.NCFile)
+
+    session.commit()
