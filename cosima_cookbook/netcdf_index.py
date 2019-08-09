@@ -4,9 +4,7 @@ Common tools for accessing NetCDF4 variables
 
 print('netcdf_index loaded.')
 
-__all__ = ['build_index', 'get_nc_variable',
-           'get_experiments', 'get_configurations',
-           'get_variables', 'get_ncfiles']
+__all__ = ['build_index', ]
 
 import netCDF4
 import dataset
@@ -239,64 +237,6 @@ def build_index(use_bag=False, careful=False, expt_dir_list=None):
     print('Indexing complete.')
 
     return True
-
-
-def get_configurations():
-    """
-    Returns list of all configurations
-    """
-    db = dataset.connect(database_url)
-
-    rows = db.query('SELECT DISTINCT configuration FROM ncfiles')
-    configurations = [row['configuration'] for row in rows]
-
-    return configurations
-
-
-def get_experiments(configuration):
-    """
-    Returns list of all experiments for the given configuration
-    """
-    db = dataset.connect(database_url)
-
-    rows = db.query('SELECT DISTINCT experiment FROM ncfiles '
-                'WHERE configuration = "{configuration}" ORDER BY experiment'.format(configuration=configuration), )
-    expts = [row['experiment'] for row in rows]
-
-    return expts
-
-def get_ncfiles(expt):
-    """
-    Returns list of ncfiles for the given experiment
-    """
-    with dataset.connect(database_url) as db:
-        rows = db.query('SELECT DISTINCT basename_pattern '
-                        'FROM ncfiles '
-                        f'WHERE experiment = "{expt}"')
-        ncfiles = [row['basename_pattern'] for row in rows]
-
-    return ncfiles
-
-
-def get_variables(expt, ncfile):
-    """
-    Returns list of variables available in given experiment
-    and ncfile basename pattern
-
-    ncfile can use glob syntax http://www.sqlitetutorial.net/sqlite-glob/
-    and regular expressions also work in some limited cases.
-    """
-
-    with dataset.connect(database_url) as db:
-        rows = db.query('SELECT DISTINCT variable '
-                        'FROM ncfiles '
-                        f'WHERE experiment = "{expt}" '
-                        f'AND (basename_pattern = "{ncfile}" '
-                        f'OR basename GLOB "{ncfile}")'
-                        )
-        variables = [row['variable'] for row in rows]
-
-    return variables
 
 def decode_time(dataset, time_units, offset):
     """

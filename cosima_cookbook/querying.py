@@ -1,25 +1,72 @@
 import logging
 import os.path
+import pandas as pd
+from sqlalchemy import func, distinct
 
 import xarray as xr
 
 from . import database
+
+from .database import NCExperiment, NCFile, CFVariable, NCVar
 
 class VariableNotFoundError(Exception):
     pass
 
 def get_experiments(session):
     """
-    Returns list of all experiments
+    Returns a dataframe all experiments and number of netCDF4 files
     """
-    Expt = database.NCExperiment
 
-    rows = session.query(Expt.experiment).all()
+    q = session.query(NCExperiment.experiment,
+              func.count(NCFile.experiment_id).label('ncfiles'))\
+            .group_by(NCFile.experiment_id).join(NCExperiment)
 
-    experiments = [row[0] for row in rows]
+    return pd.DataFrame(q)
 
-    return experiments
+def get_ncfiles(session, experiment):
+    """
+    Returns a dataframe of all netcdf files for a given experiment
+    """
 
+    q = session.query(NCFile.ncfile, NCFile.index_time).join(NCExperiment)\
+        .filter(NCExperiment.experiment==experiment)
+
+    return pd.DataFrame(q)
+
+def get_variables(session, experiment, frequency=None):
+    """
+    Returns DataFrame of variables for a given experiment
+    """
+
+    q = session.query(CFVariable.name, NCFile.frequency,
+                  NCFile.ncfile,
+                  func.count(NCFile.ncfile).label('# ncfiles'),
+                  func.min(NCFile.time_start).label('time_start'),
+                  func.max(NCFile.time_end).label('time_end'))\
+                  .join(NCFile.experiment).join(NCFile.ncvars)\
+                  .join(NCVar.variable)\
+                  .filter(NCExperiment.experiment==experiment)\
+                  .order_by(NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile)\
+                  .group_by(CFVariable.name, NCFile.frequency)
+
+    if frequency is not None:
+        q = q.filter(NCFile.frequency == frequency)
+
+    return pd.DataFrame(q)
+
+def get_frequencies(session, experiment=None):
+    """
+    Returns frequencies
+    """
+
+    if experiment is None:
+        q = session.query(NCFile.frequency).group_by(NCFile.frequency)
+    else:
+        q = session.query(NCFile.frequency)\
+                    .join(NCExperiment).filter(NCExperiment.experiment==experiment)\
+                    .group_by(NCFile.frequency)
+
+    return pd.DataFrame(q)
 
 def getvar(expt, variable, session, ncfile=None, n=None,
            start_time=None, end_time=None, chunks=None,
