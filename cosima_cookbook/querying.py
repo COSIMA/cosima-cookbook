@@ -14,7 +14,7 @@ class VariableNotFoundError(Exception):
 
 def get_experiments(session):
     """
-    Returns a dataframe all experiments and number of netCDF4 files
+    Returns a dataframe of all experiments and the number of netCDF4 files contained within each
     """
 
     q = (session
