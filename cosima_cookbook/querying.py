@@ -17,9 +17,11 @@ def get_experiments(session):
     Returns a dataframe all experiments and number of netCDF4 files
     """
 
-    q = session.query(NCExperiment.experiment,
-              func.count(NCFile.experiment_id).label('ncfiles'))\
-            .group_by(NCFile.experiment_id).join(NCExperiment)
+    q = (session
+         .query(NCExperiment.experiment, 
+                func.count(NCFile.experiment_id).label('ncfiles'))
+         .group_by(NCFile.experiment_id)
+         .join(NCExperiment))
 
     return pd.DataFrame(q)
 
@@ -28,8 +30,10 @@ def get_ncfiles(session, experiment):
     Returns a dataframe of all netcdf files for a given experiment
     """
 
-    q = session.query(NCFile.ncfile, NCFile.index_time).join(NCExperiment)\
-        .filter(NCExperiment.experiment==experiment)
+    q = (session
+         .query(NCFile.ncfile, NCFile.index_time)
+         .join(NCExperiment)
+         .filter(NCExperiment.experiment==experiment))
 
     return pd.DataFrame(q)
 
@@ -38,16 +42,22 @@ def get_variables(session, experiment, frequency=None):
     Returns DataFrame of variables for a given experiment
     """
 
-    q = session.query(CFVariable.name, NCFile.frequency,
-                  NCFile.ncfile,
-                  func.count(NCFile.ncfile).label('# ncfiles'),
-                  func.min(NCFile.time_start).label('time_start'),
-                  func.max(NCFile.time_end).label('time_end'))\
-                  .join(NCFile.experiment).join(NCFile.ncvars)\
-                  .join(NCVar.variable)\
-                  .filter(NCExperiment.experiment==experiment)\
-                  .order_by(NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile)\
-                  .group_by(CFVariable.name, NCFile.frequency)
+    q = (session
+         .query(CFVariable.name, 
+                NCFile.frequency, 
+                NCFile.ncfile,
+                func.count(NCFile.ncfile).label('# ncfiles'),
+                func.min(NCFile.time_start).label('time_start'),
+                func.max(NCFile.time_end).label('time_end'))
+         .join(NCFile.experiment)
+         .join(NCFile.ncvars)
+         .join(NCVar.variable)
+         .filter(NCExperiment.experiment==experiment)
+         .order_by(NCFile.frequency, 
+                   CFVariable.name, 
+                   NCFile.time_start, 
+                   NCFile.ncfile)
+         .group_by(CFVariable.name, NCFile.frequency))
 
     if frequency is not None:
         q = q.filter(NCFile.frequency == frequency)
@@ -60,11 +70,15 @@ def get_frequencies(session, experiment=None):
     """
 
     if experiment is None:
-        q = session.query(NCFile.frequency).group_by(NCFile.frequency)
+        q = (session
+             .query(NCFile.frequency)
+             .group_by(NCFile.frequency))
     else:
-        q = session.query(NCFile.frequency)\
-                    .join(NCExperiment).filter(NCExperiment.experiment==experiment)\
-                    .group_by(NCFile.frequency)
+        q = (session
+             .query(NCFile.frequency)
+             .join(NCExperiment)
+             .filter(NCExperiment.experiment==experiment)
+             .group_by(NCFile.frequency))
 
     return pd.DataFrame(q)
 
