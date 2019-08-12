@@ -14,7 +14,8 @@ class VariableNotFoundError(Exception):
 
 def get_experiments(session):
     """
-    Returns a dataframe of all experiments and the number of netCDF4 files contained within each
+    Returns a DataFrame of all experiments and the number of netCDF4 files contained 
+    within each experiment.
     """
 
     q = (session
@@ -27,7 +28,7 @@ def get_experiments(session):
 
 def get_ncfiles(session, experiment):
     """
-    Returns a dataframe of all netcdf files for a given experiment
+    Returns a DataFrame of all netcdf files for a given experiment.
     """
 
     q = (session
@@ -39,7 +40,8 @@ def get_ncfiles(session, experiment):
 
 def get_variables(session, experiment, frequency=None):
     """
-    Returns DataFrame of variables for a given experiment
+    Returns a DataFrame of variables for a given experiment and optionally
+    a given diagnostic frequency.
     """
 
     q = (session
@@ -66,7 +68,8 @@ def get_variables(session, experiment, frequency=None):
 
 def get_frequencies(session, experiment=None):
     """
-    Returns frequencies
+    Returns a DataFrame with all diagnostics frequencies and optionally
+    for a given experiment.
     """
 
     if experiment is None:
