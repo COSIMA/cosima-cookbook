@@ -20,16 +20,12 @@ Github: `COSIMA-Cookbook <https://github.com/OceansAus/cosima-cookbook>`_
 It provides both examples of diagnostics to adapt to your own use and summaries
 of diagnostics for models run by members of the community.
 
-
 .. toctree::
-:maxdepth: 2
-:caption: Contents:
+    :maxdepth: 2
+    :caption: Contents:
 
-getting_started
-:caption: Help & Reference
-related_projects
-
-
+    getting_started
+    related_projects
 
 Indices and tables
 ==================

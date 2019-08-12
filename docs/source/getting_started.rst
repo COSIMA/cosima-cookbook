@@ -73,5 +73,4 @@ PyPi and as a conda package but this is still in development).
 
     jupyter notebook
 
-You can also connect to this Jupyter notebook using an SSH tunnel. See
-`scripts/jupyter_vdi.py`_.
+.. You can also connect to this Jupyter notebook using an SSH tunnel. See `scripts/jupyter_vdi.py`_.
