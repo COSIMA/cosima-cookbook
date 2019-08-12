@@ -1,5 +1,5 @@
-.. cosima documentation master file, created by
-   sphinx-quickstart on Mon May 29 02:03:50 2017.
+.. cosima-cookbook documentation master file, created by
+   sphinx-quickstart on Mon Aug 12 20:35:06 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -22,19 +22,18 @@ of diagnostics for models run by members of the community.
 
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Contents:
+:maxdepth: 2
+:caption: Contents:
 
-   getting_started
-   diagnostics/index
-   configurations/index
-   notebooks/index
+getting_started
+:caption: Help & Reference
+related_projects
 
-   :caption: Help & Reference
-   related_projects
+
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
+* :ref:`modindex`
 * :ref:`search`
