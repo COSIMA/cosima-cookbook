@@ -19,7 +19,9 @@ setup(
         'netcdf4',
         'tqdm',
         'sqlalchemy',
-        'cftime'
+        'cftime',
+        'f90nml',
+        'joblib',
     ],
 
     extras_require = {

@@ -55,13 +55,17 @@ def superset(nmlall):
 def nmldiff(nmlall):
     """Remove every group/group member that is the same in all file Namelists.
 
-    Input: dict (e.g. returned by nmldict) with key:value pairs where
-            key is filename path string
-            value is complete Namelist from filename
-    Output: modified input dict with key:value pairs where
-            key is filename strings
-            value is Namelist from filename, with any group/group member
-                common to all other files removed
+    Parameter
+    ---------
+    Input : dict 
+        (e.g. returned by nmldict) with key:value pairs where
+        key is filename path string
+        value is complete Namelist from filename
+    Output : dict
+        modified input dict with key:value pairs where
+        key is filename strings
+        value is Namelist from filename, with any group/group member
+        common to all other files removed
     """
 
 # Create diff by removing common groups/members from nmlall.

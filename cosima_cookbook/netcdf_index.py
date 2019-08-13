@@ -2,12 +2,9 @@
 Common tools for accessing NetCDF4 variables
 """
 
-print('netcdf_index loaded.')
-
 __all__ = ['build_index', ]
 
 import netCDF4
-import dataset
 import re
 import os
 import sys

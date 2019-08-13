@@ -1,4 +1,4 @@
-from ..netcdf_index import get_nc_variable, get_variables
+from ..querying import getvar, get_variables
 from ..memory import memory
 
 import logging

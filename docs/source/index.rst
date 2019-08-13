@@ -26,6 +26,7 @@ of diagnostics for models run by members of the community.
 
     getting_started
     related_projects
+    modules
 
 Indices and tables
 ==================
