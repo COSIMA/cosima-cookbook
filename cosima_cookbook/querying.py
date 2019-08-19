@@ -37,7 +37,8 @@ def get_ncfiles(session, experiment):
     q = (session
          .query(NCFile.ncfile, NCFile.index_time)
          .join(NCFile.experiment)
-         .filter(NCExperiment.experiment == experiment))
+         .filter(NCExperiment.experiment == experiment)
+         .order_by(NCFile.ncfile))
 
     return pd.DataFrame(q)
 

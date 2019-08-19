@@ -22,7 +22,7 @@ def session(tmpdir_factory):
 def test_valid_query(session):
     with cc.querying.getvar('querying', 'temp', session, decode_times=False) as v:
         assert(isinstance(v, xr.DataArray))
-    
+
 def test_invalid_query(session):
     with pytest.raises(cc.querying.VariableNotFoundError):
         cc.querying.getvar('querying', 'notfound', session, decode_times=False)
@@ -71,12 +71,20 @@ def test_get_experiments(session):
 def test_get_ncfiles(session):
     r = cc.querying.get_ncfiles(session, 'querying')
 
-    df = pd.DataFrame.from_dict({'ncfile': {0: 'output000/ocean.nc',
-                                  1: 'output000/hi_m.nc',
-                                  2: 'output000/ty_trans.nc'},
-     'index_time': {0: pd.Timestamp('2019-08-09 21:51:12.090930'),
-                    1: pd.Timestamp('2019-08-09 21:51:12.143794'),
-                    2: pd.Timestamp('2019-08-09 21:51:12.148942')}})
+    df = pd.DataFrame.from_dict(
+        {
+            "ncfile": {
+                0: "output000/hi_m.nc",
+                1: "output000/ocean.nc",
+                2: "output000/ty_trans.nc",
+            },
+            "index_time": {
+                0: pd.Timestamp("2019-08-09 21:51:12.090930"),
+                1: pd.Timestamp("2019-08-09 21:51:12.143794"),
+                2: pd.Timestamp("2019-08-09 21:51:12.148942"),
+            },
+        }
+    )
 
     # The Timestamps will not be the same so check only that the ncfiles are correct
     assert_series_equal(r['ncfile'], df['ncfile'])
