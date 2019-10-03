@@ -1,83 +1,169 @@
+"""querying.py
+
+Functions for data discovery.
+
+"""
+
 import logging
 import os.path
-
-from sqlalchemy import select, bindparam
+import pandas as pd
+from sqlalchemy import func, distinct
 import xarray as xr
-
 from . import database
+from .database import NCExperiment, NCFile, CFVariable, NCVar
 
 class VariableNotFoundError(Exception):
     pass
 
-def getvar(expt, variable, db, ncfile=None, n=None,
+def get_experiments(session):
+    """
+    Returns a DataFrame of all experiments and the number of netCDF4 files contained 
+    within each experiment.
+    """
+
+    q = (session
+         .query(NCExperiment.experiment,
+                func.count(NCFile.experiment_id).label('ncfiles'))
+         .join(NCFile.experiment)
+         .group_by(NCFile.experiment_id))
+
+    return pd.DataFrame(q)
+
+def get_ncfiles(session, experiment):
+    """
+    Returns a DataFrame of all netcdf files for a given experiment.
+    """
+
+    q = (session
+         .query(NCFile.ncfile, NCFile.index_time)
+         .join(NCFile.experiment)
+         .filter(NCExperiment.experiment == experiment)
+         .order_by(NCFile.ncfile))
+
+    return pd.DataFrame(q)
+
+def get_variables(session, experiment, frequency=None):
+    """
+    Returns a DataFrame of variables for a given experiment and optionally
+    a given diagnostic frequency.
+    """
+
+    q = (session
+         .query(CFVariable.name, 
+                NCFile.frequency,
+                NCFile.ncfile,
+                func.count(NCFile.ncfile).label('# ncfiles'),
+                func.min(NCFile.time_start).label('time_start'),
+                func.max(NCFile.time_end).label('time_end'))
+         .join(NCFile.experiment)
+         .join(NCFile.ncvars)
+         .join(NCVar.variable)
+         .filter(NCExperiment.experiment == experiment)
+         .order_by(NCFile.frequency,
+                   CFVariable.name,
+                   NCFile.time_start,
+                   NCFile.ncfile)
+         .group_by(CFVariable.name, NCFile.frequency))
+
+    if frequency is not None:
+        q = q.filter(NCFile.frequency == frequency)
+
+    return pd.DataFrame(q)
+
+def get_frequencies(session, experiment=None):
+    """
+    Returns a DataFrame with all diagnostics frequencies and optionally
+    for a given experiment.
+    """
+
+    if experiment is None:
+        q = (session
+             .query(NCFile.frequency)
+             .group_by(NCFile.frequency))
+    else:
+        q = (session
+             .query(NCFile.frequency)
+             .join(NCFile.experiment)
+             .filter(NCExperiment.experiment == experiment)
+             .group_by(NCFile.frequency))
+
+    return pd.DataFrame(q)
+
+def getvar(expt, variable, session, ncfile=None, n=None,
            start_time=None, end_time=None, chunks=None,
            time_units=None, offset=None, decode_times=True,
            check_present=False):
     """For a given experiment, return an xarray DataArray containing the
     specified variable.
     
-    expt - text string indicating the name of the experiment
-    variable - text string indicating the name of the variable to load
-    db - text string indicating the file path of the database. The default 
-        database includes many available experiments, and is usually kept
-        up to data
-
-    ncfile - If disambiguation based on filename is required, pass the ncfile
-    argument.
-    n - A subset of output data can be obtained by restricting the number of 
+    Parameters
+    ----------
+    expt : str
+        text string indicating the name of the experiment
+    variable : str
+        text string indicating the name of the variable to load
+    session : 
+        a database session created by cc.database.create_session()
+    ncfile
+        If disambiguation based on filename is required, pass the ncfile argument.
+    n
+        A subset of output data can be obtained by restricting the number of 
         netcdf files to load (use a negative value of n to get the last n 
         files, or a positive n to get the first n files).
-    start_time - Only load data after this date. Specify the date as a text string
+    start_time 
+        Only load data after this date. Specify the date as a text string
         (e.g. '1900-1-1')
-    start_time - Only load data before this date. Specify the date as a text string
+    start_time
+        Only load data before this date. Specify the date as a text string
         (e.g. '1900-1-1')
-    chunks - Override any chunking by passing a chunks dictionary.
-    offset - A time offset (in an integer number of days) can also be applied.
-    decode_times - Time decoding can be disabled by passing decode_times=False
-    check_present - indicates whether to check the presence of the file before 
+    chunks
+        Override any chunking by passing a chunks dictionary.
+    offset
+        A time offset (in an integer number of days) can also be applied.
+    decode_times
+        Time decoding can be disabled by passing decode_times=False
+    check_present
+        indicates whether to check the presence of the file before 
         loading.
+
     """
-
-    conn, tables = database.create_database(db)
-
-    # find candidate vars -- base query
-    s = select([tables['ncfiles'].c.ncfile,
-                tables['ncvars'].c.dimensions,
-                tables['ncvars'].c.chunking,
-                tables['ncfiles'].c.timeunits,
-                tables['ncfiles'].c.calendar,
-                tables['ncfiles'].c.id]) \
-            .select_from(tables['ncvars'].join(tables['ncfiles'])) \
-            .where(tables['ncvars'].c.variable == variable) \
-            .where(tables['ncfiles'].c.experiment == expt) \
-            .where(tables['ncfiles'].c.present) \
-            .order_by(tables['ncfiles'].c.time_start)
+    f, v = database.NCFile, database.NCVar
+    q = (session
+         .query(f, v)
+         .join(f.ncvars).join(f.experiment)
+         .filter(v.varname == variable)
+         .filter(database.NCExperiment.experiment == expt)
+         .filter(f.present)
+         .order_by(f.time_start))
 
     # further constraints
     if ncfile is not None:
-        s = s.where(tables['ncfiles'].c.ncfile.like('%' + ncfile))
+        q = q.filter(f.ncfile.like('%' + ncfile))
     if start_time is not None:
-        s = s.where(tables['ncfiles'].c.time_end >= start_time)
+        q = q.filter(f.time_end >= start_time)
     if end_time is not None:
-        s = s.where(tables['ncfiles'].c.time_start <= end_time)
+        q = q.filter(f.time_start <= end_time)
 
-    ncfiles = conn.execute(s).fetchall()
+    ncfiles = q.all()
 
     # ensure we actually got a result
     if not ncfiles:
         raise VariableNotFoundError("No files were found containing {} in the '{}' experiment".format(variable, expt))
 
     if check_present:
-        u = tables['ncfiles'].update().where(tables['ncfiles'].c.id == bindparam('ncfile_id')).values(present=False)
+        ncfiles_full = ncfiles
+        ncfiles = []
 
-        for f in ncfiles.copy():
+        for f in ncfiles_full:
             # check whether file exists
-            if os.path.isfile(f[0]):
+            if f.NCFile.ncfile_path.exists():
+                ncfiles.append(f)
                 continue
 
             # doesn't exist, update in database
-            conn.execute(u, ncfile_id=f[-1])
-            ncfiles.remove(f)
+            session.delete(f.NCFile)
+
+        session.commit()
 
     # restrict number of files directly
     if n is not None:
@@ -86,23 +172,17 @@ def getvar(expt, variable, db, ncfile=None, n=None,
         else:
             ncfiles = ncfiles[n:]
 
-    file_chunks = None
-
-    # chunking -- use first row/file
-    try:
-        file_chunks = dict(zip(eval(ncfiles[0][1]), eval(ncfiles[0][2])))
-        # apply caller overrides
-        if chunks is not None:
-            file_chunks.update(chunks)
-    except NameError:
-        # chunking could be 'contiguous', which doesn't evaluate
-        pass
+    # chunking -- use first row/file and assume it's the same across the whole dataset
+    file_chunks = _parse_chunks(ncfiles[0].NCVar)
+    # apply caller overrides
+    if chunks is not None:
+        file_chunks.update(chunks)
 
     # the "dreaded" open_mfdata can actually be quite efficient
     # I found that it was important to "preprocess" to select only
     # the relevant variable, because chunking doesn't apply to
     # all variables present in the file
-    ds = xr.open_mfdataset((f[0] for f in ncfiles), parallel=True,
+    ds = xr.open_mfdataset((str(f.NCFile.ncfile_path) for f in ncfiles), parallel=True,
                            chunks=file_chunks,
                            decode_times=False,
                            preprocess=lambda d: d[variable].to_dataset() if variable not in d.coords else d)
@@ -110,7 +190,6 @@ def getvar(expt, variable, db, ncfile=None, n=None,
     # handle time offsetting and decoding
     # TODO: use helper function to find the time variable name
     if 'time' in (c.lower() for c in ds.coords) and decode_times:
-        calendar = ncfiles[0][4]
         tvar = 'time'
         # if dataset uses capitalised variant
         if 'Time' in ds.coords:
@@ -118,23 +197,37 @@ def getvar(expt, variable, db, ncfile=None, n=None,
 
         # first rebase times onto new units if required
         if time_units is not None:
-            dates = xr.conventions.times.decode_cf_datetime(ds[tvar], ncfiles[0][3], calendar)
-            times = xr.conventions.times.encode_cf_datetime(dates, time_units, calendar)
+            dates = xr.conventions.times.decode_cf_datetime(ds[tvar], ds[tvar].units, ds[tvar].calendar)
+            times = xr.conventions.times.encode_cf_datetime(dates, time_units, ds[tvar].calendar)
             ds[tvar] = times[0]
         else:
-            time_units = ncfiles[0][3]
+            time_units = ds[tvar].units
 
         # time offsetting - mimic one aspect of old behaviour by adding
         # a fixed number of days
         if offset is not None:
             ds[tvar] += offset
 
-
         # decode time - we assume that we're getting units and a calendar from a file
         try:
-            decoded_time = xr.conventions.times.decode_cf_datetime(ds[tvar], time_units, calendar)
+            decoded_time = xr.conventions.times.decode_cf_datetime(ds[tvar], time_units, ds[tvar].calendar)
             ds[tvar] = decoded_time
         except Exception as e:
             logging.error('Unable to decode time: %s', e)
 
     return ds[variable]
+
+def _parse_chunks(ncvar):
+    """Parse an NCVar, returning a dictionary mapping dimensions to chunking along that dimension."""
+
+    try:
+        # this should give either a list, or 'None' (other values will raise an exception)
+        var_chunks = eval(ncvar.chunking)
+        if var_chunks is not None:
+            return dict(zip(eval(ncvar.dimensions), var_chunks))
+
+        return None
+
+    except NameError:
+        # chunking could be 'contiguous', which doesn't evaluate
+        return None

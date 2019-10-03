@@ -1,5 +1,5 @@
 from ..memory import memory
-from ..netcdf_index import get_nc_variable
+from ..querying import getvar
 
 @memory.cache
 def mean_tau_x(expt):

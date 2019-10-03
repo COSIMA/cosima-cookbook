@@ -1,22 +1,23 @@
 package:
     name: cosima-cookbook
-    version: latest
+    version: {{ GIT_DESCRIBE_TAG}}
 
 source:
     git_rev: master
-    git_url: https://github.com/COSIMA/cosima-cookbook
+    git_url: ../
 
-#build:
-#    number: 0
-#    skip: true
-#    #script: python setup.py install --single-version-externally-managed --record record.txt
+build:
+    noarch: python
+    number: {{ GIT_DESCRIBE_NUMBER }}
+    script: python setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
     build:
-        - python
+        - python>=3.6
         - setuptools
+        - pbr
     run:
-        - python
+        - python>=3.6
         - numpy
         - dask
         - distributed
@@ -24,8 +25,9 @@ requirements:
         - netcdf4
         - joblib
         - tqdm
+        - sqlalchemy
 
 about:
     home: http://cosima-cookbook.readthedocs.io
     license: Apache License 2.0
-    license_file: LICENSE
+
