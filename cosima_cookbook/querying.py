@@ -8,7 +8,9 @@ import logging
 import os.path
 import pandas as pd
 from sqlalchemy import func, distinct
+import warnings
 import xarray as xr
+
 from . import database
 from .database import NCExperiment, NCFile, CFVariable, NCVar
 
@@ -178,6 +180,15 @@ def _ncfiles_for_variable(expt, variable, session,
             "No files were found containing '{}' in the '{}' experiment".format(
                 variable, expt
             )
+        )
+
+    # check whether the results are unique
+    unique_files = set(os.path.basename(f.NCFile.ncfile) for f in ncfiles)
+    if len(unique_files) > 1:
+        warnings.warn(
+            f"Your query gets a variable from differently-named files: {unique_files}. "
+            "This could lead to unexpected behaviour! Disambiguate by passing "
+            "ncfile= to getvar, specifying the desired file."
         )
 
     return ncfiles

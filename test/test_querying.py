@@ -15,7 +15,9 @@ def session(tmpdir_factory):
     session = cc.database.create_session(str(db))
 
     # build index for entire module
-    cc.database.build_index('test/data/querying', session)
+    cc.database.build_index(
+        ["test/data/querying", "test/data/querying_disambiguation"], session
+    )
 
     return session
 
@@ -26,6 +28,11 @@ def test_valid_query(session):
 def test_invalid_query(session):
     with pytest.raises(cc.querying.VariableNotFoundError):
         cc.querying.getvar('querying', 'notfound', session, decode_times=False)
+
+def test_warning_on_ambiguous(session):
+    with pytest.warns(UserWarning):
+        cc.querying._ncfiles_for_variable("querying_disambiguation", "temp", session)
+
 
 def test_query_times(session):
     with cc.querying.getvar('querying', 'ty_trans', session) as v:
@@ -65,7 +72,9 @@ def test_chunk_parsing_unchunked(session):
 def test_get_experiments(session):
     r = cc.querying.get_experiments(session)
 
-    df = pd.DataFrame.from_dict({'experiment': {0: 'querying'}, 'ncfiles': {0: 3}})
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["querying", "querying_disambiguation"], "ncfiles": [3, 2]}
+    )
     assert_frame_equal(r, df)
 
 def test_get_ncfiles(session):
