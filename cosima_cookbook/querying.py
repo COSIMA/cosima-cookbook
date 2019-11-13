@@ -130,6 +130,7 @@ def getvar(expt, variable, session, ncfile=None,
     ds = xr.open_mfdataset(
         (str(f.NCFile.ncfile_path) for f in ncfiles),
         parallel=True,
+        combine="by_coords",
         preprocess=lambda d: d[variable].to_dataset()
         if variable not in d.coords
         else d,
