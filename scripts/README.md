@@ -8,7 +8,7 @@
  Usage:
 
  ```
- jupyter_raijin.sh  -l nciusername -q queuename -n ncpus -m memory -P project
+ jupyter_gadi.sh  -l nciusername -q queuename -n ncpus -m memory -P project
  ```
 
  example:
