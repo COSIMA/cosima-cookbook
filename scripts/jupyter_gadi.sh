@@ -13,7 +13,7 @@ General Options:
 Queue Options:
     -q QUEUE:   Queue name
     -n NCPU:    Use NCPU cpus
-    -m MEM:     Memory allocation (default 2*NCPU GB)
+    -m MEM:     Memory allocation (default 4*NCPU GB)
     -t TIME:    Walltime limit (default 1 hour)
     -J JOBFS:   Jobfs allocation (default 100 GB)
     -P PROJ:    Submit job under project PROJ
@@ -23,12 +23,12 @@ EOF
 set -eu
 
 # Internal defaults
-USER=''
+USER=''          # Add your nci username here
 PROJECT='-P v45' # Note- should be the full pbs flag '-P a12' if overriding
 LOGINNODE='gadi.nci.org.au'
-QUEUE='express'
-NCPUS='48'
-MEM='192gb'
+QUEUE='express'  # QUEUE, NCPUS and MEM can be overridden in command line
+NCPUS='8'
+MEM='32gb'
 WALLTIME=1:00:00
 JOBFS=100gb
 
@@ -79,7 +79,7 @@ if [ -n "$USER" ]; then
     SSH="${SSH} -l ${USER}"
 fi
 if [ -z "$MEM" ]; then
-    MEM="$(( NCPUS * 2 ))gb"
+    MEM="$(( NCPUS * 4 ))gb"
 fi
 
 SUBMITOPTS="-N jupyter-notebook $PROJECT -q '$QUEUE' -l 'ncpus=${NCPUS},mem=${MEM},walltime=${WALLTIME},jobfs=${JOBFS}'"
