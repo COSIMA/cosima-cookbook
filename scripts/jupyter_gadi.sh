@@ -28,7 +28,7 @@ PROJECT='-P v45' # Note- should be the full pbs flag '-P a12' if overriding
 LOGINNODE='gadi.nci.org.au'
 QUEUE='express'  # QUEUE, NCPUS and MEM can be overridden in command line
 NCPUS='8'
-MEM='32gb'
+MEM=''           # Leave empty to calculate based on number of cpus
 WALLTIME=1:00:00
 JOBFS=100gb
 
@@ -109,16 +109,9 @@ echo "\\\$HOSTNAME \\\$TOKEN \\\$PBS_JOBID" > "\$WORKDIR/message"
 echo "runjp log dir \$WORKDIR"
 cat "\$WORKDIR/message"
 module purge
-module use /g/data3/hh5/public/modules
+module use /g/data/hh5/public/modules
 module load pbs
 module load conda/analysis3-unstable
-export DASK_LABEXTENSION__FACTORY__MODULE='dask_jobqueue'
-export DASK_LABEXTENSION__FACTORY__CLASS='PBSCluster'
-export DASK_LABEXTENSION__FACTORY__KWARGS__QUEUE='normal'
-export DASK_LABEXTENSION__FACTORY__KWARGS__CORES='8'
-export DASK_LABEXTENSION__FACTORY__KWARGS__MEMORY='16gb'
-export DASK_LABEXTENSION__FACTORY__KWARGS__RESOURCE_SPEC='ncpus=8,mem=16gb'
-export DASK_LABEXTENSION__FACTORY__KWARGS__INTERFACE='ib0'
 jupyter notebook --NotebookApp.token="\\\$TOKEN" --no-browser --ip="\\\$HOSTNAME" --port 8888
 EOQ
 # Wait for the message file to appear, then return to the local process
@@ -154,8 +147,28 @@ trap "{ echo 'Closing connections... (Ctrl-C will leave job in the queue)' ; kil
 sleep 5
 URL="http://localhost:${local_port}/lab?token=${token}"
 
-echo
-echo "Opening ${URL}"
+cat << EOF
+
+Start a Dask cluster in your notebook with
+
+---------------------------------------------------------------
+import os
+import dask.distributed
+try:
+    dask_client # Already running
+except NameError:
+    dask_client = dask.distributed.Client(
+        processes=os.environ['PBS_NCPUS'],
+        memory_limit='4gb',
+        local_directory=os.path.join(os.environ['PBS_JOBFS'],
+                                     'dask-worker-space')
+    )
+dask_client
+---------------------------------------------------------------
+
+Opening ${URL}
+EOF
+
 if [ "$(uname)" = "Darwin" ]; then
     open "$URL"
 else
