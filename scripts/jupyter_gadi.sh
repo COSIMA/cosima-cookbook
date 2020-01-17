@@ -10,7 +10,7 @@ General Options:
     -h:         Print help
     -l:         Gadi username
     -L:         Gadi login node (default 'gadi.nci.org.au')
-    -s:		Storage
+    -s:		Storage flags list (default 'gdata/hh5'), if multiple, separate by them '+' (-s gdata/hh5+gdata/v45)
 Queue Options:
     -q QUEUE:   Queue name
     -n NCPU:    Use NCPU cpus
@@ -25,7 +25,7 @@ set -eu
 
 # Internal defaults
 USER=''          # Add your nci username here
-PROJECT='v45' # Note- should be the full pbs flag '-P a12' if overriding
+PROJECT='v45' # Note- should be only the project name 'a12'
 LOGINNODE='gadi.nci.org.au'
 QUEUE='express'  # QUEUE, NCPUS and MEM can be overridden in command line
 NCPUS='8'
@@ -36,7 +36,7 @@ JOBFS=100gb
 
 
 # Handle arguments
-optspec="hl:L:q:n:m:t:J:P:"
+optspec="hl:L:s:q:n:m:t:J:P:"
 while getopts "$optspec" optchar; do
     case "${optchar}" in
         h)
@@ -50,7 +50,7 @@ while getopts "$optspec" optchar; do
             LOGINNODE="${OPTARG}"
             ;;
 	s)  
-	    STORAGE="${STORAGE}"
+	    STORAGE="${OPTARG}"
 	    ;;
         q)
             QUEUE="${OPTARG}"
@@ -90,15 +90,7 @@ if [ -z "$MEM" ]; then
     MEM="$(( NCPUS * 4 ))gb"
 fi
 
-IFS=‘,’ read -ra multiple_storage <<< "$STORAGE"
-
-STORAGE=""
-for i in "${multiple_storage[@]}"
-do
-     STORAGE+="storage=$i,"
-done
-
-SUBMITOPTS="-N jupyter-notebook -P $PROJECT -q '$QUEUE' -l '${STORAGE}ncpus=${NCPUS},mem=${MEM},walltime=${WALLTIME},jobfs=${JOBFS}'"
+SUBMITOPTS="-N jupyter-notebook -P $PROJECT -q '$QUEUE' -l 'storage=${STORAGE},ncpus=${NCPUS},mem=${MEM},walltime=${WALLTIME},jobfs=${JOBFS}'"
 
 echo "Starting notebook on ${LOGINNODE}..."
 
@@ -110,7 +102,7 @@ echo "qsub ${SUBMITOPTS}"
 # Kill the job if this top-level script is cancelled while the job is still in the queue
 trap "{ echo 'Stopping queued job... (Ctrl-C will leave job in the queue)' ; $SSH \"$LOGINNODE\" <<< \"qdel \\\$(cat \\$WORKDIR/jobid)\" ; }" EXIT
 
-echo $WORKDIR
+echo "Temporal folder allocation: '$WORKDIR'"
 
 message=$(
 $SSH -q "$LOGINNODE" <<EOF | tail -n 1
