@@ -95,6 +95,7 @@ def ssh(cmd, params, login_timeout=10):
     clean_params(params)
 
     cmd = ("ssh -x -l {user} {exechost} " + cmd).format(**params)
+    print(cmd)
     if verbose > 0: logging.info(cmd)
     s = pexpect.spawn(cmd)
 
@@ -195,7 +196,7 @@ def main(args):
     logging.info("Waiting for Jupyter to start...")
 
     # Launch jupyter on Raijin
-    s = ssh(cmd, params, login_timeout=2)
+    s = ssh(cmd, params, login_timeout=50)
     ret = s.expect('http://\((?P<session>\w+).*\):(?P<jupyterport>\d+)/\?token=(?P<token>\w+)')
     if s.match:
         params.update(s.match.groupdict())

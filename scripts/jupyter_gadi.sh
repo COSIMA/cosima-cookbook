@@ -10,6 +10,7 @@ General Options:
     -h:         Print help
     -l:         Gadi username
     -L:         Gadi login node (default 'gadi.nci.org.au')
+    -s:		Storage
 Queue Options:
     -q QUEUE:   Queue name
     -n NCPU:    Use NCPU cpus
@@ -24,13 +25,15 @@ set -eu
 
 # Internal defaults
 USER=''          # Add your nci username here
-PROJECT='-P v45' # Note- should be the full pbs flag '-P a12' if overriding
+PROJECT='v45' # Note- should be the full pbs flag '-P a12' if overriding
 LOGINNODE='gadi.nci.org.au'
 QUEUE='express'  # QUEUE, NCPUS and MEM can be overridden in command line
 NCPUS='8'
+STORAGE='gdata/hh5'
 MEM=''           # Leave empty to calculate based on number of cpus
 WALLTIME=1:00:00
 JOBFS=100gb
+
 
 # Handle arguments
 optspec="hl:L:q:n:m:t:J:P:"
@@ -46,6 +49,9 @@ while getopts "$optspec" optchar; do
         L)
             LOGINNODE="${OPTARG}"
             ;;
+	s)  
+	    STORAGE="${STORAGE}"
+	    ;;
         q)
             QUEUE="${OPTARG}"
             ;;
@@ -62,7 +68,7 @@ while getopts "$optspec" optchar; do
             JOBFS="${OPTARG}"
             ;;
         P)
-            PROJECT="-P '${OPTARG}'"
+            PROJECT="${OPTARG}"
             ;;
         *)
             print_help
@@ -72,7 +78,9 @@ while getopts "$optspec" optchar; do
 done
 
 # This gets evaluated on Gadi in the SSH script
-WORKDIR=\$TMPDIR/runjp
+
+# Temporal files
+WORKDIR=/scratch/$PROJECT/$USER/tmp/runjp
 
 SSH='ssh -oBatchMode=yes'
 if [ -n "$USER" ]; then
@@ -82,7 +90,15 @@ if [ -z "$MEM" ]; then
     MEM="$(( NCPUS * 4 ))gb"
 fi
 
-SUBMITOPTS="-N jupyter-notebook $PROJECT -q '$QUEUE' -l 'ncpus=${NCPUS},mem=${MEM},walltime=${WALLTIME},jobfs=${JOBFS}'"
+IFS=‘,’ read -ra multiple_storage <<< "$STORAGE"
+
+STORAGE=""
+for i in "${multiple_storage[@]}"
+do
+     STORAGE+="storage=$i,"
+done
+
+SUBMITOPTS="-N jupyter-notebook -P $PROJECT -q '$QUEUE' -l '${STORAGE}ncpus=${NCPUS},mem=${MEM},walltime=${WALLTIME},jobfs=${JOBFS}'"
 
 echo "Starting notebook on ${LOGINNODE}..."
 
@@ -93,6 +109,8 @@ echo "qsub ${SUBMITOPTS}"
 
 # Kill the job if this top-level script is cancelled while the job is still in the queue
 trap "{ echo 'Stopping queued job... (Ctrl-C will leave job in the queue)' ; $SSH \"$LOGINNODE\" <<< \"qdel \\\$(cat \\$WORKDIR/jobid)\" ; }" EXIT
+
+echo $WORKDIR
 
 message=$(
 $SSH -q "$LOGINNODE" <<EOF | tail -n 1
