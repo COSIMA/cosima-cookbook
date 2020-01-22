@@ -141,3 +141,22 @@ def test_distributed(client, session_db):
     q = session.query(database.NCExperiment)
     r = q.all()
     assert(len(r) == 1)
+
+def test_prune_broken(session_db):
+    session, db = session_db
+    database.build_index('test/data/indexing/broken_file', session)
+
+    assert(db.check())
+
+    # check that we have one file
+    q = session.query(database.NCFile)
+    r = q.all()
+    assert(len(r) == 1)
+
+    # prune experiment
+    database.prune_experiment('broken_file', session)
+
+    # now the database should be empty
+    q = session.query(database.NCFile)
+    r = q.all()
+    assert(len(r) == 0)
