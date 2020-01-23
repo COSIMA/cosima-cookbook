@@ -380,16 +380,29 @@ def build_index(directories, session, client=None, update=False):
     session.commit()
     return indexed
 
-def delete_missing(session, ncfiles):
-    """Given a database session and a list of NCFile objects,
-    ensure the file backing each NCFile exists, else delete
-    it from the database.
+def prune_experiment(experiment, session, delete=True):
+    """Delete or mark as not present the database entries for files
+    within the given experiment that no longer exist or were broken at
+    index time.
     """
 
-    for f in ncfiles:
+    expt = (session
+            .query(NCExperiment)
+            .filter(NCExperiment.experiment == experiment)
+            .one_or_none())
+
+    if not expt:
+        print("No such experiment: {}".format(experiment))
+        return
+
+    for f in expt.ncfiles:
         # check whether file exists
-        if not f.NCFile.ncfile_path.exists():
-            # doesn't exist, update in database
-            session.delete(f.NCFile)
+        if not f.ncfile_path.exists() or not f.present:
+
+            if delete:
+                session.delete(f)
+            else:
+                f.present = False
 
     session.commit()
+
