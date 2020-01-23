@@ -160,3 +160,28 @@ def test_prune_broken(session_db):
     q = session.query(database.NCFile)
     r = q.all()
     assert(len(r) == 0)
+
+def test_prune_nodelete(session_db, tmpdir):
+    session, db = session_db
+    expt_dir = tmpdir / 'expt'
+    expt_dir.mkdir()
+
+    # copy the file to a new experiment directory and index
+    shutil.copy('test/data/indexing/longnames/output000/test1.nc',
+                str(expt_dir / 'test1.nc'))
+    database.build_index(str(expt_dir), session)
+
+    # check that we have a valid file
+    q = session.query(database.NCFile).filter(database.NCFile.present)
+    r = q.all()
+    assert(len(r) == 1)
+
+    # remove the file and prune
+    os.remove(expt_dir / 'test1.nc')
+    database.prune_experiment('expt', session, delete=False)
+
+    # now we should still have one file, but now not present
+    q = session.query(database.NCFile)
+    r = q.one_or_none()
+    assert(r is not None)
+    assert(not r.present)
