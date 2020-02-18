@@ -19,6 +19,12 @@ def session(tmpdir_factory):
         ["test/data/querying", "test/data/querying_disambiguation"], session
     )
 
+    # force all files to be marked as present, even though they're empty
+    ncfiles = session.query(cc.database.NCFile).all()
+    for f in ncfiles:
+        f.present = True
+    session.commit()
+
     return session
 
 def test_valid_query(session):
