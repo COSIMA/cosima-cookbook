@@ -34,6 +34,25 @@ def test_broken(session_db):
     q = session.query(func.count(database.NCVar.id))
     assert(q.scalar() == 0)
 
+def test_empty_file(session_db):
+    session, db = session_db
+    indexed = database.build_index('test/data/indexing/empty_file', session)
+
+    # as with test_broken, we should have seen a single file,
+    # but it should be marked as empty
+    assert(db.check())
+    assert(indexed == 1)
+    q = session.query(database.NCFile)
+    r = q.all()
+    assert(len(r) == 1)
+    assert(not r[0].present)
+
+    # but there should be a valid variable
+    q = (session
+         .query(func.count(database.NCVar.id))
+         .filter(database.NCVar.varname == 'ty_trans_rho'))
+    assert(q.scalar() == 1)
+
 def test_update_nonew(session_db):
     session, db = session_db
     database.build_index('test/data/indexing/broken_file', session)

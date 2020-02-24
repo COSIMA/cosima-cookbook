@@ -162,6 +162,8 @@ def create_session(db=None, debug=False):
     Session = sessionmaker(bind=engine)
     return Session()
 
+class EmptyFileError(Exception): pass
+
 def update_timeinfo(f, ncfile):
     """Extract time information from a single netCDF file: start time, end time, and frequency."""
 
@@ -175,7 +177,7 @@ def update_timeinfo(f, ncfile):
         has_bounds = hasattr(time_var, 'bounds')
 
         if len(time_var) == 0:
-            return None
+            raise EmptyFileError('{} has a valid unlimited dimension, but no data'.format(f))
 
         if not hasattr(time_var, 'units') or not hasattr(time_var, 'calendar'):
             # non CF-compliant file -- don't process further
@@ -261,8 +263,8 @@ def index_file(ncfile_name, experiment):
 
                 ncfile.ncvars.append(ncvar)
 
-        ncfile.present = True
         update_timeinfo(f, ncfile)
+        ncfile.present = True
     except FileNotFoundError:
         logging.info('Unable to find file: %s', f)
     except Exception as e:
