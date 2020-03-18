@@ -14,6 +14,24 @@ def session_db(tmpdir):
 
     s.close()
 
+@pytest.fixture
+def unreadable_dir(tmpdir):
+    expt_path = tmpdir / "expt_dir"
+    expt_path.mkdir()
+    idx_dir = expt_path / "unreadable"
+    idx_dir.mkdir()
+    idx_dir.chmod(0o300)
+
+    yield idx_dir
+
+    expt_path.remove(ignore_errors=True)
+
+def test_unreadable(session_db, unreadable_dir):
+    session, db = session_db
+
+    with pytest.warns(UserWarning, match="Some files or directories could not be read"):
+        indexed = database.build_index(str(unreadable_dir), session)
+
 def test_broken(session_db):
     session, db = session_db
     indexed = database.build_index('test/data/indexing/broken_file', session)
