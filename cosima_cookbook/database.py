@@ -298,7 +298,9 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
 
     # find all netCDF files in the hierarchy below this directory
     files = []
-    proc = subprocess.run(['find', experiment_dir, '-name', '*.nc'], capture_output=True, encoding='utf-8')
+    proc = subprocess.run(['find', experiment_dir, '-name', '*.nc'],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          encoding='utf-8')
     if proc.returncode != 0:
         warnings.warn('Some files or directories could not be read while finding output files: %s', UserWarning)
 
