@@ -2,13 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name='cosima_cookbook',
-    version='0.2',
     description='Diagnostics for COSIMA: Consortium for Ocean-Sea Ice Modelling in Australia',
     url='https://github.com/COSIMA/cosima-cookbook',
-    author='James Munroe',
-    author_email='jmunroe@mun.ca',
+    author='COSIMA',
     license='Apache License 2.0',
+    use_scm_version=True,
     packages=find_packages(),
+    setup_requires=["setuptools_scm"],
 
     install_requires=[
         'dask',
