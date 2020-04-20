@@ -27,12 +27,11 @@ The COSIMA Cookbook relies on several components:
  1. There needs to be a database of simulations -- on the NCI system, model output that is stored in the COSIMA space on the `/g/data/hh5` directory.
  2. Once you have access to data, the best place to start is the [cosima-recipes](https://github.com/COSIMA/cosima-recipes) repository which includes a series of jupyter notebooks containing examples that guide you through to use the cookbook to load model output and then proceed doing simple (or elaborate) computations. The best starting point of exploring the [cosima-recipes](https://github.com/COSIMA/cosima-recipes) is the [Documented Examples](https://cosima-recipes.readthedocs.io/en/latest/documented_examples/index.html). A collection of useful examples leveraging the cookbook is also found [here](https://github.com/COSIMA/ACCESS-OM2-1-025-010deg-report/tree/master/figures). 
 
-Cosima-cookbook has some [documentation](http://cosima-cookbook.readthedocs.io) but it's  very out-of-date - caveat lector.
-
 ## Contributing to the Cookbook
 If you like the cookbook, you may like to interact more closely with us:
  * Contributions of new notebooks or analysis scripts are always welcome. Please check out the [cosima-recipes](https://github.com/COSIMA/cosima-recipes) repository.
  * If you find a problem, or have a suggestion for improvement, please log an issue.
+
 
 | Travis CI | Read the Docs | 
 |:---------:|:-------------:|
