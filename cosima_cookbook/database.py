@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import subprocess
 from tqdm import tqdm
+import warnings
 
 import cftime
 from dask.distributed import as_completed
@@ -21,6 +22,8 @@ from sqlalchemy.ext.declarative import declarative_base
 
 from . import netcdf_utils
 from .database_utils import *
+
+logging.captureWarnings(True)
 
 __DB_VERSION__ = 2
 __DEFAULT_DB__ = '/g/data/hh5/tmp/cosima/database/access-om2.db'
@@ -295,12 +298,14 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
 
     # find all netCDF files in the hierarchy below this directory
     files = []
-    try:
-        results = subprocess.check_output(['find', experiment_dir, '-name', '*.nc'])
-        results = [s for s in results.decode('utf-8').split()]
-        files.extend(results)
-    except Exception as e:
-        logging.error('Error occurred while finding output files: %s', e)
+    proc = subprocess.run(['find', experiment_dir, '-name', '*.nc'],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          encoding='utf-8')
+    if proc.returncode != 0:
+        warnings.warn('Some files or directories could not be read while finding output files: %s', UserWarning)
+
+    results = [s for s in proc.stdout.split()]
+    files.extend(results)
 
     expt_path = Path(experiment_dir)
     expt = NCExperiment(experiment=str(expt_path.name),
