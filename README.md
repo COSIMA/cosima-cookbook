@@ -5,23 +5,23 @@ The COSIMA Cookbook is a framework for analysing output from ocean-sea ice model
 The cookbook is structured as follows:
  * This repository includes boiler-plate code and scripts that underpin the cookbook.
  * The [COSIMA recipes](https://github.com/COSIMA/cosima-recipes) repository includes example notebooks on which you can base your analyses.
- * The [COSIMA recipes template](https://github.com/COSIMA/cosima-recipe-template) provides you with a template if you want to contribute your own scripts to the analysis.
+ * The [COSIMA recipes template](https://github.com/COSIMA/cosima-recipes/blob/master/Tutorials/Template_For_Notebooks.ipynb) provides you with a template if you want to contribute your own scripts to the analysis.
 
 ## Getting Started
-The easiest way to use the COSIMA Cookbook is via the [NCI Virtual Desktop Infrastructure (VDI)](http://nci.org.au/services/vdi/). The cookbook is preinstalled in the latest conda implemntation on the VDI. 
+The easiest way to use the COSIMA Cookbook is through NCI's HPC systems (either VDI or Gadi). The cookbook is preinstalled in the latest `conda/analysis3` environment. 
 
 Once you have an account on the VDI, you should:
  1. Clone the [COSIMA recipes](https://github.com/COSIMA/cosima-recipes) repository to your local file space.
  2. Start a jupyter notebook session using the following commands:
 ```
->> module use /g/data3/hh5/public/modules/
+>> module use /g/data/hh5/public/modules/
 >> module load conda/analysis3-unstable
 >> jupyter notebook
 ```
  3. Navigate to one of the COSIMA recipes and run the analysis.
  
- Alternatively, you might prefer to download our [jupyter VDI](https://github.com/COSIMA/cosima-cookbook/blob/master/scripts/jupyter_vdi.py) script to your local machine to open a jupyer notebook in your local browser window.
- 
+Alternatively, you might prefer to download `vdi_jupyter` or the `gadi_jupyter` scripts hosted in the [CLEx CMS Github Repo](https://github.com/coecms/nci_scripts). These scripts will allow you to open a jupyer notebook in your local browser window.
+
 ## Using the Cookbook
 The COSIMA Cookbook relies on several components:
  1. There needs to be a database of simulations -- on the NCI system, model output that is stored in the COSIMA space on the hh5 directory.
