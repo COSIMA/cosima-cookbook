@@ -101,7 +101,9 @@ def getvar(expt, variable, session, ncfile=None,
     expt - text string indicating the name of the experiment
     variable - text string indicating the name of the variable to load
     session - a database session created by cc.database.create_session()
-    ncfile - may be used if disambiguation based on filename is required
+    ncfile -  an optional text string indicating the pattern for filenames
+              to load. All filenames containing this string will match, so
+              be specific.
     start_time - only load data after this date. specify as a text string,
                  e.g. '1900-01-01'
     end_time - only load data before this date. specify as a text string,
