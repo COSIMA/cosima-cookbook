@@ -52,7 +52,8 @@ def get_variables(session, experiment, frequency=None):
     """
 
     q = (session
-         .query(CFVariable.name, 
+         .query(CFVariable.name,
+                CFVariable.long_name,
                 NCFile.frequency,
                 NCFile.ncfile,
                 func.count(NCFile.ncfile).label('# ncfiles'),
