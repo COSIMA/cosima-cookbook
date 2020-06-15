@@ -110,6 +110,14 @@ def test_get_variables(session):
     df = pd.DataFrame.from_dict(
         {
             "name": ["TLAT", "TLON", "hi_m", "tarea", "time", "time_bounds"],
+            "long_name": [
+                "T grid center latitude",
+                "T grid center longitude",
+                "grid cell mean ice thickness",
+                "area of T grid cells",
+                "model time",
+                "boundaries for time-averaging interval",
+            ],
             "frequency": ["1 monthly"] * 6,
             "ncfile": ["output000/hi_m.nc"] * 6,
             "# ncfiles": [1] * 6,
