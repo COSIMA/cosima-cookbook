@@ -78,7 +78,7 @@ class NCFile(Base):
     frequency = Column(String)
 
     #: variables in this file
-    ncvars = relationship('NCVar', back_populates='ncfile')
+    ncvars = relationship('NCVar', back_populates='ncfile', cascade='all, delete-orphan')
 
     @property
     def ncfile_path(self):
