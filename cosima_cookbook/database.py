@@ -293,7 +293,7 @@ def update_metadata(experiment):
 
 class IndexingError(Exception): pass
 
-def index_experiment(experiment_dir, session=None, client=None, update=False):
+def index_experiment(experiment_dir, session=None, client=None, update=False, prune=False, delete=True):
     """Index all output files for a single experiment."""
 
     # find all netCDF files in the hierarchy below this directory
@@ -332,6 +332,13 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
     # make all files relative to the experiment path
     files = [str(Path(f).relative_to(expt_path)) for f in files]
 
+    if prune:
+        # create a dictionary of all entries that are missing
+        for f in expt.ncfiles:
+            missing_files[f.ncfile] = f
+        for f in files:
+            del(missing_files[f])
+
     if update:
         # prune file list to only new files
         # first construct a query for the current experiment
@@ -362,6 +369,13 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
             ncvar.variable = CFVariable.as_unique(session,
                                                   v.name, v.long_name,
                                                   v.standard_name, v.units)
+
+    if prune:
+        for f in missing_files:
+            if delete:
+                session.delete(missing_files[f])
+            else:
+                f.preset = False
 
     session.add_all(results)
     return len(results)
