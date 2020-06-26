@@ -11,6 +11,9 @@ def find_dimension_with_attribute(d, attribute, value):
     """Find a matching dimension with attribute=value, or None."""
 
     for dim in d.dimensions:
+        if dim not in d.variables:
+            continue
+
         if getattr(d.variables[dim], attribute, None) == value:
             return dim
 
