@@ -262,7 +262,7 @@ def test_index_with_prune_nodelete(session_db, tmpdir):
     r = q.all()
     assert(len(r) == 1)
 
-    # remove the file and prune
+    # remove the file and build with pruning
     os.remove(expt_dir / 'test1.nc')
     database.build_index(str(expt_dir), session, update=True, prune=True, delete=False)
 
@@ -287,7 +287,7 @@ def test_index_with_prune_delete(session_db, tmpdir):
     r = q.all()
     assert(len(r) == 1)
 
-    # remove the file and prune
+    # remove the file and build with pruning
     os.remove(expt_dir / 'test1.nc')
     database.build_index(str(expt_dir), session, update=True, prune=True, delete=True)
 
