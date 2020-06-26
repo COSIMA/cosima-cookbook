@@ -172,7 +172,7 @@ def update_timeinfo(f, ncfile):
 
     with netCDF4.Dataset(f, 'r') as ds:
         # we assume the record dimension corresponds to time
-        time_dim = netcdf_utils.find_record_dimension(ds)
+        time_dim = netcdf_utils.find_time_dimension(ds)
         if time_dim is None:
             return None
 
