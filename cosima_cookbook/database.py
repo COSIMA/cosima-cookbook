@@ -293,7 +293,7 @@ def update_metadata(experiment):
 
 class IndexingError(Exception): pass
 
-def index_experiment(experiment_dir, session=None, client=None, update=False):
+def index_experiment(experiment_dir, session=None, client=None, update=False, prune=True, delete=True):
     """Index all output files for a single experiment."""
 
     # find all netCDF files in the hierarchy below this directory
@@ -330,21 +330,20 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
     update_metadata(expt)
 
     # make all files relative to the experiment path
-    files = [str(Path(f).relative_to(expt_path)) for f in files]
+    files = { str(Path(f).relative_to(expt_path)) for f in files }
 
-    if update:
-        # prune file list to only new files
-        # first construct a query for the current experiment
-        q = (session
-             .query(NCFile.ncfile)
-             .join(NCExperiment)
-             .filter(NCExperiment.experiment == expt.experiment)
-             .filter(NCExperiment.root_dir == expt.root_dir))
-
-        # we can't really leverage the database to do this query, so we'll
-        # just have to iterate over files and see if they're in the database
-        # already. ncfile is an indexed column, so it's not too bad
-        files = [f for f in files if not q.filter(NCFile.ncfile == f).count()]
+    for fobj in expt.ncfiles:
+        f = fobj.ncfile
+        if f in files:
+            # remove existing files from list, only index new files
+            files.remove(f)
+        else:
+            if prune:
+                # prune missing files from database
+                if delete:
+                    session.delete(fobj)
+                else:
+                    fobj.present = False
 
     results = []
 
@@ -366,14 +365,16 @@ def index_experiment(experiment_dir, session=None, client=None, update=False):
     session.add_all(results)
     return len(results)
 
-def build_index(directories, session, client=None, update=False):
+def build_index(directories, session, client=None, update=False, prune=True, delete=True):
     """Index all netcdf files contained within experiment directories.
 
     Requires a session for the database that's been created with the create_session() function.
     If client is not None, use a distributed client for processing files in parallel.
     May scan for only new entries to add to database with the update flag.
+    If prune is True files that are already in the database but are missing from the filesystem
+    will be either removed if delete is also True, or flagged as missing if delete is False.
 
-    Returns the number of files that were indexed.
+    Returns the number of new files that were indexed.
     """
 
     if not isinstance(directories, list):
@@ -381,7 +382,7 @@ def build_index(directories, session, client=None, update=False):
 
     indexed = 0
     for directory in directories:
-        indexed += index_experiment(directory, session, client, update)
+        indexed += index_experiment(directory, session, client, update, prune, delete)
 
     # if everything went smoothly, commit these changes to the database
     session.commit()
