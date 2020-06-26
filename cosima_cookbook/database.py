@@ -332,6 +332,7 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
     # make all files relative to the experiment path
     files = [str(Path(f).relative_to(expt_path)) for f in files]
 
+    missing_files = {}
     if prune:
         # create a dictionary of all entries that are missing
         for f in expt.ncfiles:
@@ -375,7 +376,7 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
             if delete:
                 session.delete(missing_files[f])
             else:
-                f.preset = False
+                missing_files[f].present = False
 
     session.add_all(results)
     return len(results)
