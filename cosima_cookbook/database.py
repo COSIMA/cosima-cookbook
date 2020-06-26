@@ -371,8 +371,10 @@ def build_index(directories, session, client=None, update=False, prune=True, del
     Requires a session for the database that's been created with the create_session() function.
     If client is not None, use a distributed client for processing files in parallel.
     May scan for only new entries to add to database with the update flag.
+    If prune is True files that are already in the database but are missing from the filesystem
+    will be either removed if delete is also True, or flagged as missing if delete is False.
 
-    Returns the number of files that were indexed.
+    Returns the number of new files that were indexed.
     """
 
     if not isinstance(directories, list):
