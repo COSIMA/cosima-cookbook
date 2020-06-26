@@ -330,7 +330,7 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
     update_metadata(expt)
 
     # make all files relative to the experiment path
-    files = set([str(Path(f).relative_to(expt_path)) for f in files])
+    files = { str(Path(f).relative_to(expt_path)) for f in files }
 
     for fobj in expt.ncfiles:
         f = fobj.ncfile
