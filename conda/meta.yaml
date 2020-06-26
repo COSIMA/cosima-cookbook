@@ -15,6 +15,7 @@ requirements:
     build:
         - python>=3.6
         - setuptools
+        - setuptools_scm
         - pbr
     run:
         - python>=3.6
