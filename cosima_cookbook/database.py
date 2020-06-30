@@ -62,6 +62,7 @@ class NCExperiment(Base):
         'Keyword',
         secondary=keyword_assoc_table,
         back_populates='experiments',
+        cascade='merge', # allow unique constraints on uncommitted session
         collection_class=set
     )
     # add an association proxy to the keyword column of the keywords table
@@ -71,7 +72,7 @@ class NCExperiment(Base):
     #: Files in this experiment
     ncfiles = relationship('NCFile', back_populates='experiment')
 
-class Keyword(Base):
+class Keyword(UniqueMixin, Base):
     __tablename__ = 'keywords'
 
     id = Column(Integer, primary_key=True)
@@ -81,6 +82,14 @@ class Keyword(Base):
 
     def __init__(self, keyword):
         self.keyword = keyword
+
+    @classmethod
+    def unique_hash(cls, keyword):
+        return keyword
+
+    @classmethod
+    def unique_filter(cls, query, keyword):
+        return query.filter(Keyword.keyword == keyword)
 
 class NCFile(Base):
     __tablename__ = 'ncfiles'
@@ -302,7 +311,7 @@ def index_file(ncfile_name, experiment):
 
     return ncfile
 
-def update_metadata(experiment):
+def update_metadata(experiment, session):
     """Look for a metadata.yaml for a given experiment, and populate
     the row with any data found."""
 
@@ -317,6 +326,9 @@ def update_metadata(experiment):
                 setattr(experiment, k, metadata[k])
     except yaml.YAMLError as e:
         logging.warning('Error reading metadata file %s: %s', metadata_file, e)
+
+    # update keywords to be unique
+    experiment.kw = { Keyword.as_unique(session, kw.keyword) for kw in experiment.kw }
 
 class IndexingError(Exception): pass
 
@@ -354,7 +366,7 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
 
     print('Indexing experiment: {}'.format(expt_path.name))
 
-    update_metadata(expt)
+    update_metadata(expt, session)
 
     # make all files relative to the experiment path
     files = { str(Path(f).relative_to(expt_path)) for f in files }
