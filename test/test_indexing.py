@@ -1,18 +1,9 @@
 import pytest
-from datetime import datetime
 import os
 import shutil
 import xarray as xr
 from cosima_cookbook import database
 from sqlalchemy import func
-
-@pytest.fixture
-def session_db(tmpdir):
-    db = tmpdir.join('test.db')
-    s = database.create_session(str(db))
-    yield s, db
-
-    s.close()
 
 @pytest.fixture
 def unreadable_dir(tmpdir):
@@ -151,18 +142,6 @@ def test_same_expt_name(session_db):
     assert(len(r) == 2)
     assert(r[0].root_dir != r[1].root_dir)
 
-def test_metadata(session_db):
-    session, db = session_db
-    database.build_index('test/data/indexing/metadata', session)
-
-    # query metadata
-    q = session.query(database.NCExperiment.contact,
-                      database.NCExperiment.created,
-                      database.NCExperiment.description)
-    r = q.one()
-    assert(r[0] == 'The ACCESS Oracle')
-    assert(r[1] == datetime(2018, 1, 1))
-    assert(len(r[2]) > 0)
 
 def test_broken_metadata(session_db):
     session, db = session_db
