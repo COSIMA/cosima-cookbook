@@ -323,7 +323,13 @@ def update_metadata(experiment, session):
         metadata = yaml.safe_load(metadata_file.open())
         for k in NCExperiment.metadata_keys:
             if k in metadata:
-                setattr(experiment, k, metadata[k])
+                v = metadata[k]
+
+                # special case for keywords: ensure we get a list
+                if k == "keywords" and isinstance(v, str):
+                    v = [v]
+
+                setattr(experiment, k, v)
     except yaml.YAMLError as e:
         logging.warning('Error reading metadata file %s: %s', metadata_file, e)
 
