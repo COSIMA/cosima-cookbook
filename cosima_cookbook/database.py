@@ -26,7 +26,7 @@ from .database_utils import *
 logging.captureWarnings(True)
 
 __DB_VERSION__ = 3
-__DEFAULT_DB__ = '/g/data/hh5/tmp/cosima/database/access-om2.db'
+__DEFAULT_DB__ = '/g/data/ik11/databases/cosima_master.db'
 
 Base = declarative_base()
 
