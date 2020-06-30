@@ -25,10 +25,16 @@ from .database_utils import *
 
 logging.captureWarnings(True)
 
-__DB_VERSION__ = 2
+__DB_VERSION__ = 3
 __DEFAULT_DB__ = '/g/data/hh5/tmp/cosima/database/access-om2.db'
 
 Base = declarative_base()
+
+keyword_assoc_table = Table(
+    'keyword_assoc', Base.metadata,
+    Column('expt_id', Integer, ForeignKey('experiments.id')),
+    Column('keyword_id', Integer, ForeignKey('keywords.id'))
+)
 
 class NCExperiment(Base):
     __tablename__ = 'experiments'
@@ -43,7 +49,7 @@ class NCExperiment(Base):
     root_dir = Column(String, nullable=False)
 
     # Other experiment metadata (populated from metadata.yaml)
-    metadata_keys = ['contact', 'email', 'created', 'description', 'notes']
+    metadata_keys = ['contact', 'email', 'created', 'description', 'notes', 'keywords']
     contact = Column(String)
     email = Column(String)
     created = Column(DateTime)
@@ -51,9 +57,30 @@ class NCExperiment(Base):
     description = Column(Text)
     #: Any other notes
     notes = Column(Text)
+    #: Short, categorical keywords
+    kw = relationship(
+        'Keyword',
+        secondary=keyword_assoc_table,
+        back_populates='experiments',
+        collection_class=set
+    )
+    # add an association proxy to the keyword column of the keywords table
+    # this lets us add keywords as strings rather than Keyword objects
+    keywords = association_proxy('kw', 'keyword')
 
     #: Files in this experiment
     ncfiles = relationship('NCFile', back_populates='experiment')
+
+class Keyword(Base):
+    __tablename__ = 'keywords'
+
+    id = Column(Integer, primary_key=True)
+    keyword = Column(String, nullable=False, unique=True, index=True)
+
+    experiments = relationship('NCExperiment', secondary=keyword_assoc_table, back_populates='kw')
+
+    def __init__(self, keyword):
+        self.keyword = keyword
 
 class NCFile(Base):
     __tablename__ = 'ncfiles'
