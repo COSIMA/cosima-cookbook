@@ -87,3 +87,31 @@ def test_keyword_upcast(session_db):
     r = q.one()
     assert('cosima' in r.keywords)
     assert('c' not in r.keywords) # make sure it wasn't added as a string
+
+def test_keyword_case_sensitivity(session_db):
+    """Test that keywords are treated in a case-insensitive manner,
+    both for metadata retrieval and querying.
+    """
+
+    session, db = session_db
+    metadata_for_experiment('test/data/metadata/keywords', session, name='e1')
+    metadata_for_experiment('test/data/metadata/upcase', session, name='e2')
+
+    # we should be able to find the keyword in lowercase
+    q = session.query(database.Keyword).filter(database.Keyword.keyword == 'cosima')
+    k1 = q.one_or_none()
+    assert(k1 is not None)
+
+    # and in uppercase
+    q = session.query(database.Keyword).filter(database.Keyword.keyword == 'COSIMA')
+    k2 = q.one_or_none()
+    assert(k2 is not None)
+
+    # but they should resolve to the same keyword
+    assert(k1 is k2)
+
+    # finally, the set of keywords should all be lowercase
+    q = session.query(database.NCExperiment).filter(database.NCExperiment.experiment == 'e2')
+    r = q.one()
+    for kw in r.keywords:
+        assert(kw == kw.lower())

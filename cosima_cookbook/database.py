@@ -19,6 +19,7 @@ from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from . import netcdf_utils
 from .database_utils import *
@@ -76,7 +77,24 @@ class Keyword(UniqueMixin, Base):
     __tablename__ = 'keywords'
 
     id = Column(Integer, primary_key=True)
-    keyword = Column(String, nullable=False, unique=True, index=True)
+    # enable sqlite case-insensitive string collation
+    _keyword = Column(String(collation='NOCASE'), nullable=False, unique=True, index=True)
+
+    # hybrid property lets us define different behaviour at the instance
+    # and expression levels: for an instance, we return the lowercased keyword
+    @hybrid_property
+    def keyword(self):
+        return self._keyword.lower()
+
+    @keyword.setter
+    def keyword(self, keyword):
+        self._keyword = keyword
+
+    # in an expression, because the column is 'collate nocase', we can just
+    # use the raw keyword
+    @keyword.expression
+    def keyword(cls):
+        return cls._keyword
 
     experiments = relationship('NCExperiment', secondary=keyword_assoc_table, back_populates='kw')
 

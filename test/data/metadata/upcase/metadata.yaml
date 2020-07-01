@@ -1,9 +1,9 @@
 contact: The ACCESS Oracle
 email: oracle@example.com
 created: 2018-01-01
-description: Description
+description: Description (with uppercase keywords!)
 notes: Notes
 keywords:
-  - cosima
-  - ACCESS-OM2-01
-  - ryf9091
+  - COSIMA
+  - access-om2-01
+  - RYF9091
