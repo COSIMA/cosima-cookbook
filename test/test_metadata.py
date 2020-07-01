@@ -1,7 +1,10 @@
 import pytest
 from datetime import datetime
 
-from cosima_cookbook import database
+import pandas as pd
+from pandas.util.testing import assert_frame_equal
+
+from cosima_cookbook import database, querying
 
 def metadata_for_experiment(path, session, name='test', commit=True):
     """Method to read metadata for an experiment without requiring
@@ -33,6 +36,76 @@ def test_metadata(session_db):
     assert(r[1] == datetime(2018, 1, 1))
     assert(len(r[2]) > 0)
 
+
+def test_get_experiments_metadata(session_db):
+    """Test that get_experiments returns metadata correctly"""
+
+    session, db = session_db
+    database.build_index('test/data/indexing/metadata', session)
+
+    r = querying.get_experiments(session, contact=True)
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["metadata"], 
+         "contact": ["The ACCESS Oracle"], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
+    r = querying.get_experiments(session, email=True)
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["metadata"], 
+         "email": ["oracle@example.com"], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
+    r = querying.get_experiments(session, description=True)
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["metadata"], 
+         "description": [('Attempted spinup, using salt flux fix '
+                          'https://arccss.slack.com/archives/C6PP0GU9Y/p1515460656000124 '
+                          'and https://github.com/mom-ocean/MOM5/pull/208/commits/9f4ee6f8b72b76c96a25bf26f3f6cdf773b424d2 '
+                          'from the start. Used mushy ice from July year 1 onwards to avoid vertical thermo error in cice '
+                          'https://arccss.slack.com/archives/C6PP0GU9Y/p1515842016000079')], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
+    r = querying.get_experiments(session, notes=True)
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["metadata"], 
+         "notes": [('Stripy salt restoring: '
+                    'https://github.com/OceansAus/access-om2/issues/74 tripole seam bug: '
+                    'https://github.com/OceansAus/access-om2/issues/86 requires dt=300s '
+                    'in May, dt=240s in Aug to maintain CFL in CICE near tripoles (storms '
+                    'in those months in 8485RYF); all other months work with dt=400s')], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
+    r = querying.get_experiments(session, created=True)
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["metadata"], 
+         "created": [pd.to_datetime("2018-01-01")], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
+    r = querying.get_experiments(session, root_dir=True)
+    # Won't try and match a path that can change on different platforms
+    # assert_frame_equal(r, df)
+    assert(r.shape == (1,3))
+
+    r = querying.get_experiments(session, all=True)
+    # Won't try and match everything, just check dimensions are correct
+    assert(r.shape == (1,8))
+
+    # Test turning off returning experiment (bit dumb, but hey ...)
+    r = querying.get_experiments(session, experiment=False)
+    df = pd.DataFrame.from_dict(
+        {"ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
 
 def test_keywords(session_db):
     """Test that keywords are read for an experiment"""
