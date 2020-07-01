@@ -7,14 +7,6 @@ from cosima_cookbook import database
 from sqlalchemy import func
 
 @pytest.fixture
-def session_db(tmpdir):
-    db = tmpdir.join('test.db')
-    s = database.create_session(str(db))
-    yield s, db
-
-    s.close()
-
-@pytest.fixture
 def unreadable_dir(tmpdir):
     expt_path = tmpdir / "expt_dir"
     expt_path.mkdir()

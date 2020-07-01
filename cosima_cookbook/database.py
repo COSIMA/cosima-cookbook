@@ -150,7 +150,6 @@ def create_session(db=None, debug=False):
         db = os.getenv('COSIMA_COOKBOOK_DB', __DEFAULT_DB__)
 
     engine = create_engine('sqlite:///' + db, echo=debug)
-    Base.metadata.create_all(engine)
 
     # if database version is 0, we've created it anew
     conn = engine.connect()
@@ -160,6 +159,8 @@ def create_session(db=None, debug=False):
         conn.execute('PRAGMA user_version={}'.format(__DB_VERSION__))
     elif ver < __DB_VERSION__:
         raise Exception('Incompatible database versions, expected {}, got {}'.format(ver, __DB_VERSION__))
+
+    Base.metadata.create_all(conn)
     conn.close()
 
     Session = sessionmaker(bind=engine)
