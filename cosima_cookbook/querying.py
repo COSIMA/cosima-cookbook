@@ -7,7 +7,7 @@ Functions for data discovery.
 import logging
 import os.path
 import pandas as pd
-from sqlalchemy import func, distinct
+from sqlalchemy import func, distinct, select
 import warnings
 import xarray as xr
 
@@ -18,17 +18,27 @@ from .database import NCExperiment, NCFile, CFVariable, NCVar
 class VariableNotFoundError(Exception):
     pass
 
-def get_experiments(session):
+def get_experiments(session, experiment=True, all=False, **kwargs):
     """
     Returns a DataFrame of all experiments and the number of netCDF4 files contained 
     within each experiment.
     """
 
+    # Determine which attributes to return. Special case experiment
+    # as this is the only one that defaults to True
+    columns = []
+    if experiment:
+        columns.append(NCExperiment.experiment)
+
+    for f in NCExperiment.metadata_keys + ['root_dir']:
+        if kwargs.get(f, all):
+            columns.append(getattr(NCExperiment, f))
+
     q = (session
-         .query(NCExperiment.experiment,
+        .query(*columns,
                 func.count(NCFile.experiment_id).label('ncfiles'))
-         .join(NCFile.experiment)
-         .group_by(NCFile.experiment_id))
+        .join(NCFile.experiment)
+        .group_by(NCFile.experiment_id))
 
     return pd.DataFrame(q)
 
