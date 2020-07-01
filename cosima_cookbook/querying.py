@@ -31,6 +31,8 @@ def get_experiments(session, experiment=True, all=False, **kwargs):
         columns.append(NCExperiment.experiment)
 
     for f in NCExperiment.metadata_keys + ['root_dir']:
+        # Explicitly don't support returning keyword metadata
+        if f == 'keywords': continue
         if kwargs.get(f, all):
             columns.append(getattr(NCExperiment, f))
 
