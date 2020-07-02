@@ -7,18 +7,18 @@ Functions for data discovery.
 import logging
 import os.path
 import pandas as pd
-from sqlalchemy import func, distinct, select
+from sqlalchemy import func, distinct, select, or_
 import warnings
 import xarray as xr
 
 from . import database
-from .database import NCExperiment, NCFile, CFVariable, NCVar
+from .database import NCExperiment, NCFile, CFVariable, NCVar, Keyword
 
 
 class VariableNotFoundError(Exception):
     pass
 
-def get_experiments(session, experiment=True, all=False, **kwargs):
+def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs):
     """
     Returns a DataFrame of all experiments and the number of netCDF4 files contained 
     within each experiment.
@@ -36,11 +36,22 @@ def get_experiments(session, experiment=True, all=False, **kwargs):
         if kwargs.get(f, all):
             columns.append(getattr(NCExperiment, f))
 
-    q = (session
-        .query(*columns,
-                func.count(NCFile.experiment_id).label('ncfiles'))
-        .join(NCFile.experiment)
-        .group_by(NCFile.experiment_id))
+    if keywords is not None:
+
+        if type(keywords) == str:
+            keywords = [ keywords ]
+
+        q = (session
+            .query(*columns, func.count(NCFile.ncfile).label('ncfiles'))
+            .join(NCFile.experiment)
+            .filter(NCExperiment.keywords.in_(keywords))
+            .group_by(NCFile.experiment_id))
+    else:
+        q = (session
+            .query(*columns,
+                    func.count(NCFile.experiment_id).label('ncfiles'))
+            .join(NCFile.experiment)
+            .group_by(NCFile.experiment_id))
 
     return pd.DataFrame(q)
 
@@ -56,6 +67,22 @@ def get_ncfiles(session, experiment):
          .order_by(NCFile.ncfile))
 
     return pd.DataFrame(q)
+
+def get_keywords(session, experiment=None):
+    """
+    Returns a set of all keywords, and optionally only for a given experiment
+    """
+
+    if experiment is not None:
+        q = (session
+            .query(NCExperiment)
+            .filter(NCExperiment.experiment == experiment))
+        r = q.one()
+        return r.keywords
+    else:
+        q = (session
+            .query(Keyword))
+        return {r.keyword for r in q}
 
 def get_variables(session, experiment, frequency=None):
     """
