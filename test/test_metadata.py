@@ -188,3 +188,67 @@ def test_keyword_case_sensitivity(session_db):
     r = q.one()
     for kw in r.keywords:
         assert(kw == kw.lower())
+
+def test_get_keywords(session_db):
+    """Test retrieval of keywords
+    """
+
+    session, db = session_db
+    database.build_index('test/data/metadata/keywords', session)
+    database.build_index('test/data/metadata/keywords2', session)
+
+    # Grab keywords for individual experiments
+    r = querying.get_keywords(session, 'keywords')
+    assert(r == {'access-om2-01', 'ryf9091', 'cosima'})
+
+    r = querying.get_keywords(session, 'keywords2')
+    assert(r == {'another-keyword', 'cosima'})
+
+    # Test retrieving all keywords
+    r = querying.get_keywords(session)
+    assert(r == {'access-om2-01', 'ryf9091', 'another-keyword', 'cosima'})
+
+
+    # Test retrieving experiments that match given keywords
+    r = querying.get_experiments(session, keywords='cosima')
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords", "keywords2"], 
+         "ncfiles": [1, 1]}
+    )
+    assert_frame_equal(r, df)
+
+    r = querying.get_experiments(session, keywords='another-keyword')
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords2"], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
+    r = querying.get_experiments(session, keywords='ryf9091')
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords"], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
+    # Test passing an array of keywords
+    r = querying.get_experiments(session, keywords=['ryf9091', 'another-keyword'])
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords", "keywords2"], 
+         "ncfiles": [1, 1]}
+    )
+    assert_frame_equal(r, df)
+
+    # Test passing a non-existent keyword along with one present
+    r = querying.get_experiments(session, keywords=['ryf9091', 'not-a-keyword'])
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords"], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
+    # Test passing only a non-existent keyword
+    r = querying.get_experiments(session, keywords=['not-a-keyword'])
+    df = pd.DataFrame()
+    
+    assert_frame_equal(r, df)
