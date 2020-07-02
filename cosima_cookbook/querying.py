@@ -36,22 +36,18 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
         if kwargs.get(f, all):
             columns.append(getattr(NCExperiment, f))
 
+    q = (session
+        .query(*columns,
+                func.count(NCFile.experiment_id).label('ncfiles'))
+        .join(NCFile.experiment)
+        .group_by(NCFile.experiment_id))
+
     if keywords is not None:
 
-        if instanceof(keywords, str):
+        if isinstance(keywords, str):
             keywords = [ keywords ]
 
-        q = (session
-            .query(*columns, func.count(NCFile.ncfile).label('ncfiles'))
-            .join(NCFile.experiment)
-            .filter(NCExperiment.keywords.in_(keywords))
-            .group_by(NCFile.experiment_id))
-    else:
-        q = (session
-            .query(*columns,
-                    func.count(NCFile.experiment_id).label('ncfiles'))
-            .join(NCFile.experiment)
-            .group_by(NCFile.experiment_id))
+        q = q.filter(NCExperiment.keywords.in_(keywords))
 
     return pd.DataFrame(q)
 
