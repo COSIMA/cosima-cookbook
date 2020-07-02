@@ -38,7 +38,7 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
 
     if keywords is not None:
 
-        if type(keywords) == str:
+        if instanceof(keywords, str):
             keywords = [ keywords ]
 
         q = (session
