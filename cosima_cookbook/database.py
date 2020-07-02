@@ -61,6 +61,7 @@ class NCExperiment(Base):
     #: Short, categorical keywords
     kw = relationship(
         'Keyword',
+        lazy='joined',
         secondary=keyword_assoc_table,
         back_populates='experiments',
         cascade='merge', # allow unique constraints on uncommitted session
