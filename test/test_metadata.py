@@ -194,21 +194,28 @@ def test_get_keywords(session_db):
     """
 
     session, db = session_db
-    database.build_index('test/data/metadata/keywords', session)
-    database.build_index('test/data/metadata/keywords2', session)
+    metadata_for_experiment('test/data/metadata/keywords', session, name='e1')
+    metadata_for_experiment('test/data/metadata/keywords2', session, name='e2')
 
     # Grab keywords for individual experiments
-    r = querying.get_keywords(session, 'keywords')
+    r = querying.get_keywords(session, 'e1')
     assert(r == {'access-om2-01', 'ryf9091', 'cosima'})
 
-    r = querying.get_keywords(session, 'keywords2')
+    r = querying.get_keywords(session, 'e2')
     assert(r == {'another-keyword', 'cosima'})
 
     # Test retrieving all keywords
     r = querying.get_keywords(session)
     assert(r == {'access-om2-01', 'ryf9091', 'another-keyword', 'cosima'})
 
-    # Test retrieving experiments that match given keywords
+def test_get_experiments_with_keywords(session_db):
+    """Test retrieval of experiments with keyword filtering
+    """
+    session, db = session_db
+    database.build_index('test/data/metadata/keywords', session)
+    database.build_index('test/data/metadata/keywords2', session)
+
+    # Test keyword common to both experiments
     r = querying.get_experiments(session, keywords='cosima')
     df = pd.DataFrame.from_dict(
         {"experiment": ["keywords", "keywords2"], 
@@ -216,6 +223,7 @@ def test_get_keywords(session_db):
     )
     assert_frame_equal(r, df)
 
+    # Test keyword in only one experiment
     r = querying.get_experiments(session, keywords='another-keyword')
     df = pd.DataFrame.from_dict(
         {"experiment": ["keywords2"], 
@@ -230,20 +238,23 @@ def test_get_keywords(session_db):
     )
     assert_frame_equal(r, df)
 
-    # Test passing an array of keywords
-    r = querying.get_experiments(session, keywords=['ryf9091', 'another-keyword'])
+    # Test passing an array of keywords that match only one experiment
+    r = querying.get_experiments(session, keywords=['cosima', 'another-keyword'])
     df = pd.DataFrame.from_dict(
-        {"experiment": ["keywords", "keywords2"], 
-         "ncfiles": [1, 1]}
+        {"experiment": ["keywords2"], 
+         "ncfiles": [1]}
     )
     assert_frame_equal(r, df)
 
-    # Test passing a non-existent keyword along with one present
+    # Test passing an array of keywords that will not match any one experiment
+    r = querying.get_experiments(session, keywords=['another-keyword', 'ryf9091'])
+    df = pd.DataFrame()
+    assert_frame_equal(r, df)
+
+    # Test passing a non-existent keyword along with one present. Should return
+    # nothing as no experiment contains it
     r = querying.get_experiments(session, keywords=['ryf9091', 'not-a-keyword'])
-    df = pd.DataFrame.from_dict(
-        {"experiment": ["keywords"], 
-         "ncfiles": [1]}
-    )
+    df = pd.DataFrame()
     assert_frame_equal(r, df)
 
     # Test passing only a non-existent keyword
