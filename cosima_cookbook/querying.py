@@ -73,8 +73,7 @@ def get_keywords(session, experiment=None):
         q = (session
             .query(NCExperiment)
             .filter(NCExperiment.experiment == experiment))
-        r = q.one()
-        return r.keywords
+        return q.scalar().keywords
     else:
         q = (session
             .query(Keyword))
