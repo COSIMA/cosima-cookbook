@@ -19,16 +19,23 @@ from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from . import netcdf_utils
 from .database_utils import *
 
 logging.captureWarnings(True)
 
-__DB_VERSION__ = 2
-__DEFAULT_DB__ = '/g/data/hh5/tmp/cosima/database/access-om2.db'
+__DB_VERSION__ = 3
+__DEFAULT_DB__ = '/g/data/ik11/databases/cosima_master.db'
 
 Base = declarative_base()
+
+keyword_assoc_table = Table(
+    'keyword_assoc', Base.metadata,
+    Column('expt_id', Integer, ForeignKey('experiments.id')),
+    Column('keyword_id', Integer, ForeignKey('keywords.id'))
+)
 
 class NCExperiment(Base):
     __tablename__ = 'experiments'
@@ -43,7 +50,7 @@ class NCExperiment(Base):
     root_dir = Column(String, nullable=False)
 
     # Other experiment metadata (populated from metadata.yaml)
-    metadata_keys = ['contact', 'email', 'created', 'description', 'notes']
+    metadata_keys = ['contact', 'email', 'created', 'description', 'notes', 'keywords']
     contact = Column(String)
     email = Column(String)
     created = Column(DateTime)
@@ -51,9 +58,56 @@ class NCExperiment(Base):
     description = Column(Text)
     #: Any other notes
     notes = Column(Text)
+    #: Short, categorical keywords
+    kw = relationship(
+        'Keyword',
+        secondary=keyword_assoc_table,
+        back_populates='experiments',
+        cascade='merge', # allow unique constraints on uncommitted session
+        collection_class=set
+    )
+    # add an association proxy to the keyword column of the keywords table
+    # this lets us add keywords as strings rather than Keyword objects
+    keywords = association_proxy('kw', 'keyword')
 
     #: Files in this experiment
     ncfiles = relationship('NCFile', back_populates='experiment')
+
+class Keyword(UniqueMixin, Base):
+    __tablename__ = 'keywords'
+
+    id = Column(Integer, primary_key=True)
+    # enable sqlite case-insensitive string collation
+    _keyword = Column(String(collation='NOCASE'), nullable=False, unique=True, index=True)
+
+    # hybrid property lets us define different behaviour at the instance
+    # and expression levels: for an instance, we return the lowercased keyword
+    @hybrid_property
+    def keyword(self):
+        return self._keyword.lower()
+
+    @keyword.setter
+    def keyword(self, keyword):
+        self._keyword = keyword
+
+    # in an expression, because the column is 'collate nocase', we can just
+    # use the raw keyword
+    @keyword.expression
+    def keyword(cls):
+        return cls._keyword
+
+    experiments = relationship('NCExperiment', secondary=keyword_assoc_table, back_populates='kw')
+
+    def __init__(self, keyword):
+        self.keyword = keyword
+
+    @classmethod
+    def unique_hash(cls, keyword):
+        return keyword
+
+    @classmethod
+    def unique_filter(cls, query, keyword):
+        return query.filter(Keyword.keyword == keyword)
 
 class NCFile(Base):
     __tablename__ = 'ncfiles'
@@ -276,7 +330,7 @@ def index_file(ncfile_name, experiment):
 
     return ncfile
 
-def update_metadata(experiment):
+def update_metadata(experiment, session):
     """Look for a metadata.yaml for a given experiment, and populate
     the row with any data found."""
 
@@ -288,9 +342,18 @@ def update_metadata(experiment):
         metadata = yaml.safe_load(metadata_file.open())
         for k in NCExperiment.metadata_keys:
             if k in metadata:
-                setattr(experiment, k, metadata[k])
+                v = metadata[k]
+
+                # special case for keywords: ensure we get a list
+                if k == "keywords" and isinstance(v, str):
+                    v = [v]
+
+                setattr(experiment, k, v)
     except yaml.YAMLError as e:
         logging.warning('Error reading metadata file %s: %s', metadata_file, e)
+
+    # update keywords to be unique
+    experiment.kw = { Keyword.as_unique(session, kw.keyword) for kw in experiment.kw }
 
 class IndexingError(Exception): pass
 
@@ -328,7 +391,7 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
 
     print('Indexing experiment: {}'.format(expt_path.name))
 
-    update_metadata(expt)
+    update_metadata(expt, session)
 
     # make all files relative to the experiment path
     files = { str(Path(f).relative_to(expt_path)) for f in files }
