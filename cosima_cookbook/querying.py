@@ -7,7 +7,7 @@ Functions for data discovery.
 import logging
 import os.path
 import pandas as pd
-from sqlalchemy import func, distinct, select, or_
+from sqlalchemy import func, distinct
 import warnings
 import xarray as xr
 
