@@ -88,8 +88,9 @@ def test_get_experiments(session):
     # Won't try and match everything, there is not much useful metadata, just 
     # check dimensions are correct. Metadata correctness checked in test_metadata
     for k in metadata_keys:
-        r = cc.querying.get_experiments(session, k=True)
-        assert(r.shape == (2,2))
+        r = cc.querying.get_experiments(session, **{k: True})
+        assert(k == r.columns[1])
+        assert(r.shape == (2,3))
 
     # Test all = True to select all available metadata
     r = cc.querying.get_experiments(session, all=True)

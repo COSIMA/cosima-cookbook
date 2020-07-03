@@ -208,7 +208,6 @@ def test_get_keywords(session_db):
     r = querying.get_keywords(session)
     assert(r == {'access-om2-01', 'ryf9091', 'another-keyword', 'cosima'})
 
-
     # Test retrieving experiments that match given keywords
     r = querying.get_experiments(session, keywords='cosima')
     df = pd.DataFrame.from_dict(
