@@ -22,6 +22,13 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
     """
     Returns a DataFrame of all experiments and the number of netCDF4 files contained 
     within each experiment.
+
+    Optionally one or more keywords can be specified, and only experiments with all the
+    specified keywords will be return.
+
+    All metadata fields will be returned if all=True, or individual metadata fields
+    can be selected by passing field=True, where available fields are: 
+    contact, email, created, description, notes, and root_dir
     """
 
     # Determine which attributes to return. Special case experiment
@@ -32,7 +39,8 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
 
     for f in NCExperiment.metadata_keys + ['root_dir']:
         # Explicitly don't support returning keyword metadata
-        if f == 'keywords': continue
+        if f == 'keywords': 
+            continue
         if kwargs.get(f, all):
             columns.append(getattr(NCExperiment, f))
 
@@ -47,7 +55,7 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
         if isinstance(keywords, str):
             keywords = [ keywords ]
 
-        q = q.filter(NCExperiment.keywords.in_(keywords))
+        q = q.filter(*(NCExperiment.keywords == k for k in keywords))
 
     return pd.DataFrame(q)
 
