@@ -12,23 +12,50 @@ import warnings
 import xarray as xr
 
 from . import database
-from .database import NCExperiment, NCFile, CFVariable, NCVar
+from .database import NCExperiment, NCFile, CFVariable, NCVar, Keyword
 
 
 class VariableNotFoundError(Exception):
     pass
 
-def get_experiments(session):
+def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs):
     """
     Returns a DataFrame of all experiments and the number of netCDF4 files contained 
     within each experiment.
+
+    Optionally one or more keywords can be specified, and only experiments with all the
+    specified keywords will be return.
+
+    All metadata fields will be returned if all=True, or individual metadata fields
+    can be selected by passing field=True, where available fields are: 
+    contact, email, created, description, notes, and root_dir
     """
 
+    # Determine which attributes to return. Special case experiment
+    # as this is the only one that defaults to True
+    columns = []
+    if experiment:
+        columns.append(NCExperiment.experiment)
+
+    for f in NCExperiment.metadata_keys + ['root_dir']:
+        # Explicitly don't support returning keyword metadata
+        if f == 'keywords': 
+            continue
+        if kwargs.get(f, all):
+            columns.append(getattr(NCExperiment, f))
+
     q = (session
-         .query(NCExperiment.experiment,
+        .query(*columns,
                 func.count(NCFile.experiment_id).label('ncfiles'))
-         .join(NCFile.experiment)
-         .group_by(NCFile.experiment_id))
+        .join(NCFile.experiment)
+        .group_by(NCFile.experiment_id))
+
+    if keywords is not None:
+
+        if isinstance(keywords, str):
+            keywords = [ keywords ]
+
+        q = q.filter(*(NCExperiment.keywords == k for k in keywords))
 
     return pd.DataFrame(q)
 
@@ -44,6 +71,21 @@ def get_ncfiles(session, experiment):
          .order_by(NCFile.ncfile))
 
     return pd.DataFrame(q)
+
+def get_keywords(session, experiment=None):
+    """
+    Returns a set of all keywords, and optionally only for a given experiment
+    """
+
+    if experiment is not None:
+        q = (session
+            .query(NCExperiment)
+            .filter(NCExperiment.experiment == experiment))
+        return q.scalar().keywords
+    else:
+        q = (session
+            .query(Keyword))
+        return {r.keyword for r in q}
 
 def get_variables(session, experiment, frequency=None):
     """
