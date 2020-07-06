@@ -223,6 +223,28 @@ def test_get_experiments_with_keywords(session_db):
     )
     assert_frame_equal(r, df)
 
+    # Test keyword common to both experiments using wildcard
+    r = querying.get_experiments(session, keywords='cos%')
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords", "keywords2"], 
+         "ncfiles": [1, 1]}
+    )
+    assert_frame_equal(r, df)
+    
+    r = querying.get_experiments(session, keywords='%-%')
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords", "keywords2"], 
+         "ncfiles": [1, 1]}
+    )
+    assert_frame_equal(r, df)
+
+    r = querying.get_experiments(session, keywords='access-om2%')
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords"], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
     # Test keyword in only one experiment
     r = querying.get_experiments(session, keywords='another-keyword')
     df = pd.DataFrame.from_dict(
@@ -260,5 +282,9 @@ def test_get_experiments_with_keywords(session_db):
     # Test passing only a non-existent keyword
     r = querying.get_experiments(session, keywords=['not-a-keyword'])
     df = pd.DataFrame()
-    
+    assert_frame_equal(r, df)
+
+    # Test passing only a non-existent wildcard keyword
+    r = querying.get_experiments(session, keywords=['z%'])
+    df = pd.DataFrame()
     assert_frame_equal(r, df)
