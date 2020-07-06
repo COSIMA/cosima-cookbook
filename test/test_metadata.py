@@ -238,6 +238,13 @@ def test_get_experiments_with_keywords(session_db):
     )
     assert_frame_equal(r, df)
 
+    r = querying.get_experiments(session, keywords='access-om2%')
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["keywords"], 
+         "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
     # Test keyword in only one experiment
     r = querying.get_experiments(session, keywords='another-keyword')
     df = pd.DataFrame.from_dict(
