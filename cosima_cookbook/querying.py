@@ -24,7 +24,8 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
     within each experiment.
 
     Optionally one or more keywords can be specified, and only experiments with all the
-    specified keywords will be return.
+    specified keywords will be return. The keyword strings can utilise SQL wildcard
+    characters, "%" and "_", to match multiple keywords.
 
     All metadata fields will be returned if all=True, or individual metadata fields
     can be selected by passing field=True, where available fields are: 
