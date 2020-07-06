@@ -55,7 +55,7 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
         if isinstance(keywords, str):
             keywords = [ keywords ]
 
-        q = q.filter(*(NCExperiment.keywords == k for k in keywords))
+        q = q.filter(*(NCExperiment.keywords.like(k) for k in keywords))
 
     return pd.DataFrame(q)
 
