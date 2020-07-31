@@ -36,8 +36,11 @@ def test_invalid_query(session):
         cc.querying.getvar('querying', 'notfound', session, decode_times=False)
 
 def test_warning_on_ambiguous(session):
-    with pytest.warns(UserWarning):
+    with pytest.warns(UserWarning) as record:
         cc.querying._ncfiles_for_variable("querying_disambiguation", "temp", session)
+
+    assert len(record) == 1
+    assert record[0].message.args[0].startswith("Your query gets a variable from differently-named files:")
 
 def test_query_times(session):
     with cc.querying.getvar('querying', 'ty_trans', session) as v:
@@ -153,8 +156,12 @@ def test_get_frequencies(session):
 
 def test_disambiguation_by_frequency(session):
 
-    with pytest.warns(UserWarning):
+    with pytest.warns(UserWarning) as record:
         assert(len(cc.querying._ncfiles_for_variable("querying", "time", session)) == 3)
+
+    assert len(record) == 2
+    assert record[0].message.args[0].startswith("Your query gets a variable from differently-named files:")
+    assert record[1].message.args[0].startswith("Your query returns files with differing frequencies:")
 
     assert(len(cc.querying._ncfiles_for_variable("querying", "time", session, frequency='1 monthly')) == 1)
     assert(len(cc.querying._ncfiles_for_variable("querying", "time", session, frequency='1 yearly')) == 1)
