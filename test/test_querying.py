@@ -39,7 +39,6 @@ def test_warning_on_ambiguous(session):
     with pytest.warns(UserWarning):
         cc.querying._ncfiles_for_variable("querying_disambiguation", "temp", session)
 
-
 def test_query_times(session):
     with cc.querying.getvar('querying', 'ty_trans', session) as v:
         assert(isinstance(v, xr.DataArray))
@@ -100,7 +99,6 @@ def test_get_experiments(session):
     r = cc.querying.get_experiments(session, **{k: True for k in metadata_keys})
     assert(r.shape == (2,8))
 
-
 def test_get_ncfiles(session):
     r = cc.querying.get_ncfiles(session, 'querying')
 
@@ -152,3 +150,17 @@ def test_get_frequencies(session):
     df = pd.DataFrame.from_dict({"frequency": [None, "1 monthly", "1 yearly"]})
 
     assert_frame_equal(r, df)
+
+def test_disambiguation_by_frequency(session):
+
+    assert(len(cc.querying._ncfiles_for_variable("querying", "time", session)) == 3)
+    assert(len(cc.querying._ncfiles_for_variable("querying", "time", session, frequency='1 monthly')) == 1)
+    assert(len(cc.querying._ncfiles_for_variable("querying", "time", session, frequency='1 yearly')) == 1)
+
+    with pytest.raises(IndexError):
+        # Raises error: *** IndexError: index 0 is out of bounds for axis 0 with size 0
+        cc.querying.getvar("querying", "time", session)
+
+    # Both of these select a single file and successfully return an xarray object
+    assert(cc.querying.getvar("querying", "time", session, frequency='1 monthly').shape == (1,))
+    assert(cc.querying.getvar("querying", "time", session, frequency='1 yearly').shape == (2,))
