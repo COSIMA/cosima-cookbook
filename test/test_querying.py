@@ -153,7 +153,9 @@ def test_get_frequencies(session):
 
 def test_disambiguation_by_frequency(session):
 
-    assert(len(cc.querying._ncfiles_for_variable("querying", "time", session)) == 3)
+    with pytest.warns(UserWarning):
+        assert(len(cc.querying._ncfiles_for_variable("querying", "time", session)) == 3)
+
     assert(len(cc.querying._ncfiles_for_variable("querying", "time", session, frequency='1 monthly')) == 1)
     assert(len(cc.querying._ncfiles_for_variable("querying", "time", session, frequency='1 yearly')) == 1)
 

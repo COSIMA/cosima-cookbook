@@ -244,6 +244,14 @@ def _ncfiles_for_variable(expt, variable, session, ncfile=None,
             "ncfile= to getvar, specifying the desired file."
         )
 
+    unique_freqs = set(f.NCFile.frequency for f in ncfiles)
+    if len(unique_freqs) > 1:
+        warnings.warn(
+            f"Your query returns files with differing frequencies: {unique_freqs}. "
+             "This could lead to unexpected behaviour! Disambiguate by passing "
+             "frequency= to getvar, specifying the desired frequency."
+        )
+
     return ncfiles
 
 def _parse_chunks(ncvar):
