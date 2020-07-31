@@ -157,10 +157,6 @@ def test_disambiguation_by_frequency(session):
     assert(len(cc.querying._ncfiles_for_variable("querying", "time", session, frequency='1 monthly')) == 1)
     assert(len(cc.querying._ncfiles_for_variable("querying", "time", session, frequency='1 yearly')) == 1)
 
-    with pytest.raises(IndexError):
-        # Raises error: *** IndexError: index 0 is out of bounds for axis 0 with size 0
-        cc.querying.getvar("querying", "time", session)
-
     # Both of these select a single file and successfully return an xarray object
     assert(cc.querying.getvar("querying", "time", session, frequency='1 monthly').shape == (1,))
     assert(cc.querying.getvar("querying", "time", session, frequency='1 yearly').shape == (2,))
