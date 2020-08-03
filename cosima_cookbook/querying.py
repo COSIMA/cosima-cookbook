@@ -137,8 +137,8 @@ def get_frequencies(session, experiment=None):
     return pd.DataFrame(q)
 
 
-def getvar(expt, variable, session, ncfile=None,
-           start_time=None, end_time=None, n=None, **kwargs):
+def getvar(expt, variable, session, ncfile=None, start_time=None, end_time=None, 
+           n=None, frequency=None, **kwargs):
     """For a given experiment, return an xarray DataArray containing the
     specified variable.
 
@@ -155,6 +155,8 @@ def getvar(expt, variable, session, ncfile=None,
                e.g. '1900-01-01'
     n - after all other queries, restrict the total number of files to the
         first n. pass a negative value to restrict to the last n
+    frequency - specify frequency to disambiguate identical variables saved 
+                at different temporal resolution
 
     Note that if start_time and/or end_time are used, the time range
     of the resulting dataset may not be bounded exactly on those
@@ -168,7 +170,8 @@ def getvar(expt, variable, session, ncfile=None,
 
     """
 
-    ncfiles = _ncfiles_for_variable(expt, variable, session, ncfile, start_time, end_time, n)
+    ncfiles = _ncfiles_for_variable(expt, variable, session, ncfile, 
+                                    start_time, end_time, n, frequency)
 
     # chunking -- use first row/file and assume it's the same across the whole dataset
     xr_kwargs = {"chunks": _parse_chunks(ncfiles[0].NCVar)}
@@ -187,8 +190,8 @@ def getvar(expt, variable, session, ncfile=None,
     return ds[variable]
 
 
-def _ncfiles_for_variable(expt, variable, session,
-                          ncfile=None, start_time=None, end_time=None, n=None):
+def _ncfiles_for_variable(expt, variable, session, ncfile=None, 
+                          start_time=None, end_time=None, n=None, frequency=None):
     """Return a list of (NCFile, NCVar) pairs corresponding to the
     database objects for a given variable.
 
@@ -214,6 +217,8 @@ def _ncfiles_for_variable(expt, variable, session,
         q = q.filter(f.time_end >= start_time)
     if end_time is not None:
         q = q.filter(f.time_start <= end_time)
+    if frequency is not None:
+        q = q.filter(f.frequency == frequency)
     ncfiles = q.all()
 
     if n is not None:
@@ -237,6 +242,14 @@ def _ncfiles_for_variable(expt, variable, session,
             f"Your query gets a variable from differently-named files: {unique_files}. "
             "This could lead to unexpected behaviour! Disambiguate by passing "
             "ncfile= to getvar, specifying the desired file."
+        )
+
+    unique_freqs = set(f.NCFile.frequency for f in ncfiles)
+    if len(unique_freqs) > 1:
+        warnings.warn(
+            f"Your query returns files with differing frequencies: {unique_freqs}. "
+             "This could lead to unexpected behaviour! Disambiguate by passing "
+             "frequency= to getvar, specifying the desired frequency."
         )
 
     return ncfiles
