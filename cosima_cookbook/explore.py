@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import re
 
 import cosima_cookbook as cc
@@ -10,7 +9,8 @@ import ipywidgets as wid
 
 import pandas as pd
 
-from cosima_cookbook.database import CFVariable, NCFile, NCExperiment, NCVar
+from . import database, querying 
+from database import CFVariable, NCFile, NCExperiment, NCVar
 
 from sqlalchemy import func
 
@@ -31,10 +31,10 @@ class DatabaseExtension:
     
     def __init__(self, session=None, experiments=None):
         if session is None:
-            session = cc.database.create_session()
+            session = database.create_session()
         self.session = session
 
-        self.allexperiments = cc.querying.get_experiments(session, all=True)
+        self.allexperiments = querying.get_experiments(session, all=True)
 
         if experiments is None:
             self.experiments = self.allexperiments
@@ -45,7 +45,7 @@ class DatabaseExtension:
             # otherwise index is not correctly named
             self.experiments = self.allexperiments[self.allexperiments.experiment.isin(experiments)]
 
-        self.keywords = sorted(cc.querying.get_keywords(session), key=str.casefold)
+        self.keywords = sorted(querying.get_keywords(session), key=str.casefold)
         self.expt_variable_map = self.experiment_variable_map()
         self.variables = self.unique_variable_list()
 
@@ -99,7 +99,7 @@ class DatabaseExtension:
         Return a list of experiments matching *all* of the supplied keywords
         """
         try:
-            return cc.querying.get_experiments(self.session, keywords=keywords).experiment
+            return querying.get_experiments(self.session, keywords=keywords).experiment
         except AttributeError:
             return []
 
@@ -791,7 +791,7 @@ class ExperimentExplorer(VBox):
             # Have to pass an experiment to DatabaseExtension so that
             # it only creates a variable/keyword map for a single 
             # experiment
-            expts = cc.querying.get_experiments(session, all=True)
+            expts = querying.get_experiments(session, all=True)
             experiment = expts.iloc[0].name
 
         self.de = DatabaseExtension(session, experiments=experiment)
@@ -925,12 +925,12 @@ class ExperimentExplorer(VBox):
         data_box.value = 'Loading data, using following command ...\n\n' + load_command + 'Please wait ... '
 
         try:
-            self.data = cc.querying.getvar(self.experiment_name,
-                                    varname,
-                                    self.de.session, 
-                                    start_time=str(start_time),
-                                    end_time=str(end_time),
-                                    frequency=frequency)
+            self.data = querying.getvar(self.experiment_name,
+                                        varname,
+                                        self.de.session, 
+                                        start_time=str(start_time),
+                                        end_time=str(end_time),
+                                        frequency=frequency)
         except Exception as e:
             data_box.value = data_box.value + 'Error loading variable {} data: {}'.format(varname, e)
             return
