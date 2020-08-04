@@ -10,7 +10,7 @@ import ipywidgets as wid
 import pandas as pd
 
 from . import database, querying 
-from database import CFVariable, NCFile, NCExperiment, NCVar
+from .database import CFVariable, NCFile, NCExperiment, NCVar
 
 from sqlalchemy import func
 
@@ -566,7 +566,7 @@ class DatabaseExplorer(VBox):
     def __init__(self, session=None, de=None):
 
         if de is None: 
-            de = DatabaseExplorer(session)
+            de = DatabaseExtension(session)
         self.de = de
 
         self._make_widgets()
