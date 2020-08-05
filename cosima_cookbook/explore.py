@@ -25,6 +25,7 @@ class DatabaseExtension:
 
     session = None
     experiments = None
+    allexperiments = None
     keywords = None
     variables = None
     expt_variable_map = None
@@ -63,18 +64,18 @@ class DatabaseExtension:
         allvars['restart'] = allvars.ncfile.str.contains('restart')
 
         # Create a new column to characterise model type
-        allvars['model'] = None
+        allvars['model'] = ''
 
         # There is no metadata in the files or database that will let us know which
         # model produced the output, so use a heuristic that assumes if the data
         # resides in a directory that is named for a model type it is output from 
         # that model. Doesn't use os.path.sep as it is never envisaged this will be used 
         # outside of a posix system
-        allvars.loc[(allvars.ncfile.str.contains('/ocean/')  |
-                     allvars.ncfile.str.contains('/ocn/')), 'model'] = 'ocean'
-        allvars.loc[(allvars.ncfile.str.contains('/atmosphere/') | 
-                     allvars.ncfile.str.contains('/atm/')), 'model'] = 'atmosphere'
-        allvars.loc[allvars.ncfile.str.contains('/ice/'), 'model'] = 'ice'
+        allvars.loc[(allvars.ncfile.str.contains(r'\bocean\b')  |
+                     allvars.ncfile.str.contains(r'\bocn\b')), 'model'] = 'ocean'
+        allvars.loc[(allvars.ncfile.str.contains(r'\batmosphere\b') | 
+                     allvars.ncfile.str.contains(r'\batm\b')), 'model'] = 'atmosphere'
+        allvars.loc[allvars.ncfile.str.contains(r'\bice\b'), 'model'] = 'ice'
 
         allvars['model'] = allvars['model'].astype('category')
 
