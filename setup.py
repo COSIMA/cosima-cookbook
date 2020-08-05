@@ -22,6 +22,7 @@ setup(
         'cftime',
         'f90nml',
         'joblib',
+        'ipywidgets',
     ],
 
     extras_require = {
