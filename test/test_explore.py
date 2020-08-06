@@ -144,7 +144,7 @@ def test_experiment_explorer(session):
     assert('pot_rho_0' in ee.widgets['var_selector'].widgets['selector'].options)
     assert('ty_trans_rho' in ee.widgets['var_selector'].widgets['selector'].options)
 
-
-    print(ee.widgets['frequency'].options)
+    # Check frequency drop down changes when variable selector assigned a value
+    assert(ee.widgets['frequency'].options == ())
     ee.widgets['var_selector'].widgets['selector'].label = 'tx_trans'
-    print(ee.widgets['frequency'].options)
+    assert(ee.widgets['frequency'].options == (None,))
