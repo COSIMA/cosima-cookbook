@@ -1,6 +1,5 @@
 import re
 
-import hvplot.xarray
 import ipywidgets as widgets
 from ipywidgets import HTML, Button, VBox, HBox, Label, Layout, Select
 from ipywidgets import SelectMultiple, Tab, Text, Textarea, Checkbox
