@@ -1,18 +1,17 @@
 import re
 
-import cosima_cookbook as cc
+import hvplot.xarray
 import ipywidgets as widgets
 from ipywidgets import HTML, Button, VBox, HBox, Label, Layout, Select
 from ipywidgets import SelectMultiple, Tab, Text, Textarea, Checkbox
 from ipywidgets import interact, interact_manual, AppLayout, Dropdown
-import ipywidgets as wid
-
 import pandas as pd
+from sqlalchemy import func
 
+import cosima_cookbook
+import cosima_cookbook as cc
 from . import database, querying 
 from .database import CFVariable, NCFile, NCExperiment, NCVar
-
-from sqlalchemy import func
 
 def return_value_or_empty(value):
     """Return value if not None, otherwise empty"""
@@ -149,6 +148,7 @@ class DatabaseExtension:
             q = q.filter(NCFile.frequency == frequency)
 
         return pd.DataFrame(q)
+    
 
 class VariableSelector(VBox):
     """
@@ -573,14 +573,6 @@ class DatabaseExplorer(VBox):
         self._make_widgets()
         self._set_handlers()
 
-    @staticmethod
-    def return_value_or_empty(value):
-        """Return value if not None, otherwise empty"""
-        if value is None:
-            return ''
-        else:
-            return value
-
     def _make_widgets(self):
 
         box_layout = Layout(padding='10px', width='auto', border= '0px solid black')
@@ -776,7 +768,6 @@ class DatabaseExplorer(VBox):
                                          experiment=self.widgets['expt_selector'].value)
             self.widgets['expt_explorer'].children = [self.ee]
 
-
 class ExperimentExplorer(VBox):
 
     session = None
@@ -788,12 +779,16 @@ class ExperimentExplorer(VBox):
 
     def __init__(self, session=None, experiment=None):
 
+        if session is None:
+            session = database.create_session()
+        self.session = session
+
         if experiment is None:
             # Have to pass an experiment to DatabaseExtension so that
             # it only creates a variable/keyword map for a single 
             # experiment
-            expts = querying.get_experiments(session, all=True)
-            experiment = expts.iloc[0].name
+            expts = querying.get_experiments(self.session, all=True)
+            experiment = expts.iloc[0].experiment
 
         self.de = DatabaseExtension(session, experiments=experiment)
 
@@ -802,14 +797,6 @@ class ExperimentExplorer(VBox):
         self._make_widgets()
         self._load_experiment(self.experiment_name)
         self._set_handlers()
-
-    @staticmethod
-    def return_value_or_empty(value):
-        """Return value if not None, otherwise empty"""
-        if value is None:
-            return ''
-        else:
-            return value
 
     def _make_widgets(self):
 
@@ -959,7 +946,3 @@ class ExperimentExplorer(VBox):
         """
         self.widgets['var_selector'].set_variables(self.variables)
         self.widgets['var_selector']._filter_eventhandler(None)
-
-def VariableExplorer(ds):
-
-    ds.hvplot.quadmesh(datashade=True)
