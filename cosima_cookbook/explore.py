@@ -52,7 +52,8 @@ class DatabaseExtension:
     def experiment_variable_map(self):
         """
         Make a pandas table with experiment as the index and columns
-        of name, long_name and restart flag.
+        of name, long_name, coordinate flag, restart flag and model
+        type.
 
         Also make lists of unique name/long_name 
         """
@@ -589,11 +590,11 @@ class DatabaseExplorer(VBox):
             Explorer gui.</p>
 
             <p>The list of experiments can be filtered by keywords and/or variables. 
-            Multiple keywords can be selected using alt/option or the shift modifier
-            when selecting. To filter by variables select a variable and add it to the
-            "Filter variables" box using the ">>" button, and vice-versa to remove
-            variables from the filter. Push the 'Filter' button to show only 
-            matching experiments.</p>
+            Multiple keywords can be selected using alt/option/ctrl (system dependent)
+            or the shift modifier when selecting. To filter by variables select a 
+            variable and add it to the "Filter variables" box using the ">>" button, 
+            and vice-versa to remove variables from the filter. Push the 'Filter' 
+            button to show only matching experiments.</p>
 
             <p>The ExperimentExplorer element is accessible as the <tt>ee</tt> attribute
             of the DatabaseExplorer object</p>
@@ -730,18 +731,13 @@ class DatabaseExplorer(VBox):
         <tr><td style="vertical-align:top;"><b>Description:</b></td> <td><p>{description}</p></td></tr>
         <tr><td><b>Notes:</b></td> <td>{notes}</td></tr>
         <tr><td><b>Contact:</b></td> <td>{contact} &lt;{email}&gt;</td></tr>
-        <tr><td><b>No. files:</b></td> <td>{nfiles}</td></tr>
+        <tr><td><b>No. files:</b></td> <td>{ncfiles}</td></tr>
         <tr><td><b>Created:</b></td> <td>{created}</td></tr>
         </table>
-        """.format(
-                   experiment=experiment_name,
-                   description=return_value_or_empty(expt.description.values[0]),
-                   notes=return_value_or_empty(expt.notes.values[0]),
-                   contact=return_value_or_empty(expt.contact.values[0]),
-                   email=return_value_or_empty(expt.email.values[0]),
-                   nfiles=return_value_or_empty(expt.ncfiles.values[0]),
-                   created=return_value_or_empty(expt.created.values[0]),
-                   )
+        """.format(experiment=experiment_name, 
+                    **{field: return_value_or_empty(expt[field].values[0])
+                       for field in ['description', 'notes', 'contact', 
+                                     'email', 'ncfiles', 'created']})
         
     def _filter_experiments(self, b):
         """
