@@ -1,9 +1,8 @@
 import re
 
-import ipywidgets as widgets
 from ipywidgets import HTML, Button, VBox, HBox, Label, Layout, Select
 from ipywidgets import SelectMultiple, Tab, Text, Textarea, Checkbox
-from ipywidgets import interact, interact_manual, AppLayout, Dropdown
+from ipywidgets import SelectionRangeSlider, Dropdown
 import pandas as pd
 from sqlalchemy import func
 
@@ -163,7 +162,6 @@ class VariableSelector(VBox):
     """
 
     variables = None
-    widgets = {}
 
     def __init__(self, variables, rows=10, **kwargs):
         """
@@ -172,7 +170,13 @@ class VariableSelector(VBox):
         specified
         """
         self._make_widgets(rows)
-        super().__init__(children=list(self.widgets.values()), **kwargs)
+        super().__init__(children=[self.model,
+                                   self.search,
+                                   self.selector,
+                                   self.info,
+                                   self.filter_coords,
+                                   self.filter_restarts], 
+                                   **kwargs)
         self.set_variables(variables)
         self._set_info()
         self._set_observes()
@@ -180,33 +184,33 @@ class VariableSelector(VBox):
     def _make_widgets(self, rows):
 
         # Experiment selector element
-        self.widgets['model'] = Dropdown(
+        self.model = Dropdown(
             options=(),
             layout={'padding': '0px 5px', 'width': 'initial'},
             description='',
         )
         # Variable search
-        self.widgets['search'] = Text(
+        self.search = Text(
             placeholder='Search: start typing', 
             layout={'padding': '0px 5px', 'width': 'auto', 'overflow-x': 'scroll'},
         )
         # Variable selection box
-        self.widgets['selector'] = Select(
+        self.selector = Select(
             options=(), #sorted(self.variables.name, key=str.casefold),
             rows=rows,
-            layout=self.widgets['search'].layout
+            layout=self.search.layout
         )
         # Variable info
-        self.widgets['info'] = HTML(
-            layout=self.widgets['search'].layout
+        self.info = HTML(
+            layout=self.search.layout
         )
         # Variable filtering elements
-        self.widgets['filter_coords'] = Checkbox(
+        self.filter_coords = Checkbox(
             value=True,
             indent=False,
             description='Hide coordinates',
         )
-        self.widgets['filter_restarts'] = Checkbox(
+        self.filter_restarts = Checkbox(
             value=True,
             indent=False,
             description='Hide restarts',
@@ -216,12 +220,12 @@ class VariableSelector(VBox):
         """
         Set event handlers
         """
-        for w in ['filter_coords', 'filter_restarts']:
-            self.widgets[w].observe(self._filter_eventhandler, names='value')
+        self.filter_coords.observe(self._filter_eventhandler, names='value')
+        self.filter_restarts.observe(self._filter_eventhandler, names='value')
 
-        self.widgets['model'].observe(self._model_eventhandler, names='value')
-        self.widgets['search'].observe(self._search_eventhandler, names='value')
-        self.widgets['selector'].observe(self._selector_eventhandler, names='value')
+        self.model.observe(self._model_eventhandler, names='value')
+        self.search.observe(self._search_eventhandler, names='value')
+        self.selector.observe(self._selector_eventhandler, names='value')
 
     def set_variables(self, variables):
         """
@@ -246,23 +250,23 @@ class VariableSelector(VBox):
         options = {'All models': ''}
         for model in variables.model.cat.categories.values:
             options["{} only".format(model.capitalize())] = model
-        self.widgets['model'].options = options
+        self.model.options = options
 
         # Populate variable selector
-        self.widgets['selector'].options = dict(variables.sort_values(['name'])[['name','long_name']].values)
+        self.selector.options = dict(variables.sort_values(['name'])[['name','long_name']].values)
 
     def _reset_filters(self):
         """
         Reset filters to default values
         """
-        for w in ['filter_coords', 'filter_restarts']:
-            self.widgets[w].value = True
+        self.filter_coords.value = True
+        self.filter_restarts.value = True
 
     def _model_eventhandler(self, event=None):
         """
         Filter by model 
         """
-        model = self.widgets['model'].value
+        model = self.model.value
 
         # Reset the coord and restart filters when a model changed
         self._reset_filters()
@@ -270,9 +274,9 @@ class VariableSelector(VBox):
 
     def _filter_eventhandler(self, event=None):
 
-        self._filter_variables(self.widgets['filter_coords'].value,
-                               self.widgets['filter_restarts'].value,
-                               self.widgets['model'].value)
+        self._filter_variables(self.filter_coords.value,
+                               self.filter_restarts.value,
+                               self.model.value)
 
     def _filter_variables(self, coords=True, restarts=True, model=''):
         """
@@ -298,15 +302,15 @@ class VariableSelector(VBox):
         self._update_selector(self.variables[self.variables.visible])
 
         # Reset the search
-        self.widgets['search'].value = ''
-        self.widgets['selector'].value = None
+        self.search.value = ''
+        self.selector.value = None
 
     def _search_eventhandler(self, event=None):
         """
         Live search bar, updates the selector options dynamically, does not alter
         visible mask in variables
         """
-        search_term = self.widgets['search'].value
+        search_term = self.search.value
 
         variables = self.variables[self.variables.visible]
         if search_term is not None or search_term != '':
@@ -315,7 +319,7 @@ class VariableSelector(VBox):
                                     variables.long_name.str.contains(search_term, na=False) ]
             except:
                 print('Illegal character in search!')
-                search_term = self.widgets['search'].value
+                search_term = self.search.value
 
         self._update_selector(variables)
     
@@ -323,7 +327,7 @@ class VariableSelector(VBox):
         """
         Update variable info when variable selected
         """
-        self._set_info(self.widgets['selector'].value)
+        self._set_info(self.selector.value)
     
     def _set_info(self, long_name=None):
         """
@@ -332,7 +336,7 @@ class VariableSelector(VBox):
         if long_name is None or long_name == '':
             long_name = '&nbsp;'
         style = '<style>p{word-wrap: break-word}</style>' 
-        self.widgets['info'].value = style + '<p>{long_name}</p>'.format(long_name=long_name)
+        self.info.value = style + '<p>{long_name}</p>'.format(long_name=long_name)
     
     def delete(self, variable_names=None):
         """
@@ -340,10 +344,10 @@ class VariableSelector(VBox):
         """
         # If no variable specified just delete the currently selected one
         if variable_names is None:
-            if self.widgets['selector'].label is None:
+            if self.selector.label is None:
                 return None
             else:
-                variable_names = [ self.widgets['selector'].label, ]
+                variable_names = [ self.selector.label, ]
 
         if isinstance(variable_names, str):
             variable_names = [ variable_names, ]
@@ -375,7 +379,7 @@ class VariableSelector(VBox):
         """
         Return currently selected variable name
         """
-        return self.widgets['selector'].label
+        return self.selector.label
 
 class VariableSelectorInfo(VariableSelector):
     """
@@ -389,39 +393,39 @@ class VariableSelectorInfo(VariableSelector):
         # Requires two widgets passed in as an argument. An html box where 
         # extended meta-data will be displayed, and a date range widget for
         # selecting start and end times to load
-        self.widgets['daterange'] = daterange
-        self.widgets['frequency'] = frequency
+        self.daterange = daterange
+        self.frequency = frequency
 
         self._filter_eventhandler(None)
 
-        self.widgets['selector'].observe(self._var_eventhandler, names='value')
-        self.widgets['frequency'].observe(self._frequency_eventhandler, names='value')
+        self.selector.observe(self._var_eventhandler, names='value')
+        self.frequency.observe(self._frequency_eventhandler, names='value')
 
     def _var_eventhandler(self, selector):
         """
         Called when variable selected
         """
-        variable_name = self.widgets['selector'].label
+        variable_name = self.selector.label
         variable = self.variables.loc[self.variables['name'] == variable_name]
 
         # Initialise daterange widget
-        self.widgets['daterange'].options = ['0000','0000']
-        self.widgets['daterange'].disabled = True
+        self.daterange.options = ['0000','0000']
+        self.daterange.disabled = True
 
-        self.widgets['frequency'].options = []
-        self.widgets['frequency'].disabled = True
+        self.frequency.options = []
+        self.frequency.disabled = True
 
         if len(variable) == 0:
             return
         
-        self.widgets['frequency'].options = variable.frequency
-        self.widgets['frequency'].index = 0
-        self.widgets['frequency'].disabled = False
+        self.frequency.options = variable.frequency
+        self.frequency.index = 0
+        self.frequency.disabled = False
 
     def _frequency_eventhandler(self, selector):
 
-        variable_name = self.widgets['selector'].label
-        frequency = self.widgets['frequency'].value
+        variable_name = self.selector.label
+        frequency = self.frequency.value
 
         variable = self.variables.loc[(self.variables['name'] == variable_name) & (self.variables['frequency'] == frequency)]
 
@@ -430,14 +434,14 @@ class VariableSelectorInfo(VariableSelector):
             # Convert human readable frequency to pandas compatigle frequency string 
             freq = re.sub(r'^(\d+) (\w)(\w+)', r'\1\2', str(variable.frequency.values[0]).upper())
             dates = pd.date_range(variable.time_start.values[0], variable.time_end.values[0] , freq=freq)
-            self.widgets['daterange'].options = [(i.strftime('%Y/%m/%d'), i) for i in dates]                
-            self.widgets['daterange'].value = (dates[0], dates[-1])
+            self.daterange.options = [(i.strftime('%Y/%m/%d'), i) for i in dates]                
+            self.daterange.value = (dates[0], dates[-1])
         except:
             pass
         finally:
-            self.widgets['daterange'].disabled = False
+            self.daterange.disabled = False
 
-class VariableSelectFilter(widgets.HBox):
+class VariableSelectFilter(HBox):
     """
     Combo widget which contains a VariableSelector from which variables can 
     be transferred to another Select Widget to specify which variables should
@@ -445,9 +449,6 @@ class VariableSelectFilter(widgets.HBox):
     """
 
     variables = pd.DataFrame()
-    widgets = {}
-    subwidgets = {}
-    buttons = {}
 
     def __init__(self, selvariables, **kwargs):
         """
@@ -459,33 +460,35 @@ class VariableSelectFilter(widgets.HBox):
         layout = {'padding': '0px 5px'}
 
         # Variable selector combo-widget
-        self.widgets['selector'] = VariableSelector(selvariables, **kwargs)
+        self.selector = VariableSelector(selvariables, **kwargs)
 
         # Button to add variable from selector to selected
-        self.buttons['var_filter_add'] = Button(
+        self.var_filter_add = Button(
             tooltip='Add selected variable to filter',
             icon='angle-double-right',
             layout={'width': 'auto'},
         )
         # Button to add variable from selector to selected
-        self.buttons['var_filter_sub'] = Button(
+        self.var_filter_sub = Button(
             tooltip='Remove selected variable from filter',
             icon='angle-double-left',
             layout={'width': 'auto'},
         )
-        self.widgets['button_box'] = VBox(list(self.buttons.values()), 
-                                          layout={'padding': '100px 5px', 'height': '100%'})
+        self.button_box = VBox([self.var_filter_add, self.var_filter_sub],
+                               layout={'padding': '100px 5px', 'height': '100%'})
 
         # Selected variables for filtering with header widget
-        self.subwidgets['var_filter_label'] = HTML('Filter variables:', layout=layout)
-        self.subwidgets['var_filter_selected'] = Select(
+        self.var_filter_label = HTML('Filter variables:', layout=layout)
+        self.var_filter_selected = Select(
             options=[],
             rows=10,
             layout=layout,
         )
-        self.widgets['filter_box'] = VBox(list(self.subwidgets.values()), layout=layout)
+        self.filter_box = VBox([self.var_filter_label, 
+                                self.var_filter_selected], layout=layout)
 
-        super().__init__(children=list(self.widgets.values()), **kwargs)
+        super().__init__(children=[self.selector, self.button_box,   self.filter_box], 
+                         **kwargs)
 
         self._set_observes()
 
@@ -493,20 +496,20 @@ class VariableSelectFilter(widgets.HBox):
         """
         Set event handlers
         """
-        self.buttons['var_filter_add'].on_click(self._add_var_to_selected)
-        self.buttons['var_filter_sub'].on_click(self._sub_var_from_selected)
+        self.var_filter_add.on_click(self._add_var_to_selected)
+        self.var_filter_sub.on_click(self._sub_var_from_selected)
 
     def _update_variables(self):
         """
         Update filtered variables
         """
-        self.subwidgets['var_filter_selected'].options = dict(self.variables.sort_values(['name'])[['name','long_name']].values)
+        self.var_filter_selected.options = dict(self.variables.sort_values(['name'])[['name','long_name']].values)
 
     def _add_var_to_selected(self, button):
         """
         Transfer variable from selector to filtered variables
         """
-        self.add(self.widgets['selector'].delete())
+        self.add(self.selector.delete())
 
     def add(self, variable):
         """
@@ -521,7 +524,7 @@ class VariableSelectFilter(widgets.HBox):
         """
         Transfer variable from filtered variables to selector
         """
-        self.widgets['selector'].add(self.delete())
+        self.selector.add(self.delete())
 
     def delete(self, variable_names=None):
         """
@@ -529,10 +532,10 @@ class VariableSelectFilter(widgets.HBox):
         """
         # If no variable specified just delete the currently selected one
         if variable_names is None:
-            if self.subwidgets['var_filter_selected'].label is None:
+            if self.var_filter_selected.label is None:
                 return None
             else:
-                variable_names = [self.subwidgets['var_filter_selected'].label]
+                variable_names = [self.var_filter_selected.label]
 
         if isinstance(variable_names, str):
             variable_names = [ variable_names, ]
@@ -552,7 +555,7 @@ class VariableSelectFilter(widgets.HBox):
         """
         Return all the variables in the selected variables box
         """
-        return self.subwidgets['var_filter_selected'].options
+        return self.var_filter_selected.options
 
 class DatabaseExplorer(VBox):
     """
@@ -562,7 +565,6 @@ class DatabaseExplorer(VBox):
 
     session = None
     de = None
-    widgets = {}
 
     def __init__(self, session=None, de=None):
 
@@ -580,7 +582,7 @@ class DatabaseExplorer(VBox):
         style = '<style>p { line-height: 1.4; margin-bottom: 10px }</style>'
 
         # Gui header
-        self.widgets['header'] = HTML(
+        self.header = HTML(
             value = style + """
             <h3>Database Explorer</h3>
 
@@ -603,7 +605,7 @@ class DatabaseExplorer(VBox):
         ) 
 
         # Experiment selector box
-        self.widgets['expt_selector'] = Select(
+        self.expt_selector = Select(
             options=sorted(self.de.experiments.experiment, key=str.casefold),
             rows=24,
             layout={'padding': '0px 5px', 'width': 'auto'},
@@ -612,38 +614,38 @@ class DatabaseExplorer(VBox):
 
         # Keyword filtering element is a Multiple selection box
         # checkboxes
-        self.widgets['filter_widget'] = SelectMultiple(
+        self.filter_widget = SelectMultiple(
             rows=15,
             options=sorted(self.de.keywords, key=str.casefold),
             layout={'flex': '0 0 100%'},
         )
         # Reset keywords button
-        self.widgets['clear_keywords_button'] = Button(
+        self.clear_keywords_button = Button(
             description='Clear',
             layout={'width': '20%', 'align': 'center'},
             tooltip='Click to clear selected keywords'
         )
-        self.widgets['keyword_box'] = VBox([self.widgets['filter_widget'], 
-                                            self.widgets['clear_keywords_button']],
+        self.keyword_box = VBox([self.filter_widget, 
+                                            self.clear_keywords_button],
                                             layout={'flex': '0 0 40%'})
 
         # Filtering button
-        self.widgets['filter_button'] = Button(
+        self.filter_button = Button(
             description='Filter',
             # layout={'width': '50%', 'align': 'center'},
             tooltip='Click to filter experiments',
         )
 
         # Variable filter selector combo widget
-        self.widgets['var_filter'] = VariableSelectFilter(self.de.variables, layout={'flex': '0 0 40%'})
+        self.var_filter = VariableSelectFilter(self.de.variables, layout={'flex': '0 0 40%'})
 
         # Tab box to contain keyword and variable filters
-        self.widgets['filter_tabs'] = Tab(title='Filter', children=[self.widgets['keyword_box'], 
-                                                                    self.widgets['var_filter']])
-        self.widgets['filter_tabs'].set_title(0, 'Keyword')
-        self.widgets['filter_tabs'].set_title(1, 'Variable')
+        self.filter_tabs = Tab(title='Filter', children=[self.keyword_box, 
+                                                                    self.var_filter])
+        self.filter_tabs.set_title(0, 'Keyword')
+        self.filter_tabs.set_title(1, 'Variable')
 
-        self.widgets['load_button'] = Button(
+        self.load_button = Button(
             description='Load Experiment',
             disabled=False,
             layout={'width': '50%', },
@@ -651,43 +653,43 @@ class DatabaseExplorer(VBox):
         )
 
         # Experiment information panel
-        self.widgets['expt_info'] = HTML(
+        self.expt_info = HTML(
             value='',
             description='',
             layout={'width': '80%', 'align': 'center'},
         )
 
         # Experiment explorer box
-        self.widgets['expt_explorer'] = HBox()
+        self.expt_explorer = HBox()
 
         # Some box layout nonsense to organise widgets in space
         selectors = HBox([
                         VBox([Label(value="Experiments:"), 
-                              self.widgets['expt_selector'],
-                              self.widgets['load_button'],
+                              self.expt_selector,
+                              self.load_button,
                               ],
                               layout={'padding': '0px 5px', 'flex': '0 0 30%'}),
                         VBox([Label(value="Filter by:"), 
-                              self.widgets['filter_tabs'],
-                              self.widgets['filter_button']],
+                              self.filter_tabs,
+                              self.filter_button],
                               layout={'padding': '0px 10px', 'flex': '0 0 65%'}),
                               #layout=box_layout,),
                         ])
 
         # Call super init and pass widgets as children
-        super().__init__(children=[self.widgets['header'],
+        super().__init__(children=[self.header,
                                    selectors,
-                                   self.widgets['expt_info'],
-                                   self.widgets['expt_explorer']])
+                                   self.expt_info,
+                                   self.expt_explorer])
 
     def _set_handlers(self):
         """
         Define routines to handle button clicks and experiment selection
         """
-        self.widgets['expt_selector'].observe(self._expt_eventhandler, names='value')
-        self.widgets['load_button'].on_click(self._load_experiment)
-        self.widgets['filter_button'].on_click(self._filter_experiments)
-        self.widgets['clear_keywords_button'].on_click(self._clear_keywords)
+        self.expt_selector.observe(self._expt_eventhandler, names='value')
+        self.load_button.on_click(self._load_experiment)
+        self.filter_button.on_click(self._filter_experiments)
+        self.clear_keywords_button.on_click(self._clear_keywords)
 
     def _filter_restart_eventhandler(selector):
         """
@@ -699,7 +701,7 @@ class DatabaseExplorer(VBox):
         """
         Deselect all keywords
         """
-        self.widgets['filter_widget'].value = ()
+        self.filter_widget.value = ()
 
     def _expt_eventhandler(self, selector):
         """
@@ -724,7 +726,7 @@ class DatabaseExplorer(VBox):
             p     { line-height: 1.2; margin-top: 5px }
         </style>
         """
-        self.widgets['expt_info'].value = style + """
+        self.expt_info.value = style + """
         <table>
         <tr><td><b>Experiment:</b></td> <td>{experiment}</td></tr>
         <tr><td style="vertical-align:top;"><b>Description:</b></td> <td><p>{description}</p></td></tr>
@@ -744,24 +746,24 @@ class DatabaseExplorer(VBox):
         """
         options = set(self.de.experiments.experiment)
 
-        kwds = self.widgets['filter_widget'].value
+        kwds = self.filter_widget.value
         if len(kwds) > 0:
             options.intersection_update(self.de.keyword_filter(kwds))
 
-        variables = self.widgets['var_filter'].selected_vars()
+        variables = self.var_filter.selected_vars()
         if len(variables) > 0:
             options.intersection_update(self.de.variable_filter(variables))
 
-        self.widgets['expt_selector'].options = sorted(options, key=str.casefold)
+        self.expt_selector.options = sorted(options, key=str.casefold)
 
     def _load_experiment(self, b):
         """
         Open an Experiment Explorer UI with selected experiment
         """
-        if self.widgets['expt_selector'].value is not None:
+        if self.expt_selector.value is not None:
             self.ee = ExperimentExplorer(session=self.session, 
-                                         experiment=self.widgets['expt_selector'].value)
-            self.widgets['expt_explorer'].children = [self.ee]
+                                         experiment=self.expt_selector.value)
+            self.expt_explorer.children = [self.ee]
 
 class ExperimentExplorer(VBox):
 
@@ -769,8 +771,6 @@ class ExperimentExplorer(VBox):
     data = None
     experiment_name = None
     variables = []
-    widgets = {}
-    handlers = {}
 
     def __init__(self, session=None, experiment=None):
 
@@ -796,7 +796,7 @@ class ExperimentExplorer(VBox):
     def _make_widgets(self):
 
         # Header widget
-        self.widgets['header'] = widgets.HTML(
+        self.header = HTML(
             value="""
             <h3>Experiment Explorer</h3>
             
@@ -815,7 +815,7 @@ class ExperimentExplorer(VBox):
         )
         
         # Experiment selector element
-        self.widgets['expt_selector'] = Dropdown(
+        self.expt_selector = Dropdown(
             options=sorted(self.de.allexperiments.experiment, key=str.casefold),
             value=self.experiment_name,
             description='',
@@ -823,14 +823,14 @@ class ExperimentExplorer(VBox):
         )
 
         # Date selection widget
-        self.widgets['frequency'] = widgets.Dropdown(
+        self.frequency = Dropdown(
             options=(),
             description='Frequency',
             disabled=True,
         )
 
         # Date selection widget
-        self.widgets['daterange'] = widgets.SelectionRangeSlider(
+        self.daterange = SelectionRangeSlider(
             options=['0000','0001'],
             index=(0,1),
             description='Date range',
@@ -840,43 +840,43 @@ class ExperimentExplorer(VBox):
 
         # Variable filter selector combo widget. Pass in two widgets so they
         # can be updated by the VariableSelectorInfo widget
-        self.widgets['var_selector'] = VariableSelectorInfo(self.de.variables, 
-                                                            daterange=self.widgets['daterange'],
-                                                            frequency=self.widgets['frequency'],
-                                                            rows=20)
+        self.var_selector = VariableSelectorInfo(self.de.variables, 
+                                                 daterange=self.daterange,
+                                                 frequency=self.frequency,
+                                                 rows=20)
 
         # DataArray information widget
-        self.widgets['data_box'] = widgets.HTML()
+        self.data_box = HTML()
 
         # Data load button
-        self.widgets['load_button'] = Button(
+        self.load_button = Button(
             description='Load',
             disabled=False,
             layout={'width': '20%', 'align': 'center'},
             tooltip='Click to load data'
         )
 
-        info_pane = VBox([self.widgets['frequency'],
-                          self.widgets['daterange']],
+        info_pane = VBox([self.frequency,
+                          self.daterange],
                           layout={'padding': '10% 0', 'width': '50%'})
 
-        centre_pane = HBox([VBox([self.widgets['var_selector']]),
+        centre_pane = HBox([VBox([self.var_selector]),
                                   info_pane])
 
         # Call super init and pass widgets as children
-        super().__init__(children=[self.widgets['header'],
-                                   self.widgets['expt_selector'],
+        super().__init__(children=[self.header,
+                                   self.expt_selector,
                                    centre_pane,
-                                   self.widgets['load_button'],
-                                   self.widgets['data_box']])
+                                   self.load_button,
+                                   self.data_box])
 
     def _set_handlers(self):
         """
         Define routines to handle button clicks and experiment selection
         """
 
-        self.widgets['load_button'].on_click(self._load_data)
-        self.widgets['expt_selector'].observe(self._expt_eventhandler, names='value')
+        self.load_button.on_click(self._load_data)
+        self.expt_selector.observe(self._expt_eventhandler, names='value')
 
     def _expt_eventhandler(self, selector):
         """
@@ -889,23 +889,22 @@ class ExperimentExplorer(VBox):
         Called when load_button clicked
         """
 
-        data_box = self.widgets['data_box']
 
-        varname = self.widgets['var_selector'].get_selected()
-        (start_time, end_time) = self.widgets['daterange'].value
-        frequency = self.widgets['frequency'].value
+        varname = self.var_selector.get_selected()
+        (start_time, end_time) = self.daterange.value
+        frequency = self.frequency.value
 
         load_command = """
         <pre><code>cc.querying.getvar('{expt}', '{var}', session, 
                     start_time='{start}', end_time='{end}', frequency='{frequency}')</code></pre>
-        """.format(expt=self.widgets['expt_selector'].value, 
+        """.format(expt=self.expt_selector.value, 
                 var=varname,
                 start=str(start_time),
                 end=str(end_time),
                 frequency=str(frequency))
 
         # Interim message to tell user what is happening
-        data_box.value = 'Loading data, using following command ...\n\n' + load_command + 'Please wait ... '
+        self.data_box.value = 'Loading data, using following command ...\n\n' + load_command + 'Please wait ... '
 
         try:
             self.data = querying.getvar(self.experiment_name,
@@ -915,12 +914,12 @@ class ExperimentExplorer(VBox):
                                         end_time=str(end_time),
                                         frequency=frequency)
         except Exception as e:
-            data_box.value = data_box.value + 'Error loading variable {} data: {}'.format(varname, e)
+            self.data_box.value = self.data_box.value + 'Error loading variable {} data: {}'.format(varname, e)
             return
 
         # Update data box with message about command used and pretty HTML
         # representation of DataArray
-        data_box.value = 'Loaded data with' + load_command + self.data._repr_html_()
+        self.data_box.value = 'Loaded data with' + load_command + self.data._repr_html_()
 
     def _load_experiment(self, experiment_name):
         """
@@ -939,5 +938,5 @@ class ExperimentExplorer(VBox):
         """
         Populate the variable selector dialog
         """
-        self.widgets['var_selector'].set_variables(self.variables)
-        self.widgets['var_selector']._filter_eventhandler(None)
+        self.var_selector.set_variables(self.variables)
+        self.var_selector._filter_eventhandler(None)

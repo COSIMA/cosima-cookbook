@@ -117,34 +117,38 @@ def test_database_explorer(session):
     dbx = cc.explore.DatabaseExplorer(session=session)
 
     # Experiment selector
-    assert(dbx.widgets['expt_selector'].options == ('one', 'two'))
+    assert(dbx.expt_selector.options == ('one', 'two'))
 
     # Keyword filter selector
-    assert(dbx.widgets['filter_widget'].options == tuple(dbx.de.keywords))
+    assert(dbx.filter_widget.options == tuple(dbx.de.keywords))
  
     # The variable filter box
-    variables = dbx.widgets['var_filter'].widgets['selector'].variables
-    assert(dbx.widgets['var_filter'].widgets['selector'].widgets['selector'].options == 
+    variables = dbx.var_filter.selector.variables
+    assert(dbx.var_filter.selector.selector.options == 
            dict(zip(variables[variables.visible].name, variables[variables.visible].long_name)) )
 
 def test_experiment_explorer(session):
 
-    ee = cc.explore.ExperimentExplorer(session=session)
+    ee1 = cc.explore.ExperimentExplorer(session=session)
 
     # Experiment selector
-    assert(ee.widgets['expt_selector'].options == ('one', 'two'))
+    assert(ee1.expt_selector.options == ('one', 'two'))
 
-    assert(len(ee.widgets['var_selector'].widgets['selector'].options) == 23)
-    assert('pot_rho_0' in ee.widgets['var_selector'].widgets['selector'].options)
-    assert('ty_trans_rho' not in ee.widgets['var_selector'].widgets['selector'].options)
+    assert(len(ee1.var_selector.selector.options) == 23)
+    assert('pot_rho_0' in ee1.var_selector.selector.options)
+    assert('ty_trans_rho' not in ee1.var_selector.selector.options)
 
     # Simulate selecting a different experiment from menu
-    ee._load_experiment('two')
-    assert(len(ee.widgets['var_selector'].widgets['selector'].options) == 27)
-    assert('pot_rho_0' in ee.widgets['var_selector'].widgets['selector'].options)
-    assert('ty_trans_rho' in ee.widgets['var_selector'].widgets['selector'].options)
+    ee1._load_experiment('two')
+    assert(len(ee1.var_selector.selector.options) == 27)
+    assert('pot_rho_0' in ee1.var_selector.selector.options)
+    assert('ty_trans_rho' in ee1.var_selector.selector.options)
 
     # Check frequency drop down changes when variable selector assigned a value
-    assert(ee.widgets['frequency'].options == ())
-    ee.widgets['var_selector'].widgets['selector'].label = 'tx_trans'
-    assert(ee.widgets['frequency'].options == (None,))
+    assert(ee1.frequency.options == ())
+    ee1.var_selector.selector.label = 'tx_trans'
+    assert(ee1.frequency.options == (None,))
+
+    ee2 = cc.explore.ExperimentExplorer(session=session)
+
+    assert(id(ee1.var_selector) != id(ee2.var_selector))
