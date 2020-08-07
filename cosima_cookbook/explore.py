@@ -28,6 +28,12 @@ class DatabaseExtension:
     expt_variable_map = None
     
     def __init__(self, session=None, experiments=None):
+        """
+        Generate and store derived information based on queries to the back end
+        SQL database. If no session passed a new session will be created using
+        the default database. If a list of experiment names is provied only those
+        experiments will be queried to generate the list of derived information.
+        """
         if session is None:
             session = database.create_session()
         self.session = session
@@ -49,11 +55,8 @@ class DatabaseExtension:
 
     def experiment_variable_map(self):
         """
-        Make a pandas table with experiment as the index and columns
-        of name, long_name, coordinate flag, restart flag and model
-        type.
-
-        Also make lists of unique name/long_name 
+        Make a pandas table with experiment as the index and columns of name, long_name, 
+        coordinate flag, restart flag and model type.
         """
         allvars = pd.concat([self.get_variables(expt) for expt in self.experiments.experiment], 
                             keys=self.experiments.experiment)
@@ -88,8 +91,8 @@ class DatabaseExtension:
 
     def unique_variable_list(self):
         """
-        Extract a list of all variable name/long_name pairs from the experiment
-        keyword map
+        Extract a list of all unique variable name/long_name/model/restart/coordinate 
+        combinations from the experiment keyword map
         """
         return self.expt_variable_map.reset_index(drop=True).drop_duplicates()
         
@@ -114,6 +117,9 @@ class DatabaseExtension:
         return set.intersection(*expts)
     
     def get_experiment(self, experiment):
+        """
+        Convenience routine to return the full entry given an experiment name
+        """
         return self.experiments[self.experiments['experiment'] == experiment]
 
     # Return more metadata than get_variables from cosima-cookbook
@@ -182,6 +188,9 @@ class VariableSelector(VBox):
         self._set_observes()
 
     def _make_widgets(self, rows):
+        """
+        Instantiate all widgets
+        """
 
         # Experiment selector element
         self.model = Dropdown(
@@ -273,7 +282,9 @@ class VariableSelector(VBox):
         self._filter_variables(model=model)
 
     def _filter_eventhandler(self, event=None):
-
+        """
+        Called when filter button pushed
+        """
         self._filter_variables(self.filter_coords.value,
                                self.filter_restarts.value,
                                self.model.value)
@@ -423,12 +434,13 @@ class VariableSelectorInfo(VariableSelector):
         self.frequency.disabled = False
 
     def _frequency_eventhandler(self, selector):
-
+        """
+        When frequency selector is changed update daterange slider
+        """
         variable_name = self.selector.label
         frequency = self.frequency.value
-
+        # Find the matching variable in our list
         variable = self.variables.loc[(self.variables['name'] == variable_name) & (self.variables['frequency'] == frequency)]
-
         try:
             # Populate daterange widget if variable contains necessary information
             # Convert human readable frequency to pandas compatigle frequency string 
@@ -447,7 +459,6 @@ class VariableSelectFilter(HBox):
     be transferred to another Select Widget to specify which variables should
     be used to filter experiments
     """
-
     variables = pd.DataFrame()
 
     def __init__(self, selvariables, **kwargs):
@@ -456,12 +467,20 @@ class VariableSelectFilter(HBox):
 
         self.variables contains the variables transferred to the selected widget
         """
+        self._make_widgets(selvariables, **kwargs)
 
+        super().__init__(children=[self.selector, self.button_box, self.filter_box], 
+                         **kwargs)
+
+        self._set_observes()
+
+    def _make_widgets(self, selvariables, **kwargs):
+        """
+        Instantiate all widgets
+        """
         layout = {'padding': '0px 5px'}
-
         # Variable selector combo-widget
         self.selector = VariableSelector(selvariables, **kwargs)
-
         # Button to add variable from selector to selected
         self.var_filter_add = Button(
             tooltip='Add selected variable to filter',
@@ -476,7 +495,6 @@ class VariableSelectFilter(HBox):
         )
         self.button_box = VBox([self.var_filter_add, self.var_filter_sub],
                                layout={'padding': '100px 5px', 'height': '100%'})
-
         # Selected variables for filtering with header widget
         self.var_filter_label = HTML('Filter variables:', layout=layout)
         self.var_filter_selected = Select(
@@ -486,11 +504,6 @@ class VariableSelectFilter(HBox):
         )
         self.filter_box = VBox([self.var_filter_label, 
                                 self.var_filter_selected], layout=layout)
-
-        super().__init__(children=[self.selector, self.button_box,   self.filter_box], 
-                         **kwargs)
-
-        self._set_observes()
 
     def _set_observes(self):
         """
@@ -567,12 +580,18 @@ class DatabaseExplorer(VBox):
     de = None
 
     def __init__(self, session=None, de=None):
-
         if de is None: 
             de = DatabaseExtension(session)
         self.de = de
 
         self._make_widgets()
+
+        # Call super init and pass widgets as children
+        super().__init__(children=[self.header,
+                                   self.selectors,
+                                   self.expt_info,
+                                   self.expt_explorer])
+
         self._set_handlers()
 
     def _make_widgets(self):
@@ -626,8 +645,8 @@ class DatabaseExplorer(VBox):
             tooltip='Click to clear selected keywords'
         )
         self.keyword_box = VBox([self.filter_widget, 
-                                            self.clear_keywords_button],
-                                            layout={'flex': '0 0 40%'})
+                                 self.clear_keywords_button],
+                                 layout={'flex': '0 0 40%'})
 
         # Filtering button
         self.filter_button = Button(
@@ -637,11 +656,12 @@ class DatabaseExplorer(VBox):
         )
 
         # Variable filter selector combo widget
-        self.var_filter = VariableSelectFilter(self.de.variables, layout={'flex': '0 0 40%'})
+        self.var_filter = VariableSelectFilter(self.de.variables, 
+                                               layout={'flex': '0 0 40%'})
 
         # Tab box to contain keyword and variable filters
         self.filter_tabs = Tab(title='Filter', children=[self.keyword_box, 
-                                                                    self.var_filter])
+                                                         self.var_filter])
         self.filter_tabs.set_title(0, 'Keyword')
         self.filter_tabs.set_title(1, 'Variable')
 
@@ -663,24 +683,18 @@ class DatabaseExplorer(VBox):
         self.expt_explorer = HBox()
 
         # Some box layout nonsense to organise widgets in space
-        selectors = HBox([
-                        VBox([Label(value="Experiments:"), 
-                              self.expt_selector,
-                              self.load_button,
-                              ],
-                              layout={'padding': '0px 5px', 'flex': '0 0 30%'}),
-                        VBox([Label(value="Filter by:"), 
-                              self.filter_tabs,
-                              self.filter_button],
-                              layout={'padding': '0px 10px', 'flex': '0 0 65%'}),
-                              #layout=box_layout,),
+        self.selectors = HBox([
+                            VBox([Label(value="Experiments:"), 
+                                self.expt_selector,
+                                self.load_button,
+                                ],
+                                layout={'padding': '0px 5px', 'flex': '0 0 30%'}),
+                            VBox([Label(value="Filter by:"), 
+                                self.filter_tabs,
+                                self.filter_button],
+                                layout={'padding': '0px 10px', 'flex': '0 0 65%'}),
+                                #layout=box_layout,),
                         ])
-
-        # Call super init and pass widgets as children
-        super().__init__(children=[self.header,
-                                   selectors,
-                                   self.expt_info,
-                                   self.expt_explorer])
 
     def _set_handlers(self):
         """
@@ -773,7 +787,6 @@ class ExperimentExplorer(VBox):
     variables = []
 
     def __init__(self, session=None, experiment=None):
-
         if session is None:
             session = database.create_session()
         self.session = session
@@ -786,15 +799,21 @@ class ExperimentExplorer(VBox):
             experiment = expts.iloc[0].experiment
 
         self.de = DatabaseExtension(session, experiments=experiment)
-
         self.experiment_name = experiment
 
         self._make_widgets()
+
+        # Call super init and pass widgets as children
+        super().__init__(children=[self.header,
+                                   self.expt_selector,
+                                   self.centre_pane,
+                                   self.load_button,
+                                   self.data_box])
+
         self._load_experiment(self.experiment_name)
         self._set_handlers()
 
     def _make_widgets(self):
-
         # Header widget
         self.header = HTML(
             value="""
@@ -813,7 +832,6 @@ class ExperimentExplorer(VBox):
             """,
             description='',
         )
-        
         # Experiment selector element
         self.expt_selector = Dropdown(
             options=sorted(self.de.allexperiments.experiment, key=str.casefold),
@@ -821,14 +839,12 @@ class ExperimentExplorer(VBox):
             description='',
             layout={'width': '40%'}
         )
-
         # Date selection widget
         self.frequency = Dropdown(
             options=(),
             description='Frequency',
             disabled=True,
         )
-
         # Date selection widget
         self.daterange = SelectionRangeSlider(
             options=['0000','0001'],
@@ -837,17 +853,14 @@ class ExperimentExplorer(VBox):
             layout={'width': '80%'},
             disabled=True
         )
-
         # Variable filter selector combo widget. Pass in two widgets so they
         # can be updated by the VariableSelectorInfo widget
         self.var_selector = VariableSelectorInfo(self.de.variables, 
                                                  daterange=self.daterange,
                                                  frequency=self.frequency,
                                                  rows=20)
-
         # DataArray information widget
         self.data_box = HTML()
-
         # Data load button
         self.load_button = Button(
             description='Load',
@@ -855,26 +868,16 @@ class ExperimentExplorer(VBox):
             layout={'width': '20%', 'align': 'center'},
             tooltip='Click to load data'
         )
-
-        info_pane = VBox([self.frequency,
-                          self.daterange],
-                          layout={'padding': '10% 0', 'width': '50%'})
-
-        centre_pane = HBox([VBox([self.var_selector]),
-                                  info_pane])
-
-        # Call super init and pass widgets as children
-        super().__init__(children=[self.header,
-                                   self.expt_selector,
-                                   centre_pane,
-                                   self.load_button,
-                                   self.data_box])
+        self.info_pane = VBox([self.frequency,
+                               self.daterange],
+                               layout={'padding': '10% 0', 'width': '50%'})
+        self.centre_pane = HBox([VBox([self.var_selector]),
+                                       self.info_pane])
 
     def _set_handlers(self):
         """
         Define routines to handle button clicks and experiment selection
         """
-
         self.load_button.on_click(self._load_data)
         self.expt_selector.observe(self._expt_eventhandler, names='value')
 
@@ -888,8 +891,6 @@ class ExperimentExplorer(VBox):
         """
         Called when load_button clicked
         """
-
-
         varname = self.var_selector.get_selected()
         (start_time, end_time) = self.daterange.value
         frequency = self.frequency.value
