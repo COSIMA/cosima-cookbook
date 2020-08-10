@@ -7,6 +7,7 @@ import pkg_resources
 
 from . import database
 from . import querying
+from . import explore
 
 try:
     __version__ = pkg_resources.get_distribution("cosima-cookbook").version
