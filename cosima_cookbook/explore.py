@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 import cosima_cookbook
 import cosima_cookbook as cc
-from . import database, querying 
+from . import database, querying
 from .database import CFVariable, NCFile, NCExperiment, NCVar
 
 def return_value_or_empty(value):
@@ -26,7 +26,7 @@ class DatabaseExtension:
     keywords = None
     variables = None
     expt_variable_map = None
-    
+
     def __init__(self, session=None, experiments=None):
         """
         Generate and store derived information based on queries to the back end
@@ -55,10 +55,10 @@ class DatabaseExtension:
 
     def experiment_variable_map(self):
         """
-        Make a pandas table with experiment as the index and columns of name, long_name, 
+        Make a pandas table with experiment as the index and columns of name, long_name,
         coordinate flag, restart flag and model type.
         """
-        allvars = pd.concat([self.get_variables(expt) for expt in self.experiments.experiment], 
+        allvars = pd.concat([self.get_variables(expt) for expt in self.experiments.experiment],
                             keys=self.experiments.experiment)
 
         # Create a new column to flag if variable is from a restart directory
@@ -69,12 +69,12 @@ class DatabaseExtension:
 
         # There is no metadata in the files or database that will let us know which
         # model produced the output, so use a heuristic that assumes if the data
-        # resides in a directory that is named for a model type it is output from 
-        # that model. Doesn't use os.path.sep as it is never envisaged this will be used 
+        # resides in a directory that is named for a model type it is output from
+        # that model. Doesn't use os.path.sep as it is never envisaged this will be used
         # outside of a posix system
         allvars.loc[(allvars.ncfile.str.contains(r'\bocean\b')  |
                      allvars.ncfile.str.contains(r'\bocn\b')), 'model'] = 'ocean'
-        allvars.loc[(allvars.ncfile.str.contains(r'\batmosphere\b') | 
+        allvars.loc[(allvars.ncfile.str.contains(r'\batmosphere\b') |
                      allvars.ncfile.str.contains(r'\batm\b')), 'model'] = 'atmosphere'
         allvars.loc[allvars.ncfile.str.contains(r'\bice\b'), 'model'] = 'ice'
 
@@ -91,11 +91,11 @@ class DatabaseExtension:
 
     def unique_variable_list(self):
         """
-        Extract a list of all unique variable name/long_name/model/restart/coordinate 
+        Extract a list of all unique variable name/long_name/model/restart/coordinate
         combinations from the experiment keyword map
         """
         return self.expt_variable_map.reset_index(drop=True).drop_duplicates()
-        
+
     def keyword_filter(self, keywords):
         """
         Return a list of experiments matching *all* of the supplied keywords
@@ -115,7 +115,7 @@ class DatabaseExtension:
                 set(self.expt_variable_map[self.expt_variable_map.name == v].reset_index()['experiment'])
             )
         return set.intersection(*expts)
-    
+
     def get_experiment(self, experiment):
         """
         Convenience routine to return the full entry given an experiment name
@@ -153,18 +153,18 @@ class DatabaseExtension:
             q = q.filter(NCFile.frequency == frequency)
 
         return pd.DataFrame(q)
-    
+
 
 class VariableSelector(VBox):
     """
     Combo widget based on a Select box with a search panel above to live
     filter variables to Select. When a variable is selected the long name
-    attribute is displayed under the select box. There are also two 
+    attribute is displayed under the select box. There are also two
     checkboxes which hide coordinates and restart variables.
 
     Note that a dict is used to populate the Select widget, so the visible
-    value is the variable name and is accessed via the label attribute, 
-    and the long name via the value attribute. 
+    value is the variable name and is accessed via the label attribute,
+    and the long name via the value attribute.
     """
 
     variables = None
@@ -181,7 +181,7 @@ class VariableSelector(VBox):
                                    self.selector,
                                    self.info,
                                    self.filter_coords,
-                                   self.filter_restarts], 
+                                   self.filter_restarts],
                                    **kwargs)
         self.set_variables(variables)
         self._set_info()
@@ -200,7 +200,7 @@ class VariableSelector(VBox):
         )
         # Variable search
         self.search = Text(
-            placeholder='Search: start typing', 
+            placeholder='Search: start typing',
             layout={'padding': '0px 5px', 'width': 'auto', 'overflow-x': 'scroll'},
         )
         # Variable selection box
@@ -273,7 +273,7 @@ class VariableSelector(VBox):
 
     def _model_eventhandler(self, event=None):
         """
-        Filter by model 
+        Filter by model
         """
         model = self.model.value
 
@@ -333,22 +333,22 @@ class VariableSelector(VBox):
                 search_term = self.search.value
 
         self._update_selector(variables)
-    
+
     def _selector_eventhandler(self, event=None):
         """
         Update variable info when variable selected
         """
         self._set_info(self.selector.value)
-    
+
     def _set_info(self, long_name=None):
         """
-        Set long name info widget 
+        Set long name info widget
         """
         if long_name is None or long_name == '':
             long_name = '&nbsp;'
-        style = '<style>p{word-wrap: break-word}</style>' 
+        style = '<style>p{word-wrap: break-word}</style>'
         self.info.value = style + '<p>{long_name}</p>'.format(long_name=long_name)
-    
+
     def delete(self, variable_names=None):
         """
         Remove variables
@@ -369,8 +369,8 @@ class VariableSelector(VBox):
         # Delete variables
         self.variables = self.variables[~mask]
 
-        # Update selector. Use search eventhandler so the selector preserves any 
-        # current search term. It is annoying to have that reset and type in again 
+        # Update selector. Use search eventhandler so the selector preserves any
+        # current search term. It is annoying to have that reset and type in again
         # if multiple variables are to be added
         self._search_eventhandler()
 
@@ -401,7 +401,7 @@ class VariableSelectorInfo(VariableSelector):
 
         super(VariableSelectorInfo, self).__init__(variables, rows, **kwargs)
 
-        # Requires two widgets passed in as an argument. An html box where 
+        # Requires two widgets passed in as an argument. An html box where
         # extended meta-data will be displayed, and a date range widget for
         # selecting start and end times to load
         self.daterange = daterange
@@ -428,7 +428,7 @@ class VariableSelectorInfo(VariableSelector):
 
         if len(variable) == 0:
             return
-        
+
         self.frequency.options = variable.frequency
         self.frequency.index = 0
         self.frequency.disabled = False
@@ -443,10 +443,10 @@ class VariableSelectorInfo(VariableSelector):
         variable = self.variables.loc[(self.variables['name'] == variable_name) & (self.variables['frequency'] == frequency)]
         try:
             # Populate daterange widget if variable contains necessary information
-            # Convert human readable frequency to pandas compatigle frequency string 
+            # Convert human readable frequency to pandas compatigle frequency string
             freq = re.sub(r'^(\d+) (\w)(\w+)', r'\1\2', str(variable.frequency.values[0]).upper())
             dates = pd.date_range(variable.time_start.values[0], variable.time_end.values[0] , freq=freq)
-            self.daterange.options = [(i.strftime('%Y/%m/%d'), i) for i in dates]                
+            self.daterange.options = [(i.strftime('%Y/%m/%d'), i) for i in dates]
             self.daterange.value = (dates[0], dates[-1])
         except:
             pass
@@ -455,7 +455,7 @@ class VariableSelectorInfo(VariableSelector):
 
 class VariableSelectFilter(HBox):
     """
-    Combo widget which contains a VariableSelector from which variables can 
+    Combo widget which contains a VariableSelector from which variables can
     be transferred to another Select Widget to specify which variables should
     be used to filter experiments
     """
@@ -469,7 +469,7 @@ class VariableSelectFilter(HBox):
         """
         self._make_widgets(selvariables, **kwargs)
 
-        super().__init__(children=[self.selector, self.button_box, self.filter_box], 
+        super().__init__(children=[self.selector, self.button_box, self.filter_box],
                          **kwargs)
 
         self._set_observes()
@@ -502,7 +502,7 @@ class VariableSelectFilter(HBox):
             rows=10,
             layout=layout,
         )
-        self.filter_box = VBox([self.var_filter_label, 
+        self.filter_box = VBox([self.var_filter_label,
                                 self.var_filter_selected], layout=layout)
 
     def _set_observes(self):
@@ -573,14 +573,14 @@ class VariableSelectFilter(HBox):
 class DatabaseExplorer(VBox):
     """
     Combo widget based on a select box containing all experiments in
-    specified database. 
+    specified database.
     """
 
     session = None
     de = None
 
     def __init__(self, session=None, de=None):
-        if de is None: 
+        if de is None:
             de = DatabaseExtension(session)
         self.de = de
 
@@ -606,14 +606,14 @@ class DatabaseExplorer(VBox):
             <h3>Database Explorer</h3>
 
             <p>Select an experiemt to show more detailed information where available.
-            With an experiment selected push 'Load Experiment' to open an Experiment 
+            With an experiment selected push 'Load Experiment' to open an Experiment
             Explorer gui.</p>
 
-            <p>The list of experiments can be filtered by keywords and/or variables. 
+            <p>The list of experiments can be filtered by keywords and/or variables.
             Multiple keywords can be selected using alt/option/ctrl (system dependent)
-            or the shift modifier when selecting. To filter by variables select a 
-            variable and add it to the "Filter variables" box using the ">>" button, 
-            and vice-versa to remove variables from the filter. Push the 'Filter' 
+            or the shift modifier when selecting. To filter by variables select a
+            variable and add it to the "Filter variables" box using the ">>" button,
+            and vice-versa to remove variables from the filter. Push the 'Filter'
             button to show only matching experiments.</p>
 
             <p>The ExperimentExplorer element is accessible as the <tt>ee</tt> attribute
@@ -621,7 +621,7 @@ class DatabaseExplorer(VBox):
             """,
             description='',
             layout={'width': '60%'},
-        ) 
+        )
 
         # Experiment selector box
         self.expt_selector = Select(
@@ -644,7 +644,7 @@ class DatabaseExplorer(VBox):
             layout={'width': '20%', 'align': 'center'},
             tooltip='Click to clear selected keywords'
         )
-        self.keyword_box = VBox([self.filter_widget, 
+        self.keyword_box = VBox([self.filter_widget,
                                  self.clear_keywords_button],
                                  layout={'flex': '0 0 40%'})
 
@@ -656,11 +656,11 @@ class DatabaseExplorer(VBox):
         )
 
         # Variable filter selector combo widget
-        self.var_filter = VariableSelectFilter(self.de.variables, 
+        self.var_filter = VariableSelectFilter(self.de.variables,
                                                layout={'flex': '0 0 40%'})
 
         # Tab box to contain keyword and variable filters
-        self.filter_tabs = Tab(title='Filter', children=[self.keyword_box, 
+        self.filter_tabs = Tab(title='Filter', children=[self.keyword_box,
                                                          self.var_filter])
         self.filter_tabs.set_title(0, 'Keyword')
         self.filter_tabs.set_title(1, 'Variable')
@@ -684,12 +684,12 @@ class DatabaseExplorer(VBox):
 
         # Some box layout nonsense to organise widgets in space
         self.selectors = HBox([
-                            VBox([Label(value="Experiments:"), 
+                            VBox([Label(value="Experiments:"),
                                 self.expt_selector,
                                 self.load_button,
                                 ],
                                 layout={'padding': '0px 5px', 'flex': '0 0 30%'}),
-                            VBox([Label(value="Filter by:"), 
+                            VBox([Label(value="Filter by:"),
                                 self.filter_tabs,
                                 self.filter_button],
                                 layout={'padding': '0px 10px', 'flex': '0 0 65%'}),
@@ -749,11 +749,11 @@ class DatabaseExplorer(VBox):
         <tr><td><b>No. files:</b></td> <td>{ncfiles}</td></tr>
         <tr><td><b>Created:</b></td> <td>{created}</td></tr>
         </table>
-        """.format(experiment=experiment_name, 
+        """.format(experiment=experiment_name,
                     **{field: return_value_or_empty(expt[field].values[0])
-                       for field in ['description', 'notes', 'contact', 
+                       for field in ['description', 'notes', 'contact',
                                      'email', 'ncfiles', 'created']})
-        
+
     def _filter_experiments(self, b):
         """
         Filter experiment list by keywords and variable
@@ -775,7 +775,7 @@ class DatabaseExplorer(VBox):
         Open an Experiment Explorer UI with selected experiment
         """
         if self.expt_selector.value is not None:
-            self.ee = ExperimentExplorer(session=self.session, 
+            self.ee = ExperimentExplorer(session=self.session,
                                          experiment=self.expt_selector.value)
             self.expt_explorer.children = [self.ee]
 
@@ -793,7 +793,7 @@ class ExperimentExplorer(VBox):
 
         if experiment is None:
             # Have to pass an experiment to DatabaseExtension so that
-            # it only creates a variable/keyword map for a single 
+            # it only creates a variable/keyword map for a single
             # experiment
             expts = querying.get_experiments(self.session, all=True)
             experiment = expts.iloc[0].experiment
@@ -818,15 +818,15 @@ class ExperimentExplorer(VBox):
         self.header = HTML(
             value="""
             <h3>Experiment Explorer</h3>
-            
+
             <p>Select a variable from the list to display metadata information.
             Where appropriate select a date range. Pressing the <b>Load</b> button
-            will read the data into an <tt>xarray DataArray</tt> using the COSIMA Cookook. 
+            will read the data into an <tt>xarray DataArray</tt> using the COSIMA Cookook.
             The command used is output and can be copied and modified as required.</p>
 
-            <p>The loaded DataArray is accessible as the <tt>data</tt> attribute 
-            of the ExperimentExplorer object.</p> 
-            
+            <p>The loaded DataArray is accessible as the <tt>data</tt> attribute
+            of the ExperimentExplorer object.</p>
+
             <p>The selected experiment can be changed to any experiment present
             in the current database session.</p>
             """,
@@ -855,7 +855,7 @@ class ExperimentExplorer(VBox):
         )
         # Variable filter selector combo widget. Pass in two widgets so they
         # can be updated by the VariableSelectorInfo widget
-        self.var_selector = VariableSelectorInfo(self.de.variables, 
+        self.var_selector = VariableSelectorInfo(self.de.variables,
                                                  daterange=self.daterange,
                                                  frequency=self.frequency,
                                                  rows=20)
@@ -896,9 +896,9 @@ class ExperimentExplorer(VBox):
         frequency = self.frequency.value
 
         load_command = """
-        <pre><code>cc.querying.getvar('{expt}', '{var}', session, 
+        <pre><code>cc.querying.getvar('{expt}', '{var}', session,
                     start_time='{start}', end_time='{end}', frequency='{frequency}')</code></pre>
-        """.format(expt=self.expt_selector.value, 
+        """.format(expt=self.expt_selector.value,
                 var=varname,
                 start=str(start_time),
                 end=str(end_time),
@@ -910,7 +910,7 @@ class ExperimentExplorer(VBox):
         try:
             self.data = querying.getvar(self.experiment_name,
                                         varname,
-                                        self.de.session, 
+                                        self.de.session,
                                         start_time=str(start_time),
                                         end_time=str(end_time),
                                         frequency=frequency)
@@ -930,8 +930,8 @@ class ExperimentExplorer(VBox):
         self.de = DatabaseExtension(self.session, experiments=experiment_name)
         self.experiment_name = experiment_name
         # Add metadata
-        self.variables = pd.merge(self.de.variables, 
-                                  self.de.get_variables(self.experiment_name), 
+        self.variables = pd.merge(self.de.variables,
+                                  self.de.get_variables(self.experiment_name),
                                   how='inner', on=['name', 'long_name'])
         self._load_variables()
 
