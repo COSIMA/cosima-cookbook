@@ -26,7 +26,7 @@ import cftime
 from datetime import datetime, timedelta
 
 from cosima_cookbook.date_utils import rebase_times, rebase_dataset, \
-    rebase_variable, rebase_shift_attr
+    rebase_variable, rebase_shift_attr, format_datetime, parse_datetime
 
 from xarray.testing import assert_equal
 
@@ -48,6 +48,22 @@ def setup_module(module):
 def teardown_module(module):
     if verbose: print ("teardown_module   module:%s" % module.__name__)
     # Put any taerdown code in here, like deleting temporary files
+
+def test_format_parse_datetime():
+
+    dates = [cftime.num2date(t, units='days since 01-01-01', calendar='noleap') for t in times]
+    assert(format_datetime(dates[0]) == '0001-01-01 00:00:00')
+    assert(format_datetime(dates[-1]) == '0005-12-01 00:00:00')
+
+    for d in dates:
+        assert(parse_datetime(format_datetime(d), 'noleap') == d)
+
+    dates = [cftime.num2date(t, units='days since 01-01-01', calendar='proleptic_gregorian') for t in times]
+    assert(format_datetime(dates[0]) == '0001-01-01 00:00:00')
+    assert(format_datetime(dates[-1]) == '0005-11-30 00:00:00')
+
+    for d in dates:
+        assert(parse_datetime(format_datetime(d), 'proleptic_gregorian') == d)
 
 def test_rebase_times():
 
