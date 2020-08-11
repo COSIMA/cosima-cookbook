@@ -160,7 +160,7 @@ def test_get_data(session):
 
     ee = cc.explore.ExperimentExplorer(session=session)
 
-    assert(ee.data() is None)
+    assert(ee.data is None)
 
     ee._load_experiment('one')
     ee.var_selector.selector.label = 'ty_trans'
@@ -172,5 +172,5 @@ def test_get_data(session):
     assert(ee.daterange.options[0][0] == ' 166/12/31')
     assert(ee.daterange.options[1][0] == ' 167/12/31')
 
-    assert(ee.data() is not None)
-    assert(ee.data().shape == (2, 1, 1, 1))
+    assert(ee.data is not None)
+    assert(ee.data.shape == (2, 1, 1, 1))
