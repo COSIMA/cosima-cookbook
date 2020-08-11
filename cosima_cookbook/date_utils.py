@@ -14,15 +14,20 @@ limitations under the License.
 
 from __future__ import print_function
 
-import xarray as xr
+import datetime
+
+import cftime
 from cftime import num2date, date2num
 import numpy as np
-import datetime
+import xarray as xr
+from xarray.coding.cftimeindex import _parse_iso8601_without_reso
 
 rebase_attr = '_rebased_units'
 rebase_shift_attr = '_rebased_shift'
 bounds = 'bounds'
 boundsvar = 'bounds_var'
+
+datetimeformat = '%Y-%m-%d %H:%M:%S'
 
 # Code adapted from https://github.com/spencerahill/aospy/issues/212
 
@@ -187,3 +192,30 @@ def shift_time(ds):
     Apply time shift to un-decoded time axis, to align datasets and 
     """
     pass
+
+def format_datetime(datetime, format=datetimeformat):
+    """
+    Standard method to convert cftime.datetime objects to strings for
+    storage in SQL database. Hard code the length as some datetime
+    objects don't space pad when formatted! 
+    """
+    def zeropad(s):
+        ss = s.lstrip()
+        return (19-len(ss))*'0' + ss
+    
+    return zeropad(datetime.strftime(format))
+
+def parse_datetime(datetimestring, datetype=cftime.DatetimeProlepticGregorian):
+    """
+    Standard method to convert datetime obkects stored as strings in SQL database 
+    back into cftime.datetime objects
+    """
+    # xarray supports parsing dates strings to cftime.datetime objects, but 
+    # requires ISO-8601 format (https://en.wikipedia.org/wiki/ISO_8601).
+    # Convert string to ISO-8601 before parsing by adding separator
+    # between date and time elements
+    datetimestring = datetimestring[:10] + 'T' + datetimestring[11:]
+
+    # Note: uses non-public xarray method that may change or be deleted
+    # in the future
+    return _parse_iso8601_without_reso(datetype, datetimestring)

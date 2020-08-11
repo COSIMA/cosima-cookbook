@@ -23,6 +23,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from . import netcdf_utils
 from .database_utils import *
+from .date_utils import format_datetime
 
 logging.captureWarnings(True)
 
@@ -281,14 +282,8 @@ def update_timeinfo(f, ncfile):
             ncfile.frequency = 'static'
 
         # convert start/end times to timestamps
-        # strftime doesn't like years with fewer than 4 digits (pads with spaces
-        # instead of zeroes)...
-        def zeropad(s):
-            ss = s.lstrip()
-            return (len(s)-len(ss))*'0' + ss
-
-        ncfile.time_start = zeropad(ncfile.time_start.strftime('%Y-%m-%d %H:%M:%S'))
-        ncfile.time_end = zeropad(ncfile.time_end.strftime('%Y-%m-%d %H:%M:%S'))
+        ncfile.time_start = format_datetime(ncfile.time_start)
+        ncfile.time_end = format_datetime(ncfile.time_end)
 
 def index_file(ncfile_name, experiment):
     """Index a single netCDF file within an experiment by retrieving all variables, their dimensions
