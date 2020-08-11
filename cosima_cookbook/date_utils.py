@@ -20,7 +20,7 @@ import cftime
 from cftime import num2date, date2num
 import numpy as np
 import xarray as xr
-from xarray.coding.cftimeindex import _parse_iso8601_without_reso
+from xarray.coding.cftime_offsets import to_cftime_datetime
 
 rebase_attr = '_rebased_units'
 rebase_shift_attr = '_rebased_shift'
@@ -199,13 +199,9 @@ def format_datetime(datetime, format=datetimeformat):
     storage in SQL database. Hard code the length as some datetime
     objects don't space pad when formatted! 
     """
-    def zeropad(s):
-        ss = s.lstrip()
-        return (19-len(ss))*'0' + ss
-    
-    return zeropad(datetime.strftime(format))
+    return '{:0>19}'.format(datetime.strftime(format).lstrip())
 
-def parse_datetime(datetimestring, datetype=cftime.DatetimeProlepticGregorian):
+def parse_datetime(datetimestring, calendar="proleptic_gregorian"):
     """
     Standard method to convert datetime obkects stored as strings in SQL database 
     back into cftime.datetime objects
@@ -218,4 +214,4 @@ def parse_datetime(datetimestring, datetype=cftime.DatetimeProlepticGregorian):
 
     # Note: uses non-public xarray method that may change or be deleted
     # in the future
-    return _parse_iso8601_without_reso(datetype, datetimestring)
+    return to_cftime_datetime(datetimestring, calendar)
