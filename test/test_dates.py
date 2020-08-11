@@ -56,14 +56,14 @@ def test_format_parse_datetime():
     assert(format_datetime(dates[-1]) == '0005-12-01 00:00:00')
 
     for d in dates:
-        assert(parse_datetime(format_datetime(d), cftime.DatetimeNoLeap) == d)
+        assert(parse_datetime(format_datetime(d), 'noleap') == d)
 
     dates = [cftime.num2date(t, units='days since 01-01-01', calendar='proleptic_gregorian') for t in times]
     assert(format_datetime(dates[0]) == '0001-01-01 00:00:00')
     assert(format_datetime(dates[-1]) == '0005-11-30 00:00:00')
 
     for d in dates:
-        assert(parse_datetime(format_datetime(d), cftime.DatetimeProlepticGregorian) == d)
+        assert(parse_datetime(format_datetime(d), 'proleptic_gregorian') == d)
 
 def test_rebase_times():
 
