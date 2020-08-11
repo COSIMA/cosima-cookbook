@@ -6,11 +6,13 @@ from ipywidgets import SelectMultiple, Tab, Text, Textarea, Checkbox
 from ipywidgets import SelectionRangeSlider, Dropdown
 import pandas as pd
 from sqlalchemy import func
+import xarray as xr
 
 import cosima_cookbook
 import cosima_cookbook as cc
 from . import database, querying 
 from .database import CFVariable, NCFile, NCExperiment, NCVar
+from .date_utils import format_datetime, parse_datetime
 
 def return_value_or_empty(value):
     """Return value if not None, otherwise empty"""
@@ -408,16 +410,25 @@ class VariableSelectorInfo(VariableSelector):
         self.daterange = daterange
         self.frequency = frequency
 
-        self._filter_eventhandler(None)
-
+        # Set event handlers. Don't use _set_observes method: don't want 
+        # it called when super init invoked
         self.selector.observe(self._var_eventhandler, names='value')
         self.frequency.observe(self._frequency_eventhandler, names='value')
+
+        # Set default filtering
+        self._filter_variables()
 
     def _var_eventhandler(self, selector):
         """
         Called when variable selected
         """
-        variable_name = self.selector.label
+        self._set_frequency_selector(self.selector.label)
+
+    def _set_frequency_selector(self, variable_name):
+        """
+        Populate the variable loading selectors widgets for daterange
+        and frequency given a variable name
+        """
         variable = self.variables.loc[self.variables['name'] == variable_name]
 
         # Initialise daterange widget
@@ -438,15 +449,25 @@ class VariableSelectorInfo(VariableSelector):
         """
         When frequency selector is changed update daterange slider
         """
-        variable_name = self.selector.label
-        frequency = self.frequency.value
+        self._set_daterange_selector(self.selector.label, self.frequency.value)
+
+    def _set_daterange_selector(self, variable_name, frequency):
+        """
+        When frequency selector is changed update daterange slider
+        """
         # Find the matching variable in our list
-        variable = self.variables.loc[(self.variables['name'] == variable_name) & (self.variables['frequency'] == frequency)]
+        variable = self.variables.loc[(self.variables['name'] == variable_name) & 
+                                      (self.variables['frequency'] == frequency)]
         try:
             # Populate daterange widget if variable contains necessary information
             # Convert human readable frequency to pandas compatigle frequency string 
-            freq = re.sub(r'^(\d+) (\w)(\w+)', r'\1\2', str(variable.frequency.values[0]).upper())
-            dates = pd.date_range(variable.time_start.values[0], variable.time_end.values[0] , freq=freq)
+            freq = re.sub(r'^(\d+) (\w)(\w+)', 
+                          r'\1\2', 
+                          str(variable.frequency.values[0]).upper())
+            # import pdb; pdb.set_trace()
+            dates = xr.cftime_range(parse_datetime(variable.time_start.values[0]), 
+                                    parse_datetime(variable.time_end.values[0]), 
+                                    freq=freq)
             self.daterange.options = [(i.strftime('%Y/%m/%d'), i) for i in dates]                
             self.daterange.value = (dates[0], dates[-1])
         except:

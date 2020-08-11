@@ -147,8 +147,30 @@ def test_experiment_explorer(session):
     # Check frequency drop down changes when variable selector assigned a value
     assert(ee1.frequency.options == ())
     ee1.var_selector.selector.label = 'tx_trans'
+    ee1.var_selector._set_frequency_selector('tx_trans')
+    assert(ee1.frequency.options == (None,))
+    ee1.var_selector._set_daterange_selector('ty_trans', '1 yearly')
     assert(ee1.frequency.options == (None,))
 
     ee2 = cc.explore.ExperimentExplorer(session=session)
 
     assert(id(ee1.var_selector) != id(ee2.var_selector))
+
+def test_get_data(session):
+
+    ee = cc.explore.ExperimentExplorer(session=session)
+
+    assert(ee.data() is None)
+
+    ee._load_experiment('one')
+    ee.var_selector.selector.label = 'ty_trans'
+    ee.var_selector._set_frequency_selector('ty_trans')
+    ee.var_selector._set_daterange_selector('ty_trans', '1 yearly')
+    ee._load_data(None)
+
+    assert(ee.frequency.options == ('1 yearly',))
+    assert(ee.daterange.options[0][0] == ' 166/12/31')
+    assert(ee.daterange.options[1][0] == ' 167/12/31')
+
+    assert(ee.data() is not None)
+    assert(ee.data().shape == (2, 1, 1, 1))
