@@ -377,8 +377,8 @@ class VariableSelector(VBox):
         """
         if long_name is None or long_name == "":
             long_name = "&nbsp;"
-        style = "<style>p{word-wrap: break-word}</style>"
-        self.info.value = style + "<p>{long_name}</p>".format(long_name=long_name)
+        style = "<style>.breakword { word-wrap: break-word; font-size: 90%; line-height: 1.1;}</style>"
+        self.info.value = style + '<p class="breakword">{long_name}</p>'.format(long_name=long_name)
 
     def delete(self, variable_names=None):
         """
@@ -663,7 +663,7 @@ class DatabaseExplorer(VBox):
 
         box_layout = Layout(padding="10px", width="auto", border="0px solid black")
 
-        style = "<style>p { line-height: 1.4; margin-bottom: 10px }</style>"
+        style = "<style>.header p{ line-height: 1.4; margin-bottom: 10px }</style>"
 
         # Gui header
         self.header = HTML(
@@ -671,7 +671,9 @@ class DatabaseExplorer(VBox):
             + """
             <h3>Database Explorer</h3>
 
-            <p>Select an experiemt to show more detailed information where available.
+            <div class="header">
+
+            <p>Select an experiment to show more detailed information where available.
             With an experiment selected push 'Load Experiment' to open an Experiment
             Explorer gui.</p>
 
@@ -684,6 +686,8 @@ class DatabaseExplorer(VBox):
 
             <p>When the ExperimentExplorer element loads data it is accessible as the
             <tt>.data</tt> attribute of the DatabaseExplorer object</p>
+
+            </div>
             """,
             description="",
             layout={"width": "60%"},
@@ -805,23 +809,22 @@ class DatabaseExplorer(VBox):
 
         style = """
         <style>
-            body  { font: normal 8px Verdana, Arial, sans-serif; }
-            table { padding: 10px; border-spacing: 0px 0px; background-color: #fff;" }
-            td    { padding: 10px; }
-            p     { line-height: 1.2; margin-top: 5px }
+            .info { font: normal 90% Verdana, Arial, sans-serif; }
         </style>
         """
         self.expt_info.value = (
             style
             + """
+        <div class="info">
         <table>
         <tr><td><b>Experiment:</b></td> <td>{experiment}</td></tr>
-        <tr><td style="vertical-align:top;"><b>Description:</b></td> <td><p>{description}</p></td></tr>
+        <tr><td style="vertical-align:top;"><b>Description:</b></td> <td>{description}</td></tr>
         <tr><td><b>Notes:</b></td> <td>{notes}</td></tr>
         <tr><td><b>Contact:</b></td> <td>{contact} &lt;{email}&gt;</td></tr>
         <tr><td><b>No. files:</b></td> <td>{ncfiles}</td></tr>
         <tr><td><b>Created:</b></td> <td>{created}</td></tr>
         </table>
+        </div>
         """.format(
                 experiment=experiment_name,
                 **{
