@@ -646,8 +646,6 @@ class DatabaseExplorer(VBox):
 
     def __init__(self, session=None, de=None):
 
-        if session is None:
-            session = database.create_session()
         self.session = session
 
         if de is None:
