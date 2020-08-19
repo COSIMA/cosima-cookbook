@@ -41,7 +41,7 @@ class DatabaseExtension:
             session = database.create_session()
         self.session = session
 
-        self.allexperiments = querying.get_experiments(session, all=True)
+        self.allexperiments = querying.get_experiments(session=session, all=True)
 
         if experiments is None:
             self.experiments = self.allexperiments
@@ -646,8 +646,13 @@ class DatabaseExplorer(VBox):
     ee = None
 
     def __init__(self, session=None, de=None):
+
+        if session is None:
+            session = database.create_session()
+        self.session = session
+
         if de is None:
-            de = DatabaseExtension(session)
+            de = DatabaseExtension(self.session)
         self.de = de
 
         self._make_widgets()
