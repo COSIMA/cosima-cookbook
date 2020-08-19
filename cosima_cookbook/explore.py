@@ -41,7 +41,7 @@ class DatabaseExtension:
             session = database.create_session()
         self.session = session
 
-        self.allexperiments = querying.get_experiments(session=session, all=True)
+        self.allexperiments = querying.get_experiments(session=self.session, all=True)
 
         if experiments is None:
             self.experiments = self.allexperiments
@@ -56,7 +56,7 @@ class DatabaseExtension:
                 self.allexperiments.experiment.isin(experiments)
             ]
 
-        self.keywords = sorted(querying.get_keywords(session), key=str.casefold)
+        self.keywords = sorted(querying.get_keywords(self.session), key=str.casefold)
         self.expt_variable_map = self.experiment_variable_map()
         self.variables = self.unique_variable_list()
 
@@ -647,8 +647,6 @@ class DatabaseExplorer(VBox):
 
     def __init__(self, session=None, de=None):
 
-        if session is None:
-            session = database.create_session()
         self.session = session
 
         if de is None:
@@ -892,8 +890,7 @@ class ExperimentExplorer(VBox):
     variables = []
 
     def __init__(self, session=None, experiment=None):
-        if session is None:
-            session = database.create_session()
+
         self.session = session
 
         if experiment is None:
@@ -903,7 +900,7 @@ class ExperimentExplorer(VBox):
             expts = querying.get_experiments(self.session, all=True)
             experiment = expts.iloc[0].experiment
 
-        self.de = DatabaseExtension(session, experiments=experiment)
+        self.de = DatabaseExtension(self.session, experiments=experiment)
         self.experiment_name = experiment
 
         self._make_widgets()
