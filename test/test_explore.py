@@ -116,6 +116,8 @@ def test_database_explorer(session):
 
     dbx = cc.explore.DatabaseExplorer(session=session)
 
+    assert(dbx.session is session)
+
     # Experiment selector
     assert(dbx.expt_selector.options == ('one', 'two'))
 

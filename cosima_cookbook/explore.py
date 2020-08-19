@@ -30,18 +30,16 @@ class DatabaseExtension:
     variables = None
     expt_variable_map = None
 
-    def __init__(self, session=None, experiments=None):
+    def __init__(self, session, experiments=None):
         """
         Generate and store derived information based on queries to the back end
         SQL database. If no session passed a new session will be created using
         the default database. If a list of experiment names is provied only those
         experiments will be queried to generate the list of derived information.
         """
-        if session is None:
-            session = database.create_session()
         self.session = session
 
-        self.allexperiments = querying.get_experiments(session, all=True)
+        self.allexperiments = querying.get_experiments(session=self.session, all=True)
 
         if experiments is None:
             self.experiments = self.allexperiments
@@ -56,7 +54,7 @@ class DatabaseExtension:
                 self.allexperiments.experiment.isin(experiments)
             ]
 
-        self.keywords = sorted(querying.get_keywords(session), key=str.casefold)
+        self.keywords = sorted(querying.get_keywords(self.session), key=str.casefold)
         self.expt_variable_map = self.experiment_variable_map()
         self.variables = self.unique_variable_list()
 
@@ -285,7 +283,8 @@ class VariableSelector(VBox):
         # Populate model selector. Note label and value differ
         options = {"All models": ""}
         for model in variables.model.cat.categories.values:
-            options["{} only".format(model.capitalize())] = model
+            if len(model) > 0: 
+                options["{} only".format(model.capitalize())] = model
         self.model.options = options
 
         # Populate variable selector
@@ -646,8 +645,13 @@ class DatabaseExplorer(VBox):
     ee = None
 
     def __init__(self, session=None, de=None):
+
+        if session is None:
+            session = database.create_session()
+        self.session = session
+
         if de is None:
-            de = DatabaseExtension(session)
+            de = DatabaseExtension(self.session)
         self.de = de
 
         self._make_widgets()
@@ -887,6 +891,7 @@ class ExperimentExplorer(VBox):
     variables = []
 
     def __init__(self, session=None, experiment=None):
+
         if session is None:
             session = database.create_session()
         self.session = session
@@ -898,7 +903,7 @@ class ExperimentExplorer(VBox):
             expts = querying.get_experiments(self.session, all=True)
             experiment = expts.iloc[0].experiment
 
-        self.de = DatabaseExtension(session, experiments=experiment)
+        self.de = DatabaseExtension(self.session, experiments=experiment)
         self.experiment_name = experiment
 
         self._make_widgets()
