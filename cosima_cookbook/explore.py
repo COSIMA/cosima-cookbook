@@ -283,7 +283,8 @@ class VariableSelector(VBox):
         # Populate model selector. Note label and value differ
         options = {"All models": ""}
         for model in variables.model.cat.categories.values:
-            options["{} only".format(model.capitalize())] = model
+            if len(model) > 0: 
+                options["{} only".format(model.capitalize())] = model
         self.model.options = options
 
         # Populate variable selector
