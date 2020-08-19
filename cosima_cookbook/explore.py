@@ -30,15 +30,13 @@ class DatabaseExtension:
     variables = None
     expt_variable_map = None
 
-    def __init__(self, session=None, experiments=None):
+    def __init__(self, session, experiments=None):
         """
         Generate and store derived information based on queries to the back end
         SQL database. If no session passed a new session will be created using
         the default database. If a list of experiment names is provied only those
         experiments will be queried to generate the list of derived information.
         """
-        if session is None:
-            session = database.create_session()
         self.session = session
 
         self.allexperiments = querying.get_experiments(session=self.session, all=True)
@@ -647,6 +645,8 @@ class DatabaseExplorer(VBox):
 
     def __init__(self, session=None, de=None):
 
+        if session is None:
+            session = database.create_session()
         self.session = session
 
         if de is None:
@@ -891,6 +891,8 @@ class ExperimentExplorer(VBox):
 
     def __init__(self, session=None, experiment=None):
 
+        if session is None:
+            session = database.create_session()
         self.session = session
 
         if experiment is None:
