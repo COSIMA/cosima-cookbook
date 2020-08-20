@@ -352,14 +352,19 @@ def update_metadata(experiment, session):
 
 class IndexingError(Exception): pass
 
-def index_experiment(experiment_dir, session=None, client=None, update=False, prune=True, delete=True):
+def index_experiment(experiment_dir, session=None, client=None, update=False, prune=True, delete=True, followsymlinks=False):
     """Index all output files for a single experiment."""
 
     # find all netCDF files in the hierarchy below this directory
     files = []
-    proc = subprocess.run(['find', experiment_dir, '-name', '*.nc'],
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          encoding='utf-8')
+
+    options = []
+    if followsymlinks:
+        options.append('-L')
+
+    cmd = ['find', *options, experiment_dir, '-name', '*.nc']
+    proc = subprocess.run(cmd, encoding='utf-8', stdout=subprocess.PIPE, 
+                          stderr=subprocess.PIPE)
     if proc.returncode != 0:
         warnings.warn('Some files or directories could not be read while finding output files: %s', UserWarning)
 

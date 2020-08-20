@@ -88,8 +88,16 @@ class DatabaseExtension:
         ] = "ocean"
         allvars.loc[
             (
+                allvars.ncfile.str.contains(r"\bland\b")
+                | allvars.ncfile.str.contains(r"\blnd\b")
+            ),
+            "model",
+        ] = "land"
+        allvars.loc[
+            (
                 allvars.ncfile.str.contains(r"\batmosphere\b")
                 | allvars.ncfile.str.contains(r"\batm\b")
+                | allvars.ncfile.str.contains(r"\batmos\b")
             ),
             "model",
         ] = "atmosphere"
@@ -355,8 +363,8 @@ class VariableSelector(VBox):
         if search_term is not None or search_term != "":
             try:
                 variables = variables[
-                    variables.name.str.contains(search_term, na=False)
-                    | variables.long_name.str.contains(search_term, na=False)
+                    variables.name.str.contains(search_term, case=False, na=False)
+                    | variables.long_name.str.contains(search_term, case=False, na=False)
                 ]
             except:
                 print("Illegal character in search!")
@@ -661,6 +669,9 @@ class DatabaseExplorer(VBox):
             children=[self.header, self.selectors, self.expt_info, self.expt_explorer]
         )
 
+        # Show the experiment information: important for only one experiment, as
+        # events will not trigger this otherwise
+        self._show_experiment_information(self.expt_selector.value)
         self._set_handlers()
 
     def _make_widgets(self):
@@ -823,7 +834,7 @@ class DatabaseExplorer(VBox):
         <table>
         <tr><td><b>Experiment:</b></td> <td>{experiment}</td></tr>
         <tr><td style="vertical-align:top;"><b>Description:</b></td> <td>{description}</td></tr>
-        <tr><td><b>Notes:</b></td> <td>{notes}</td></tr>
+        <tr><td style="vertical-align:top;"><b>Notes:</b></td> <td>{notes}</td></tr>
         <tr><td><b>Contact:</b></td> <td>{contact} &lt;{email}&gt;</td></tr>
         <tr><td><b>No. files:</b></td> <td>{ncfiles}</td></tr>
         <tr><td><b>Created:</b></td> <td>{created}</td></tr>
