@@ -352,14 +352,19 @@ def update_metadata(experiment, session):
 
 class IndexingError(Exception): pass
 
-def index_experiment(experiment_dir, session=None, client=None, update=False, prune=True, delete=True):
+def index_experiment(experiment_dir, session=None, client=None, update=False, prune=True, delete=True, followsymlinks=False):
     """Index all output files for a single experiment."""
 
     # find all netCDF files in the hierarchy below this directory
     files = []
-    proc = subprocess.run(['find', experiment_dir, '-name', '*.nc'],
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          encoding='utf-8')
+
+    options = []
+    if followsymlinks:
+        options.append('-L')
+
+    cmd = ['find', *options, experiment_dir, '-name', '*.nc']
+    proc = subprocess.run(cmd, encoding='utf-8', stdout=subprocess.PIPE, 
+                          stderr=subprocess.PIPE)
     if proc.returncode != 0:
         warnings.warn('Some files or directories could not be read while finding output files: %s', UserWarning)
 
@@ -424,7 +429,8 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
     session.add_all(results)
     return len(results)
 
-def build_index(directories, session, client=None, update=False, prune=True, delete=True):
+def build_index(directories, session, client=None, update=False, prune=True, 
+                delete=True, followsymlinks=False):
     """Index all netcdf files contained within experiment directories.
 
     Requires a session for the database that's been created with the create_session() function.
@@ -432,6 +438,7 @@ def build_index(directories, session, client=None, update=False, prune=True, del
     May scan for only new entries to add to database with the update flag.
     If prune is True files that are already in the database but are missing from the filesystem
     will be either removed if delete is also True, or flagged as missing if delete is False.
+    Symbolically linked files and/or directories will be indexed if followsymlinks is True.
 
     Returns the number of new files that were indexed.
     """
@@ -441,7 +448,8 @@ def build_index(directories, session, client=None, update=False, prune=True, del
 
     indexed = 0
     for directory in directories:
-        indexed += index_experiment(directory, session, client, update, prune, delete)
+        indexed += index_experiment(directory, session, client, update, prune, 
+                                    delete, followsymlinks)
 
     # if everything went smoothly, commit these changes to the database
     session.commit()
