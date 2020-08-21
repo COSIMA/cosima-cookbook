@@ -142,6 +142,20 @@ def test_same_expt_name(session_db):
     assert(len(r) == 2)
     assert(r[0].root_dir != r[1].root_dir)
 
+def test_following_symlinks(session_db):
+    session, db = session_db
+
+    # Indexing symlinked experiment should fail with default arguments
+    database.build_index('test/data/indexing/symlinked/experiment_a', session)
+
+    q = session.query(database.NCExperiment)
+    assert(q.count() == 0)
+
+    # Now specify to follow symlinks
+    database.build_index('test/data/indexing/symlinked/experiment_a', session, followsymlinks=True)
+
+    q = session.query(database.NCExperiment)
+    assert(q.count() == 1)
 
 def test_broken_metadata(session_db):
     session, db = session_db

@@ -429,7 +429,8 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
     session.add_all(results)
     return len(results)
 
-def build_index(directories, session, client=None, update=False, prune=True, delete=True):
+def build_index(directories, session, client=None, update=False, prune=True, 
+                delete=True, followsymlinks=False):
     """Index all netcdf files contained within experiment directories.
 
     Requires a session for the database that's been created with the create_session() function.
@@ -446,7 +447,8 @@ def build_index(directories, session, client=None, update=False, prune=True, del
 
     indexed = 0
     for directory in directories:
-        indexed += index_experiment(directory, session, client, update, prune, delete)
+        indexed += index_experiment(directory, session, client, update, prune, 
+                                    delete, followsymlinks)
 
     # if everything went smoothly, commit these changes to the database
     session.commit()
