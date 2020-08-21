@@ -438,6 +438,7 @@ def build_index(directories, session, client=None, update=False, prune=True,
     May scan for only new entries to add to database with the update flag.
     If prune is True files that are already in the database but are missing from the filesystem
     will be either removed if delete is also True, or flagged as missing if delete is False.
+    Symbolically linked files and/or directories will be indexed if followsymlinks is True.
 
     Returns the number of new files that were indexed.
     """
