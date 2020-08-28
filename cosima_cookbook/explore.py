@@ -1013,17 +1013,30 @@ class ExperimentExplorer(VBox):
         (start_time, end_time) = self.daterange.value
         frequency = self.frequency.value
 
-        load_command = """
-        <pre><code>cc.querying.getvar('{expt}', '{var}', session,
-                    start_time='{start}', end_time='{end}',
-                    frequency='{frequency}')</code></pre>
-        """.format(
-            expt=self.expt_selector.value,
-            var=varname,
-            start=str(start_time),
-            end=str(end_time),
-            frequency=str(frequency),
-        )
+        if frequency == 'static':
+            # special case static frequency
+            load_command = """
+            <pre><code>cc.querying.getvar('{expt}', '{var}', session,
+                        frequency='{frequency}', n=1)</code></pre>
+            """.format(
+                expt=self.expt_selector.value,
+                var=varname,
+                start=str(start_time),
+                end=str(end_time),
+                frequency=str(frequency),
+            )
+        else:
+            load_command = """
+            <pre><code>cc.querying.getvar('{expt}', '{var}', session,
+                        start_time='{start}', end_time='{end}',
+                        frequency='{frequency}')</code></pre>
+            """.format(
+                expt=self.expt_selector.value,
+                var=varname,
+                start=str(start_time),
+                end=str(end_time),
+                frequency=str(frequency),
+            )
 
         # Interim message to tell user what is happening
         self.data_box.value = (
@@ -1033,14 +1046,23 @@ class ExperimentExplorer(VBox):
         )
 
         try:
-            self._loaded_data = querying.getvar(
-                self.experiment_name,
-                varname,
-                self.de.session,
-                start_time=str(start_time),
-                end_time=str(end_time),
-                frequency=frequency,
-            )
+            if frequency == 'static':
+                self._loaded_data = querying.getvar(
+                    self.experiment_name,
+                    varname,
+                    self.de.session,
+                    frequency=frequency,
+                    n=1,
+                )
+            else:
+                self._loaded_data = querying.getvar(
+                    self.experiment_name,
+                    varname,
+                    self.de.session,
+                    start_time=str(start_time),
+                    end_time=str(end_time),
+                    frequency=frequency,
+                )
         except Exception as e:
             self.data_box.value = (
                 self.data_box.value
