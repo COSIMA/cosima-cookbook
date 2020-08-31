@@ -1013,56 +1013,45 @@ class ExperimentExplorer(VBox):
         (start_time, end_time) = self.daterange.value
         frequency = self.frequency.value
 
+        # Create a dict to build load command and the
+        # string representation of the same load command
+        kwargs = {'session': self.de.session,
+                  'expt': self.expt_selector.value, 
+                  'variable': varname, 
+                  'frequency': frequency, 
+                  'start_time': str(start_time), 
+                  'end_time': str(end_time), 
+                  'n': 1, 
+                  }
+
+        load_command = """cc.querying.getvar(expt='{expt}', variable='{variable}', 
+                          session=session, frequency='{frequency}'"""
         if frequency == 'static':
-            # special case static frequency
-            load_command = """
-            <pre><code>cc.querying.getvar('{expt}', '{var}', session,
-                        frequency='{frequency}', n=1)</code></pre>
-            """.format(
-                expt=self.expt_selector.value,
-                var=varname,
-                start=str(start_time),
-                end=str(end_time),
-                frequency=str(frequency),
-            )
+            load_command = load_command + ", n={n})"
         else:
-            load_command = """
-            <pre><code>cc.querying.getvar('{expt}', '{var}', session,
-                        start_time='{start}', end_time='{end}',
-                        frequency='{frequency}')</code></pre>
-            """.format(
-                expt=self.expt_selector.value,
-                var=varname,
-                start=str(start_time),
-                end=str(end_time),
-                frequency=str(frequency),
-            )
+            load_command = load_command + """
+                          start_time='{start_time}', 
+                          end_time='{end_time})'"""
+
+        # Format load_command string
+        load_command = load_command.format(**kwargs)
+        load_command = '<pre><code>' + load_command + '</code></pre>'
 
         # Interim message to tell user what is happening
         self.data_box.value = (
-            "Loading data, using following command ...\n\n"
+            "Loading data, using following command ..."
             + load_command
             + "Please wait ... "
         )
 
+        if frequency == 'static':
+            del(kwargs['start_time'])
+            del(kwargs['end_time'])
+        else:
+            del(kwargs['n'])
+
         try:
-            if frequency == 'static':
-                self._loaded_data = querying.getvar(
-                    self.experiment_name,
-                    varname,
-                    self.de.session,
-                    frequency=frequency,
-                    n=1,
-                )
-            else:
-                self._loaded_data = querying.getvar(
-                    self.experiment_name,
-                    varname,
-                    self.de.session,
-                    start_time=str(start_time),
-                    end_time=str(end_time),
-                    frequency=frequency,
-                )
+            self._loaded_data = querying.getvar(**kwargs)
         except Exception as e:
             self.data_box.value = (
                 self.data_box.value
