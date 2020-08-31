@@ -1029,9 +1029,9 @@ class ExperimentExplorer(VBox):
         if frequency == 'static':
             load_command = load_command + ", n={n})"
         else:
-            load_command = load_command + """
+            load_command = load_command + """,
                           start_time='{start_time}', 
-                          end_time='{end_time})'"""
+                          end_time='{end_time}')"""
 
         # Format load_command string
         load_command = load_command.format(**kwargs)
