@@ -208,6 +208,41 @@ def test_time_dimension(session_db):
     assert q.count() == 0  # but all of them should have times populated
 
 
+def test_index_attributes(session_db):
+    session, db = session_db
+    database.build_index("test/data/querying", session)
+
+    ncfile = "output000/ocean.nc"
+
+    # check that we have the right attributes for a file (just use a subset)
+    f = session.query(database.NCFile).filter(database.NCFile.ncfile == ncfile).one()
+
+    file_attrs = {
+        "filename": "ocean.nc",
+        "title": "MOM5",
+        "grid_type": "mosaic",
+        "grid_tile": "1",
+    }
+    for attr, attr_val in file_attrs.items():
+        assert attr in f.attrs and f.attrs[attr] == attr_val
+
+    # and check a particular variable
+    v = (
+        session.query(database.NCVar)
+        .join(database.NCFile)
+        .filter(database.NCFile.ncfile == ncfile)
+        .filter(database.NCVar.varname == "temp")
+        .one()
+    )
+    var_attrs = {
+        "long_name": "Potential temperature",
+        "cell_methods": "time: mean",
+        "coordinates": "geolon_t geolat_t",
+    }
+    for attr, attr_val in var_attrs.items():
+        assert attr in v.attrs and v.attrs[attr] == attr_val
+
+
 def test_distributed(client, session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session, client)

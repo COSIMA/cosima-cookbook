@@ -11,6 +11,7 @@ import cftime
 from dask.distributed import as_completed
 import netCDF4
 import yaml
+
 from sqlalchemy import create_engine
 from sqlalchemy import (
     Column,
@@ -25,6 +26,7 @@ from sqlalchemy import (
 from sqlalchemy import MetaData, Table, select, sql, exists
 
 from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
@@ -138,6 +140,25 @@ class Keyword(UniqueMixin, Base):
         return query.filter(Keyword.keyword == keyword)
 
 
+class NCAttribute(Base):
+    __tablename__ = "ncattributes"
+
+    id = Column(Integer, primary_key=True)
+
+    # an NCAttribute may belong to an NCVar, or an NCFile directly
+    ncvar_id = Column(Integer, ForeignKey("ncvars.id"))
+    ncfile_id = Column(Integer, ForeignKey("ncfiles.id"))
+
+    #: Attribute name
+    name = Column(String, nullable=False, index=True)
+    #: Attribute value (cast to a string)
+    value = Column(String)
+
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+
 class NCFile(Base):
     __tablename__ = "ncfiles"
     __table_args__ = (
@@ -168,6 +189,14 @@ class NCFile(Base):
     ncvars = relationship(
         "NCVar", back_populates="ncfile", cascade="all, delete-orphan"
     )
+
+    #: file-level attributes
+    ncfile_attrs = relationship(
+        "NCAttribute",
+        collection_class=attribute_mapped_collection("name"),
+        cascade="all, delete-orphan",
+    )
+    attrs = association_proxy("ncfile_attrs", "value", creator=NCAttribute)
 
     def __repr__(self):
         return """<NCFile('{e.ncfile}' in {e.experiment}, {} variables, \
@@ -244,8 +273,18 @@ class NCVar(Base):
     #: Serialised tuple of chunking along each dimension
     chunking = Column(String)
 
+    #: A dictionary of NCAttributes
+    ncvar_attrs = relationship(
+        "NCAttribute",
+        collection_class=attribute_mapped_collection("name"),
+        cascade="all, delete-orphan",
+    )
+    attrs = association_proxy("ncvar_attrs", "value", creator=NCAttribute)
+
     def __repr__(self):
-        return "<NCVar('{e.varname}' in '{e.ncfile.ncfile_path}')>".format(e=self)
+        return "<NCVar('{e.varname}' in '{e.ncfile.ncfile_path}', attrs: {})>".format(
+            set(self.attrs.keys()), e=self
+        )
 
 
 def create_session(db=None, debug=False):
@@ -381,7 +420,15 @@ def index_file(ncfile_name, experiment):
                     chunking=str(v.chunking()),
                 )
 
+                # we'll add all attributes to the ncvar itself
+                for att in v.ncattrs():
+                    ncvar.attrs[att] = str(v.getncattr(att))
+
                 ncfile.ncvars.append(ncvar)
+
+            # add file-level attributes
+            for att in ds.ncattrs():
+                ncfile.attrs[att] = str(ds.getncattr(att))
 
         update_timeinfo(f, ncfile)
         ncfile.present = True
