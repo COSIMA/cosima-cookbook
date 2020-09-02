@@ -36,7 +36,7 @@ def test_metadata(session_db):
     )
     r = q.one()
     assert r[0] == "The ACCESS Oracle"
-    assert r[1] == datetime(2018, 1, 1)
+    assert r[1] == "2018-01-01"
     assert len(r[2]) > 0
 
 
@@ -96,11 +96,7 @@ def test_get_experiments_metadata(session_db):
 
     r = querying.get_experiments(session, created=True)
     df = pd.DataFrame.from_dict(
-        {
-            "experiment": ["metadata"],
-            "created": [pd.to_datetime("2018-01-01")],
-            "ncfiles": [1],
-        }
+        {"experiment": ["metadata"], "created": ["2018-01-01"], "ncfiles": [1]}
     )
     assert_frame_equal(r, df)
 
