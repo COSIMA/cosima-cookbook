@@ -200,12 +200,25 @@ def test_time_dimension(session_db):
     database.build_index("test/data/indexing/time", session)
 
     q = session.query(database.NCFile.time_start, database.NCFile.time_end)
-    assert q.count() == 4  # should pick up 4 files
+    assert q.count() == 5  # should pick up 5 files
 
     q = q.filter(
         (database.NCFile.time_start is None) | (database.NCFile.time_end is None)
     )
     assert q.count() == 0  # but all of them should have times populated
+
+    # there should be 5 separate time variables
+    q = session.query(database.CFVariable)
+    assert q.count() == 5
+
+    # each file should have exactly one time dimension
+    q = (
+        session.query(func.count(database.NCFile.ncvars))
+        .join(database.NCFile.ncvars)
+        .group_by(database.NCFile.id)
+    )
+    for r in q.all():
+        assert r[0] == 1
 
 
 def test_index_attributes(session_db):
