@@ -71,7 +71,7 @@ class NCExperiment(Base):
     metadata_keys = ["contact", "email", "created", "description", "notes", "keywords"]
     contact = Column(String)
     email = Column(String)
-    created = Column(DateTime)
+    created = Column(String)
     #: Human-readable experiment description
     description = Column(Text)
     #: Any other notes
