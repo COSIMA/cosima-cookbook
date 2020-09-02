@@ -212,7 +212,13 @@ from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".for
 class CFVariable(UniqueMixin, Base):
     __tablename__ = "variables"
     __table_args__ = (
-        Index("ix_variables_name_long_name", "name", "long_name", unique=True),
+        Index(
+            "ix_variables_name_long_name_units",
+            "name",
+            "long_name",
+            "units",
+            unique=True,
+        ),
     )
 
     id = Column(Integer, primary_key=True)
@@ -225,9 +231,9 @@ class CFVariable(UniqueMixin, Base):
     name = Column(String, nullable=False, index=True)
     #: The variable long name (CF Conventions §3.2)
     long_name = Column(String)
-    #: The variable long name (CF Conventions §3.3)
+    #: The variable standard name (CF Conventions §3.3)
     standard_name = Column(String)
-    #: The variable long name (CF Conventions §3.1)
+    #: The variable units (CF Conventions §3.1)
     units = Column(String)
 
     #: Back-populate a list of ncvars that use this variable
@@ -243,13 +249,15 @@ class CFVariable(UniqueMixin, Base):
         return "<CFVariable('{e.name}', in {} NCVars)>".format(len(self.ncvars), e=self)
 
     @classmethod
-    def unique_hash(cls, name, long_name, *arg):
-        return "{}_{}".format(name, long_name)
+    def unique_hash(cls, name, long_name, _standard_name, units, *arg):
+        return "{}_{}_{}".format(name, long_name, units)
 
     @classmethod
-    def unique_filter(cls, query, name, long_name, *arg):
-        return query.filter(CFVariable.name == name).filter(
-            CFVariable.long_name == long_name
+    def unique_filter(cls, query, name, long_name, _standard_name, units, *arg):
+        return (
+            query.filter(CFVariable.name == name)
+            .filter(CFVariable.long_name == long_name)
+            .filter(CFVariable.units == units)
         )
 
 
