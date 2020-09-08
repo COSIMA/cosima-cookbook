@@ -47,3 +47,16 @@ used in the scripts above and start a jupyter notebook session like so:
     module load conda/analysis3
 
     jupyter notebook
+
+Finding data
+============
+
+Most of the infrastructure the COSIMA Cookbook provides revolves around indexing
+data output from COSIMA models and providing a python based API to access the 
+data in a convenient and straight forward way.
+
+There are graphical user interface (GUI) tools to help with data discovering and
+exploration. There is a 
+`tutorial https://nbviewer.jupyter.org/github/COSIMA/cosima-recipes/blob/master/Tutorials/Using_Explorer_tools.ipynb`_
+in the COSIMA recipes repository which demonstrates the available tools.
+
