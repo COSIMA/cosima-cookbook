@@ -12,7 +12,7 @@ diagnostics by the `COSIMA <http://cosima.org.au>`_ community.
 
 The recipes rely on infrastructure that is provided by the COSIMA Cookbook.
 The cookbook is under active development on
-Github: `COSIMA-Cookbook <https://github.com/OceansAus/cosima-cookbook>`_
+Github: `COSIMA-Cookbook <https://github.com/COSIMA/cosima-cookbook>`_
 
 .. toctree::
     :maxdepth: 2
