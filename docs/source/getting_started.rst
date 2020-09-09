@@ -2,13 +2,13 @@
 Getting Started
 ===============
 
-Some users may find it sufficient to browse through the sample diagnostics
-and model configurations provided.  In order to reproduce these results
-on your own, you will need a Python 3 development environment.
+The cookbook consists of a Python 3 package that contains infrastructure
+for indexing COSIMA model output and convenient methods for searching for
+and loading the data into `xarray <http://xarray.pydata.org/>`_ datastructures.
 
-The cookbook itself includes a Python 3 package that contains the
-diagnostics themselves and some utility functions.  The Jupyter IPython
-notebooks that can be downloaded from the cookbook need this package
+Some users may find it sufficient to browse through the examples and tutorials
+in the `COSIMA recipes <http://cosima-recipes.readthedocs.io/>`_ repository.
+The Jupyter notebooks that can be downloaded from COSIMA recipes need this package
 (called cosima_cookbook) to be installed.
 
 Choosing your platform
@@ -21,7 +21,7 @@ assumed that this data resides on a NCI storage system.
 The cookbook is supported on two NCI systems
 
 #. `Virtual Desktop Infrastructure (VDI) <http://nci.org.au/services/vdi/>`_
-#. `gadi gadi.nci.org.au <http://nci.org.au/systems-services/peak-system/gadi/>`_
+#. `gadi (gadi.nci.org.au) <http://nci.org.au/systems-services/peak-system/gadi/>`_
 
 Connecting
 ==========
@@ -42,6 +42,7 @@ on the requirements for each script and how to use them.
 Alternatively if you are using the VDI Strudel environment and accessing the VDI
 through a virtual desktop you can load the same python conda environment that is
 used in the scripts above and start a jupyter notebook session like so:
+::
 
     module use /g/data3/hh5/public/modules
     module load conda/analysis3
@@ -57,6 +58,12 @@ data in a convenient and straight forward way.
 
 There are graphical user interface (GUI) tools to help with data discovering and
 exploration. There is a 
-`tutorial https://nbviewer.jupyter.org/github/COSIMA/cosima-recipes/blob/master/Tutorials/Using_Explorer_tools.ipynb`_
+`tutorial <https://nbviewer.jupyter.org/github/COSIMA/cosima-recipes/blob/master/Tutorials/Using_Explorer_tools.ipynb>`_
 in the COSIMA recipes repository which demonstrates the available tools.
 
+Tutorials and examples
+======================
+
+COSIMA recipes provides `tutorials <https://cosima-recipes.readthedocs.io/en/latest/tutorials/index.html>`_
+and `documented examples <https://cosima-recipes.readthedocs.io/en/latest/documented_examples/index.html>`_ 
+which can be used to learn how to use the Cookbook and for ideas and inspiration for your own analysis.
