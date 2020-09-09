@@ -14,63 +14,49 @@ notebooks that can be downloaded from the cookbook need this package
 Choosing your platform
 ======================
 
-COSIMA ocean and ice models are typically run on `NCI <nci.org.au>`_ computing
-platform.  The output data is very large and it is assumed that this
-data resides on a NCI storage system.
+COSIMA ocean and ice models are typically run on `NCI <nci.org.au>`_, a HPC
+computing centre in Australia.  The output data is very large and it is 
+assumed that this data resides on a NCI storage system.
 
-The cookbook may be used on several different platforms:
+The cookbook is supported on two NCI systems
 
 #. `Virtual Desktop Infrastructure (VDI) <http://nci.org.au/services/vdi/>`_
-#. `Raijin raijin.nci.org.au <http://nci.org.au/systems-services/peak-system/raijin/>`_ using qsub
-#. `Tenjin tenjin.nci.org.au <http://nci.org.au/systems-services/cloud-computing/tenjin/>`_ using virtual machines and NFS mounted directories
-#. Local workstation or laptop with data accessible over sshfs or OPeNDAP
+#. `gadi gadi.nci.org.au <http://nci.org.au/systems-services/peak-system/gadi/>`_
 
-For this documentation, we will assume you are running your analysis using
-the VDI.  Use the
-`VDI User Guide <https://opus.nci.org.au/display/Help/VDI+User+Guide>`_
-to get connect to the VDI.
+Connecting
+==========
 
-Once connected, open a terminal (Applications -> System Tools -> Terminal).
+For both VDI and gadi scripts are used to start a `jupyter notebook <http://jupyter-notebook.readthedocs.io>`_ 
+or `jupyter lab <http://jupyterlab.readthedocs.io>`_ session on the chosen system 
+and automatically create an `ssh tunnel <https://www.ssh.com/ssh/tunneling/>`_ 
+such that the jupyter session can be opened in your local browser using a url
+like <http://localhost:8888> that appears to be on your own local machine.
 
-If your connection to the VDI is too slow, can can also also ssh directly to a VDI
-node and work over ssh tunnels. Ask James Munroe for more information.
+Scripts for this purpose are provided by the CLEX CMS team in this repository
 
-1. Clone the cosima-cookbook repository::
+https://github.com/coecms/nci_scripts
 
-    git clone https://github.com/OceansAus/cosima-cookbook.git
-    cd cosima-cookbook
+Clone the repository to your local computer. There are instructions in the repository 
+on the requirements for each script and how to use them.
 
-[Alternative: set up SSH keys for github:: 
-    
-    git clone git@github.com:OceansAus/cosima-cookbook.git
-    
-]
-
-2. The cookbook is built using Python so we need a Python development environment
-with the following packages installed:
-
- jupyter matplotlib pandas numpy dask distributed xarray netcdf4
- bokeh seaborn datashader python-graphviz basemap cartopy
-
-There is a miniconda environment with all of these packages accessible from the VDI and raijin::
+Alternatively if you are using the VDI Strudel environment and accessing the VDI
+through a virtual desktop you can load the same python conda environment that is
+used in the scripts above and start a jupyter notebook session like so:
 
     module use /g/data3/hh5/public/modules
     module load conda/analysis3
 
-[Alternative: install your own conda environment. In that case, you may omit the --user flag below.]
-
-3. Install the cosima-cookbook package. Within the cosima-cookbook directory, run::
-
-    pip install --user -e .
-
-This installs the cosima-cookbook so that it is available in your
-current Python environment.  The '-e' switch means editable; changes to
-the cosima_cookbook project can be made without having to reinstall.
-(Eventually, the cosima_cookbook package will be made available through
-PyPi and as a conda package but this is still in development).
-
-4. Finally, run the Jupyter notebook from the cookbook directory::
-
     jupyter notebook
 
-.. You can also connect to this Jupyter notebook using an SSH tunnel. See `scripts/jupyter_vdi.py`_.
+Finding data
+============
+
+Most of the infrastructure the COSIMA Cookbook provides revolves around indexing
+data output from COSIMA models and providing a python based API to access the 
+data in a convenient and straight forward way.
+
+There are graphical user interface (GUI) tools to help with data discovering and
+exploration. There is a 
+`tutorial https://nbviewer.jupyter.org/github/COSIMA/cosima-recipes/blob/master/Tutorials/Using_Explorer_tools.ipynb`_
+in the COSIMA recipes repository which demonstrates the available tools.
+
