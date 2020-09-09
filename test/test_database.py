@@ -113,3 +113,36 @@ def test_outdated_notmodified(tmpdir):
     conn = sa.create_engine("sqlite:///" + str(db)).connect()
     with pytest.raises(sa.exc.OperationalError, match="no such table"):
         conn.execute("SELECT * FROM ncfiles")
+
+
+def test_delete_experiment(session_db):
+    """Test that we can completely delete an experiment
+    and its associated data.
+    """
+
+    session, db = session_db
+    database.build_index("test/data/indexing/longnames", session)
+
+    # make sure we actually did index something
+    expt = (
+        session.query(database.NCExperiment)
+        .filter(database.NCExperiment.experiment == "longnames")
+        .one_or_none()
+    )
+    assert expt is not None
+
+    database.delete_experiment("longnames", session)
+    expt = (
+        session.query(database.NCExperiment)
+        .filter(database.NCExperiment.experiment == "longnames")
+        .one_or_none()
+    )
+    assert expt is None
+
+    # check that all files are removed
+    files = session.query(sa.func.count(database.NCFile.id)).scalar()
+    assert files == 0
+
+    # make sure all ncvars are removed
+    vars = session.query(sa.func.count(database.NCVar.id)).scalar()
+    assert vars == 0
