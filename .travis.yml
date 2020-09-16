@@ -1,7 +1,17 @@
 language: python
+cache: pip
+stages:
+  - format
+  - test
 python:
   - "3.6"
+  - "3.7"
+  - "3.8"
 install:
   - pip install .[build]
-script: 
-  - pytest
+script: pytest
+jobs:
+  include:
+    - stage: format
+      install: pip install black
+      script: black --check --verbose cosima_cookbook test
