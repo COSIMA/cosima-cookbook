@@ -22,21 +22,24 @@ import numpy as np
 import xarray as xr
 from xarray.coding.cftime_offsets import to_cftime_datetime
 
-rebase_attr = '_rebased_units'
-rebase_shift_attr = '_rebased_shift'
-bounds = 'bounds'
-boundsvar = 'bounds_var'
+rebase_attr = "_rebased_units"
+rebase_shift_attr = "_rebased_shift"
+bounds = "bounds"
+boundsvar = "bounds_var"
 
-datetimeformat = '%Y-%m-%d %H:%M:%S'
+datetimeformat = "%Y-%m-%d %H:%M:%S"
 
 # Code adapted from https://github.com/spencerahill/aospy/issues/212
 
+
 def date2num_round(dates, units, calendar):
-    return np.round(date2num(dates, units, calendar),8)
+    return np.round(date2num(dates, units, calendar), 8)
+
 
 def rebase_times(values, input_units, calendar, output_units):
     dates = num2date(values, input_units, calendar)
     return date2num_round(dates, output_units, calendar)
+
 
 def is_bounds(var):
     """
@@ -45,12 +48,14 @@ def is_bounds(var):
     """
     return boundsvar in var.attrs
 
+
 def set_bounds(var, varname):
     """
     Set the bounds_var attribute to the name of the dimension for which
     it is the bounds
     """
     var.attrs[boundsvar] = varname
+
 
 def flag_bounds(ds):
     """
@@ -64,11 +69,11 @@ def flag_bounds(ds):
         if bounds in ds[name].attrs:
             # Flag bounds variable as such
             try:
-                set_bounds(ds[ds[name].attrs[bounds]],name)
+                set_bounds(ds[ds[name].attrs[bounds]], name)
             except KeyError:
                 # Ignore if bounds variable not present
                 pass
-            
+
 
 def unflag_bounds(ds):
     """
@@ -77,9 +82,10 @@ def unflag_bounds(ds):
     """
     for name in ds.variables:
         try:
-            del(ds[name].attrs[boundsvar])
+            del ds[name].attrs[boundsvar]
         except KeyError:
             pass
+
 
 def rebase_variable(var, calendar=None, target_units=None, src_units=None, offset=None):
     """
@@ -91,12 +97,12 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
     # rebased and use this as the target, which will undo the previous rebasing
     if calendar == None:
         try:
-            calendar = var.attrs['calendar']
+            calendar = var.attrs["calendar"]
         except KeyError:
             try:
-                calendar = var.encoding['calendar']
+                calendar = var.encoding["calendar"]
             except KeyError:
-                raise AttributeError('No calendar attribute found and none specified')
+                raise AttributeError("No calendar attribute found and none specified")
 
     # Default to src_units being the units for the variable (bounds variables
     # may not have correct units so in this case it has to be specified)
@@ -109,14 +115,18 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
         try:
             target_units = attributes[rebase_attr]
         except KeyError:
-            raise AttributeError('No existing rebase found and target_units not specified')
+            raise AttributeError(
+                "No existing rebase found and target_units not specified"
+            )
         finally:
             del attributes[rebase_attr]
     else:
         attributes[rebase_attr] = src_units
 
     # Rebase
-    newvar = xr.apply_ufunc(rebase_times, var, src_units, calendar, target_units, dask='allowed')
+    newvar = xr.apply_ufunc(
+        rebase_times, var, src_units, calendar, target_units, dask="allowed"
+    )
 
     if rebase_shift_attr in attributes:
         newvar = newvar - attributes[rebase_shift_attr]
@@ -125,39 +135,46 @@ def rebase_variable(var, calendar=None, target_units=None, src_units=None, offse
         if offset is not None:
             # Offset can be an integer, 'auto', or datetime.delta
 
-            if offset == 'auto':
-                # Generate a timedelta offset based on the calendars of src 
+            if offset == "auto":
+                # Generate a timedelta offset based on the calendars of src
                 # and target
-                offset = num2date(0,target_units,calendar) - num2date(0,src_units,calendar)
+                offset = num2date(0, target_units, calendar) - num2date(
+                    0, src_units, calendar
+                )
 
-            if isinstance(offset,datetime.timedelta):
+            if isinstance(offset, datetime.timedelta):
                 # Add delta to src calendar origin and convert to integer offset
-                offset = date2num_round(num2date(0,src_units,calendar)+offset,src_units,calendar)
+                offset = date2num_round(
+                    num2date(0, src_units, calendar) + offset, src_units, calendar
+                )
 
             newvar = newvar + offset
             attributes[rebase_shift_attr] = offset
 
-    if  newvar.min() < 0:
-        raise ValueError("Rebase creates negative dates, specify offset=auto to shift dates appropriately")
+    if newvar.min() < 0:
+        raise ValueError(
+            "Rebase creates negative dates, specify offset=auto to shift dates appropriately"
+        )
 
     # Save the values back into the variable, put back the attributes and update
     # the units
     newvar.attrs = attributes
-    newvar.attrs['units'] = target_units
+    newvar.attrs["units"] = target_units
 
     return newvar
 
-def rebase_dataset(ds, target_units=None, timevar='time', offset=None):
+
+def rebase_dataset(ds, target_units=None, timevar="time", offset=None):
     """
     Rebase the time dimension variable in a dataset to a different start date.
-    This is useful to overcome limitations in pandas datetime indices used in 
+    This is useful to overcome limitations in pandas datetime indices used in
     xarray, and to place two datasets with different date indices onto a common
     date index
     """
 
     # The units are defined as the units used by timevar
-    units = ds[timevar].attrs['units']
-    calendar = ds[timevar].attrs['calendar']
+    units = ds[timevar].attrs["units"]
+    calendar = ds[timevar].attrs["calendar"]
 
     newds = ds.copy()
 
@@ -169,13 +186,21 @@ def rebase_dataset(ds, target_units=None, timevar='time', offset=None):
             # This is a bounds variable and has been flagged as such so ignore
             # as it will be processed by the variable for which it is the bounds
             continue
-        if newds[name].attrs['units'] == units:
-            newds[name] = rebase_variable(newds[name], calendar, target_units, offset=offset)
+        if newds[name].attrs["units"] == units:
+            newds[name] = rebase_variable(
+                newds[name], calendar, target_units, offset=offset
+            )
             if bounds in newds[name].attrs:
                 # Must make the same adjustment to the bounds variable
                 bvarname = newds[name].attrs[bounds]
                 try:
-                    newds[bvarname] = rebase_variable(newds[bvarname], calendar, target_units, src_units=units, offset=offset)
+                    newds[bvarname] = rebase_variable(
+                        newds[bvarname],
+                        calendar,
+                        target_units,
+                        src_units=units,
+                        offset=offset,
+                    )
                 except KeyError:
                     # Ignore if bounds_var missing
                     pass
@@ -187,30 +212,33 @@ def rebase_dataset(ds, target_units=None, timevar='time', offset=None):
 
     return newds
 
+
 def shift_time(ds):
     """
-    Apply time shift to un-decoded time axis, to align datasets and 
+    Apply time shift to un-decoded time axis, to align datasets and
     """
     pass
+
 
 def format_datetime(datetime, format=datetimeformat):
     """
     Standard method to convert cftime.datetime objects to strings for
     storage in SQL database. Hard code the length as some datetime
-    objects don't space pad when formatted! 
+    objects don't space pad when formatted!
     """
-    return '{:0>19}'.format(datetime.strftime(format).lstrip())
+    return "{:0>19}".format(datetime.strftime(format).lstrip())
+
 
 def parse_datetime(datetimestring, calendar="proleptic_gregorian"):
     """
-    Standard method to convert datetime obkects stored as strings in SQL database 
+    Standard method to convert datetime obkects stored as strings in SQL database
     back into cftime.datetime objects
     """
-    # xarray supports parsing dates strings to cftime.datetime objects, but 
+    # xarray supports parsing dates strings to cftime.datetime objects, but
     # requires ISO-8601 format (https://en.wikipedia.org/wiki/ISO_8601).
     # Convert string to ISO-8601 before parsing by adding separator
     # between date and time elements
-    datetimestring = datetimestring[:10] + 'T' + datetimestring[11:]
+    datetimestring = datetimestring[:10] + "T" + datetimestring[11:]
 
     # Note: uses non-public xarray method that may change or be deleted
     # in the future

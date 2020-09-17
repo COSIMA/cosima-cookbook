@@ -252,10 +252,14 @@ class VariableSelector(VBox):
         self.info = HTML(layout=self.search.layout)
         # Variable filtering elements
         self.filter_coords = Checkbox(
-            value=True, indent=False, description="Hide coordinates",
+            value=True,
+            indent=False,
+            description="Hide coordinates",
         )
         self.filter_restarts = Checkbox(
-            value=True, indent=False, description="Hide restarts",
+            value=True,
+            indent=False,
+            description="Hide restarts",
         )
 
     def _set_observes(self):
@@ -291,7 +295,7 @@ class VariableSelector(VBox):
         # Populate model selector. Note label and value differ
         options = {"All models": ""}
         for model in variables.model.cat.categories.values:
-            if len(model) > 0: 
+            if len(model) > 0:
                 options["{} only".format(model.capitalize())] = model
         self.model.options = options
 
@@ -364,7 +368,9 @@ class VariableSelector(VBox):
             try:
                 variables = variables[
                     variables.name.str.contains(search_term, case=False, na=False)
-                    | variables.long_name.str.contains(search_term, case=False, na=False)
+                    | variables.long_name.str.contains(
+                        search_term, case=False, na=False
+                    )
                 ]
             except:
                 print("Illegal character in search!")
@@ -385,7 +391,9 @@ class VariableSelector(VBox):
         if long_name is None or long_name == "":
             long_name = "&nbsp;"
         style = "<style>.breakword { word-wrap: break-word; font-size: 90%; line-height: 1.1;}</style>"
-        self.info.value = style + '<p class="breakword">{long_name}</p>'.format(long_name=long_name)
+        self.info.value = style + '<p class="breakword">{long_name}</p>'.format(
+            long_name=long_name
+        )
 
     def delete(self, variable_names=None):
         """
@@ -567,7 +575,11 @@ class VariableSelectFilter(HBox):
         )
         # Selected variables for filtering with header widget
         self.var_filter_label = HTML("Filter variables:", layout=layout)
-        self.var_filter_selected = Select(options=[], rows=10, layout=layout,)
+        self.var_filter_selected = Select(
+            options=[],
+            rows=10,
+            layout=layout,
+        )
         self.filter_box = VBox(
             [self.var_filter_label, self.var_filter_selected], layout=layout
         )
@@ -755,13 +767,17 @@ class DatabaseExplorer(VBox):
         self.load_button = Button(
             description="Load Experiment",
             disabled=False,
-            layout={"width": "50%",},
+            layout={
+                "width": "50%",
+            },
             tooltip="Click to load experiment",
         )
 
         # Experiment information panel
         self.expt_info = HTML(
-            value="", description="", layout={"width": "80%", "align": "center"},
+            value="",
+            description="",
+            layout={"width": "80%", "align": "center"},
         )
 
         # Experiment explorer box
@@ -960,7 +976,11 @@ class ExperimentExplorer(VBox):
             layout={"width": "40%"},
         )
         # Date selection widget
-        self.frequency = Dropdown(options=(), description="Frequency", disabled=True,)
+        self.frequency = Dropdown(
+            options=(),
+            description="Frequency",
+            disabled=True,
+        )
         # Date selection widget
         self.daterange = SelectionRangeSlider(
             options=["0000", "0001"],
@@ -1015,27 +1035,31 @@ class ExperimentExplorer(VBox):
 
         # Create a dict to build load command and the
         # string representation of the same load command
-        kwargs = {'session': self.de.session,
-                  'expt': self.expt_selector.value, 
-                  'variable': varname, 
-                  'frequency': frequency, 
-                  'start_time': str(start_time), 
-                  'end_time': str(end_time), 
-                  'n': 1, 
-                  }
+        kwargs = {
+            "session": self.de.session,
+            "expt": self.expt_selector.value,
+            "variable": varname,
+            "frequency": frequency,
+            "start_time": str(start_time),
+            "end_time": str(end_time),
+            "n": 1,
+        }
 
         load_command = """cc.querying.getvar(expt='{expt}', variable='{variable}', 
                           session=session, frequency='{frequency}'"""
-        if frequency == 'static':
+        if frequency == "static":
             load_command = load_command + ", n={n})"
         else:
-            load_command = load_command + """,
+            load_command = (
+                load_command
+                + """,
                           start_time='{start_time}', 
                           end_time='{end_time}')"""
+            )
 
         # Format load_command string
         load_command = load_command.format(**kwargs)
-        load_command = '<pre><code>' + load_command + '</code></pre>'
+        load_command = "<pre><code>" + load_command + "</code></pre>"
 
         # Interim message to tell user what is happening
         self.data_box.value = (
@@ -1044,11 +1068,11 @@ class ExperimentExplorer(VBox):
             + "Please wait ... "
         )
 
-        if frequency == 'static':
-            del(kwargs['start_time'])
-            del(kwargs['end_time'])
+        if frequency == "static":
+            del kwargs["start_time"]
+            del kwargs["end_time"]
         else:
-            del(kwargs['n'])
+            del kwargs["n"]
 
         try:
             self._loaded_data = querying.getvar(**kwargs)
@@ -1062,8 +1086,10 @@ class ExperimentExplorer(VBox):
         # Update data box with message about command used and pretty HTML
         # representation of DataArray
         self.data_box.value = (
-            "Loaded data with" + load_command + self._loaded_data._repr_html_() +
-            "Data can be accessed through .data attribute"
+            "Loaded data with"
+            + load_command
+            + self._loaded_data._repr_html_()
+            + "Data can be accessed through .data attribute"
         )
 
     def _load_experiment(self, experiment_name):

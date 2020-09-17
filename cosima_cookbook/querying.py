@@ -18,9 +18,10 @@ from .database import NCExperiment, NCFile, CFVariable, NCVar, Keyword
 class VariableNotFoundError(Exception):
     pass
 
+
 def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs):
     """
-    Returns a DataFrame of all experiments and the number of netCDF4 files contained 
+    Returns a DataFrame of all experiments and the number of netCDF4 files contained
     within each experiment.
 
     Optionally one or more keywords can be specified, and only experiments with all the
@@ -28,7 +29,7 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
     characters, "%" and "_", to match multiple keywords.
 
     All metadata fields will be returned if all=True, or individual metadata fields
-    can be selected by passing field=True, where available fields are: 
+    can be selected by passing field=True, where available fields are:
     contact, email, created, description, notes, and root_dir
     """
 
@@ -38,40 +39,43 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
     if experiment:
         columns.append(NCExperiment.experiment)
 
-    for f in NCExperiment.metadata_keys + ['root_dir']:
+    for f in NCExperiment.metadata_keys + ["root_dir"]:
         # Explicitly don't support returning keyword metadata
-        if f == 'keywords': 
+        if f == "keywords":
             continue
         if kwargs.get(f, all):
             columns.append(getattr(NCExperiment, f))
 
-    q = (session
-        .query(*columns,
-                func.count(NCFile.experiment_id).label('ncfiles'))
+    q = (
+        session.query(*columns, func.count(NCFile.experiment_id).label("ncfiles"))
         .join(NCFile.experiment)
-        .group_by(NCFile.experiment_id))
+        .group_by(NCFile.experiment_id)
+    )
 
     if keywords is not None:
 
         if isinstance(keywords, str):
-            keywords = [ keywords ]
+            keywords = [keywords]
 
         q = q.filter(*(NCExperiment.keywords.like(k) for k in keywords))
 
     return pd.DataFrame(q)
+
 
 def get_ncfiles(session, experiment):
     """
     Returns a DataFrame of all netcdf files for a given experiment.
     """
 
-    q = (session
-         .query(NCFile.ncfile, NCFile.index_time)
-         .join(NCFile.experiment)
-         .filter(NCExperiment.experiment == experiment)
-         .order_by(NCFile.ncfile))
+    q = (
+        session.query(NCFile.ncfile, NCFile.index_time)
+        .join(NCFile.experiment)
+        .filter(NCExperiment.experiment == experiment)
+        .order_by(NCFile.ncfile)
+    )
 
     return pd.DataFrame(q)
+
 
 def get_keywords(session, experiment=None):
     """
@@ -79,14 +83,12 @@ def get_keywords(session, experiment=None):
     """
 
     if experiment is not None:
-        q = (session
-            .query(NCExperiment)
-            .filter(NCExperiment.experiment == experiment))
+        q = session.query(NCExperiment).filter(NCExperiment.experiment == experiment)
         return q.scalar().keywords
     else:
-        q = (session
-            .query(Keyword))
+        q = session.query(Keyword)
         return {r.keyword for r in q}
+
 
 def get_variables(session, experiment, frequency=None):
     """
@@ -94,28 +96,29 @@ def get_variables(session, experiment, frequency=None):
     a given diagnostic frequency.
     """
 
-    q = (session
-         .query(CFVariable.name,
-                CFVariable.long_name,
-                NCFile.frequency,
-                NCFile.ncfile,
-                func.count(NCFile.ncfile).label('# ncfiles'),
-                func.min(NCFile.time_start).label('time_start'),
-                func.max(NCFile.time_end).label('time_end'))
-         .join(NCFile.experiment)
-         .join(NCFile.ncvars)
-         .join(NCVar.variable)
-         .filter(NCExperiment.experiment == experiment)
-         .order_by(NCFile.frequency,
-                   CFVariable.name,
-                   NCFile.time_start,
-                   NCFile.ncfile)
-         .group_by(CFVariable.name, NCFile.frequency))
+    q = (
+        session.query(
+            CFVariable.name,
+            CFVariable.long_name,
+            NCFile.frequency,
+            NCFile.ncfile,
+            func.count(NCFile.ncfile).label("# ncfiles"),
+            func.min(NCFile.time_start).label("time_start"),
+            func.max(NCFile.time_end).label("time_end"),
+        )
+        .join(NCFile.experiment)
+        .join(NCFile.ncvars)
+        .join(NCVar.variable)
+        .filter(NCExperiment.experiment == experiment)
+        .order_by(NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile)
+        .group_by(CFVariable.name, NCFile.frequency)
+    )
 
     if frequency is not None:
         q = q.filter(NCFile.frequency == frequency)
 
     return pd.DataFrame(q)
+
 
 def get_frequencies(session, experiment=None):
     """
@@ -124,21 +127,29 @@ def get_frequencies(session, experiment=None):
     """
 
     if experiment is None:
-        q = (session
-             .query(NCFile.frequency)
-             .group_by(NCFile.frequency))
+        q = session.query(NCFile.frequency).group_by(NCFile.frequency)
     else:
-        q = (session
-             .query(NCFile.frequency)
-             .join(NCFile.experiment)
-             .filter(NCExperiment.experiment == experiment)
-             .group_by(NCFile.frequency))
+        q = (
+            session.query(NCFile.frequency)
+            .join(NCFile.experiment)
+            .filter(NCExperiment.experiment == experiment)
+            .group_by(NCFile.frequency)
+        )
 
     return pd.DataFrame(q)
 
 
-def getvar(expt, variable, session, ncfile=None, start_time=None, end_time=None, 
-           n=None, frequency=None, **kwargs):
+def getvar(
+    expt,
+    variable,
+    session,
+    ncfile=None,
+    start_time=None,
+    end_time=None,
+    n=None,
+    frequency=None,
+    **kwargs,
+):
     """For a given experiment, return an xarray DataArray containing the
     specified variable.
 
@@ -155,7 +166,7 @@ def getvar(expt, variable, session, ncfile=None, start_time=None, end_time=None,
                e.g. '1900-01-01'
     n - after all other queries, restrict the total number of files to the
         first n. pass a negative value to restrict to the last n
-    frequency - specify frequency to disambiguate identical variables saved 
+    frequency - specify frequency to disambiguate identical variables saved
                 at different temporal resolution
 
     Note that if start_time and/or end_time are used, the time range
@@ -170,8 +181,9 @@ def getvar(expt, variable, session, ncfile=None, start_time=None, end_time=None,
 
     """
 
-    ncfiles = _ncfiles_for_variable(expt, variable, session, ncfile, 
-                                    start_time, end_time, n, frequency)
+    ncfiles = _ncfiles_for_variable(
+        expt, variable, session, ncfile, start_time, end_time, n, frequency
+    )
 
     # chunking -- use first row/file and assume it's the same across the whole dataset
     xr_kwargs = {"chunks": _parse_chunks(ncfiles[0].NCVar)}
@@ -184,14 +196,22 @@ def getvar(expt, variable, session, ncfile=None, start_time=None, end_time=None,
         preprocess=lambda d: d[variable].to_dataset()
         if variable not in d.coords
         else d,
-        **xr_kwargs
+        **xr_kwargs,
     )
 
     return ds[variable]
 
 
-def _ncfiles_for_variable(expt, variable, session, ncfile=None, 
-                          start_time=None, end_time=None, n=None, frequency=None):
+def _ncfiles_for_variable(
+    expt,
+    variable,
+    session,
+    ncfile=None,
+    start_time=None,
+    end_time=None,
+    n=None,
+    frequency=None,
+):
     """Return a list of (NCFile, NCVar) pairs corresponding to the
     database objects for a given variable.
 
@@ -248,11 +268,12 @@ def _ncfiles_for_variable(expt, variable, session, ncfile=None,
     if len(unique_freqs) > 1:
         warnings.warn(
             f"Your query returns files with differing frequencies: {unique_freqs}. "
-             "This could lead to unexpected behaviour! Disambiguate by passing "
-             "frequency= to getvar, specifying the desired frequency."
+            "This could lead to unexpected behaviour! Disambiguate by passing "
+            "frequency= to getvar, specifying the desired frequency."
         )
 
     return ncfiles
+
 
 def _parse_chunks(ncvar):
     """Parse an NCVar, returning a dictionary mapping dimensions to chunking along that dimension."""

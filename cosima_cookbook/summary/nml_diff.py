@@ -57,7 +57,7 @@ def nmldiff(nmlall):
 
     Parameter
     ---------
-    Input : dict 
+    Input : dict
         (e.g. returned by nmldict) with key:value pairs where
         key is filename path string
         value is complete Namelist from filename
@@ -68,12 +68,12 @@ def nmldiff(nmlall):
         common to all other files removed
     """
 
-# Create diff by removing common groups/members from nmlall.
-# This is complicated by the fact group names / member names may differ
-# or be absent across different nml files.
+    # Create diff by removing common groups/members from nmlall.
+    # This is complicated by the fact group names / member names may differ
+    # or be absent across different nml files.
 
-# First make a superset that has all group names and group members that
-# appear in any nml file
+    # First make a superset that has all group names and group members that
+    # appear in any nml file
     nmlsuperset = superset(nmlall)
 
     # now go through nmlall and remove any groups / members from nmlall that
@@ -95,9 +95,9 @@ def nmldiff(nmlall):
                 if deletemem:  # group member is present in all namelist files
                     for nml in nmlall:
                         # ... now check if values match in all namelist files
-                        deletemem = deletemem and \
-                            (nmlall[nml][group][mem] ==
-                             nmlsuperset[group][mem])
+                        deletemem = deletemem and (
+                            nmlall[nml][group][mem] == nmlsuperset[group][mem]
+                        )
                     if deletemem:
                         for nml in nmlall:
                             # delete mem from this group in all nmls
