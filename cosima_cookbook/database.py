@@ -12,7 +12,16 @@ from dask.distributed import as_completed
 import netCDF4
 import yaml
 from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+)
 from sqlalchemy import MetaData, Table, select, sql, exists
 
 from sqlalchemy.orm import relationship, sessionmaker
@@ -28,20 +37,26 @@ from .date_utils import format_datetime
 logging.captureWarnings(True)
 
 __DB_VERSION__ = 3
-__DEFAULT_DB__ = '/g/data/ik11/databases/cosima_master.db'
+__DEFAULT_DB__ = "/g/data/ik11/databases/cosima_master.db"
 
 Base = declarative_base()
 
 keyword_assoc_table = Table(
-    'keyword_assoc', Base.metadata,
-    Column('expt_id', Integer, ForeignKey('experiments.id')),
-    Column('keyword_id', Integer, ForeignKey('keywords.id'))
+    "keyword_assoc",
+    Base.metadata,
+    Column("expt_id", Integer, ForeignKey("experiments.id")),
+    Column("keyword_id", Integer, ForeignKey("keywords.id")),
 )
 
+
 class NCExperiment(Base):
-    __tablename__ = 'experiments'
+    __tablename__ = "experiments"
     # composite index since an experiment name may not be unique
-    __table_args__ = (Index('ix_experiments_experiment_rootdir', 'experiment', 'root_dir', unique=True),)
+    __table_args__ = (
+        Index(
+            "ix_experiments_experiment_rootdir", "experiment", "root_dir", unique=True
+        ),
+    )
 
     id = Column(Integer, primary_key=True)
 
@@ -51,7 +66,7 @@ class NCExperiment(Base):
     root_dir = Column(String, nullable=False)
 
     # Other experiment metadata (populated from metadata.yaml)
-    metadata_keys = ['contact', 'email', 'created', 'description', 'notes', 'keywords']
+    metadata_keys = ["contact", "email", "created", "description", "notes", "keywords"]
     contact = Column(String)
     email = Column(String)
     created = Column(DateTime)
@@ -61,25 +76,28 @@ class NCExperiment(Base):
     notes = Column(Text)
     #: Short, categorical keywords
     kw = relationship(
-        'Keyword',
+        "Keyword",
         secondary=keyword_assoc_table,
-        back_populates='experiments',
-        cascade='merge', # allow unique constraints on uncommitted session
-        collection_class=set
+        back_populates="experiments",
+        cascade="merge",  # allow unique constraints on uncommitted session
+        collection_class=set,
     )
     # add an association proxy to the keyword column of the keywords table
     # this lets us add keywords as strings rather than Keyword objects
-    keywords = association_proxy('kw', 'keyword')
+    keywords = association_proxy("kw", "keyword")
 
     #: Files in this experiment
-    ncfiles = relationship('NCFile', back_populates='experiment')
+    ncfiles = relationship("NCFile", back_populates="experiment")
+
 
 class Keyword(UniqueMixin, Base):
-    __tablename__ = 'keywords'
+    __tablename__ = "keywords"
 
     id = Column(Integer, primary_key=True)
     # enable sqlite case-insensitive string collation
-    _keyword = Column(String(collation='NOCASE'), nullable=False, unique=True, index=True)
+    _keyword = Column(
+        String(collation="NOCASE"), nullable=False, unique=True, index=True
+    )
 
     # hybrid property lets us define different behaviour at the instance
     # and expression levels: for an instance, we return the lowercased keyword
@@ -97,7 +115,9 @@ class Keyword(UniqueMixin, Base):
     def keyword(cls):
         return cls._keyword
 
-    experiments = relationship('NCExperiment', secondary=keyword_assoc_table, back_populates='kw')
+    experiments = relationship(
+        "NCExperiment", secondary=keyword_assoc_table, back_populates="kw"
+    )
 
     def __init__(self, keyword):
         self.keyword = keyword
@@ -110,9 +130,12 @@ class Keyword(UniqueMixin, Base):
     def unique_filter(cls, query, keyword):
         return query.filter(Keyword.keyword == keyword)
 
+
 class NCFile(Base):
-    __tablename__ = 'ncfiles'
-    __table_args__ = (Index('ix_ncfiles_experiment_ncfile', 'experiment_id', 'ncfile', unique=True),)
+    __tablename__ = "ncfiles"
+    __table_args__ = (
+        Index("ix_ncfiles_experiment_ncfile", "experiment_id", "ncfile", unique=True),
+    )
 
     id = Column(Integer, primary_key=True)
 
@@ -123,8 +146,10 @@ class NCFile(Base):
     #: Is the file actually present on the filesystem?
     present = Column(Boolean)
     #: The experiment to which the file belongs
-    experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False, index=True)
-    experiment = relationship('NCExperiment', back_populates='ncfiles')
+    experiment_id = Column(
+        Integer, ForeignKey("experiments.id"), nullable=False, index=True
+    )
+    experiment = relationship("NCExperiment", back_populates="ncfiles")
     #: Start time of data in the file
     time_start = Column(String)
     #: End time of data in the file
@@ -133,21 +158,26 @@ class NCFile(Base):
     frequency = Column(String)
 
     #: variables in this file
-    ncvars = relationship('NCVar', back_populates='ncfile', cascade='all, delete-orphan')
+    ncvars = relationship(
+        "NCVar", back_populates="ncfile", cascade="all, delete-orphan"
+    )
 
     @property
     def ncfile_path(self):
         return Path(self.experiment.root_dir) / Path(self.ncfile)
 
+
 class CFVariable(UniqueMixin, Base):
-    __tablename__ = 'variables'
-    __table_args__ = (Index('ix_variables_name_long_name', 'name', 'long_name', unique=True),)
+    __tablename__ = "variables"
+    __table_args__ = (
+        Index("ix_variables_name_long_name", "name", "long_name", unique=True),
+    )
 
     id = Column(Integer, primary_key=True)
 
     #: Attributes associated with the variable that should
     #: be stored in the database
-    attributes = ['long_name', 'standard_name', 'units']
+    attributes = ["long_name", "standard_name", "units"]
 
     #: The variable name
     name = Column(String, nullable=False, index=True)
@@ -159,7 +189,7 @@ class CFVariable(UniqueMixin, Base):
     units = Column(String)
 
     #: Back-populate a list of ncvars that use this variable
-    ncvars = relationship('NCVar', back_populates='variable')
+    ncvars = relationship("NCVar", back_populates="variable")
 
     def __init__(self, name, long_name=None, standard_name=None, units=None):
         self.name = name
@@ -169,31 +199,35 @@ class CFVariable(UniqueMixin, Base):
 
     @classmethod
     def unique_hash(cls, name, long_name, *arg):
-        return '{}_{}'.format(name, long_name)
+        return "{}_{}".format(name, long_name)
 
     @classmethod
     def unique_filter(cls, query, name, long_name, *arg):
-        return (query
-                .filter(CFVariable.name == name)
-                .filter(CFVariable.long_name == long_name))
+        return query.filter(CFVariable.name == name).filter(
+            CFVariable.long_name == long_name
+        )
+
 
 class NCVar(Base):
-    __tablename__ = 'ncvars'
+    __tablename__ = "ncvars"
 
     id = Column(Integer, primary_key=True)
 
     #: The ncfile to which this variable belongs
-    ncfile_id = Column(Integer, ForeignKey('ncfiles.id'), nullable=False, index=True)
-    ncfile = relationship('NCFile', back_populates='ncvars')
+    ncfile_id = Column(Integer, ForeignKey("ncfiles.id"), nullable=False, index=True)
+    ncfile = relationship("NCFile", back_populates="ncvars")
     #: The generic form of this variable (name and attributes)
-    variable_id = Column(Integer, ForeignKey('variables.id'), nullable=False)
-    variable = relationship('CFVariable', back_populates='ncvars', uselist=False, cascade="merge")
+    variable_id = Column(Integer, ForeignKey("variables.id"), nullable=False)
+    variable = relationship(
+        "CFVariable", back_populates="ncvars", uselist=False, cascade="merge"
+    )
     #: Proxy for the variable name
-    varname = association_proxy('variable', 'name')
+    varname = association_proxy("variable", "name")
     #: Serialised tuple of variable dimensions
     dimensions = Column(String)
     #: Serialised tuple of chunking along each dimension
     chunking = Column(String)
+
 
 def create_session(db=None, debug=False):
     """Create a session for the specified database file.
@@ -202,18 +236,22 @@ def create_session(db=None, debug=False):
     """
 
     if db is None:
-        db = os.getenv('COSIMA_COOKBOOK_DB', __DEFAULT_DB__)
+        db = os.getenv("COSIMA_COOKBOOK_DB", __DEFAULT_DB__)
 
-    engine = create_engine('sqlite:///' + db, echo=debug)
+    engine = create_engine("sqlite:///" + db, echo=debug)
 
     # if database version is 0, we've created it anew
     conn = engine.connect()
-    ver = conn.execute('PRAGMA user_version').fetchone()[0]
+    ver = conn.execute("PRAGMA user_version").fetchone()[0]
     if ver == 0:
         # seems we can't use usual SQL parameter strings, so we'll just format the version in...
-        conn.execute('PRAGMA user_version={}'.format(__DB_VERSION__))
+        conn.execute("PRAGMA user_version={}".format(__DB_VERSION__))
     elif ver < __DB_VERSION__:
-        raise Exception('Incompatible database versions, expected {}, got {}'.format(ver, __DB_VERSION__))
+        raise Exception(
+            "Incompatible database versions, expected {}, got {}".format(
+                ver, __DB_VERSION__
+            )
+        )
 
     Base.metadata.create_all(conn)
     conn.close()
@@ -221,24 +259,29 @@ def create_session(db=None, debug=False):
     Session = sessionmaker(bind=engine)
     return Session()
 
-class EmptyFileError(Exception): pass
+
+class EmptyFileError(Exception):
+    pass
+
 
 def update_timeinfo(f, ncfile):
     """Extract time information from a single netCDF file: start time, end time, and frequency."""
 
-    with netCDF4.Dataset(f, 'r') as ds:
+    with netCDF4.Dataset(f, "r") as ds:
         # we assume the record dimension corresponds to time
         time_dim = netcdf_utils.find_time_dimension(ds)
         if time_dim is None:
             return None
 
         time_var = ds.variables[time_dim]
-        has_bounds = hasattr(time_var, 'bounds')
+        has_bounds = hasattr(time_var, "bounds")
 
         if len(time_var) == 0:
-            raise EmptyFileError('{} has a valid unlimited dimension, but no data'.format(f))
+            raise EmptyFileError(
+                "{} has a valid unlimited dimension, but no data".format(f)
+            )
 
-        if not hasattr(time_var, 'units') or not hasattr(time_var, 'calendar'):
+        if not hasattr(time_var, "units") or not hasattr(time_var, "calendar"):
             # non CF-compliant file -- don't process further
             return
 
@@ -248,8 +291,8 @@ def update_timeinfo(f, ncfile):
 
         if has_bounds:
             bounds_var = ds.variables[time_var.bounds]
-            ncfile.time_start = todate(bounds_var[0,0])
-            ncfile.time_end = todate(bounds_var[-1,1])
+            ncfile.time_start = todate(bounds_var[0, 0])
+            ncfile.time_end = todate(bounds_var[-1, 1])
         else:
             ncfile.time_start = todate(time_var[0])
             ncfile.time_end = todate(time_var[-1])
@@ -262,28 +305,29 @@ def update_timeinfo(f, ncfile):
             # difference between the centre of averaging periods, which is easier
             # to work with
             if has_bounds:
-                next_time = todate(bounds_var[0,1])
+                next_time = todate(bounds_var[0, 1])
             else:
                 next_time = todate(time_var[1])
 
             dt = next_time - ncfile.time_start
             if dt.days >= 365:
                 years = round(dt.days / 365)
-                ncfile.frequency = '{} yearly'.format(years)
+                ncfile.frequency = "{} yearly".format(years)
             elif dt.days >= 28:
                 months = round(dt.days / 30)
-                ncfile.frequency = '{} monthly'.format(months)
+                ncfile.frequency = "{} monthly".format(months)
             elif dt.days >= 1:
-                ncfile.frequency = '{} daily'.format(dt.days)
+                ncfile.frequency = "{} daily".format(dt.days)
             else:
-                ncfile.frequency = '{} hourly'.format(dt.seconds // 3600)
+                ncfile.frequency = "{} hourly".format(dt.seconds // 3600)
         else:
             # single time value in this file and no averaging
-            ncfile.frequency = 'static'
+            ncfile.frequency = "static"
 
         # convert start/end times to timestamps
         ncfile.time_start = format_datetime(ncfile.time_start)
         ncfile.time_end = format_datetime(ncfile.time_end)
+
 
 def index_file(ncfile_name, experiment):
     """Index a single netCDF file within an experiment by retrieving all variables, their dimensions
@@ -294,12 +338,14 @@ def index_file(ncfile_name, experiment):
     f = str(Path(experiment.root_dir) / ncfile_name)
 
     # try to index this file, and mark it 'present' if indexing succeeds
-    ncfile = NCFile(index_time=datetime.now(),
-                    ncfile=ncfile_name,
-                    present=False,
-                    experiment=experiment)
+    ncfile = NCFile(
+        index_time=datetime.now(),
+        ncfile=ncfile_name,
+        present=False,
+        experiment=experiment,
+    )
     try:
-        with netCDF4.Dataset(f, 'r') as ds:
+        with netCDF4.Dataset(f, "r") as ds:
             for v in ds.variables.values():
                 # create the generic cf variable structure
                 cfvar = CFVariable(name=v.name)
@@ -310,26 +356,29 @@ def index_file(ncfile_name, experiment):
                         setattr(cfvar, att, v.getncattr(att))
 
                 # fill in the specifics for this file: dimensions and chunking
-                ncvar = NCVar(variable=cfvar,
-                              dimensions=str(v.dimensions),
-                              chunking=str(v.chunking()))
+                ncvar = NCVar(
+                    variable=cfvar,
+                    dimensions=str(v.dimensions),
+                    chunking=str(v.chunking()),
+                )
 
                 ncfile.ncvars.append(ncvar)
 
         update_timeinfo(f, ncfile)
         ncfile.present = True
     except FileNotFoundError:
-        logging.info('Unable to find file: %s', f)
+        logging.info("Unable to find file: %s", f)
     except Exception as e:
-        logging.error('Error indexing %s: %s', f, e)
+        logging.error("Error indexing %s: %s", f, e)
 
     return ncfile
+
 
 def update_metadata(experiment, session):
     """Look for a metadata.yaml for a given experiment, and populate
     the row with any data found."""
 
-    metadata_file = Path(experiment.root_dir) / 'metadata.yaml'
+    metadata_file = Path(experiment.root_dir) / "metadata.yaml"
     if not metadata_file.exists():
         return
 
@@ -345,14 +394,25 @@ def update_metadata(experiment, session):
 
                 setattr(experiment, k, v)
     except yaml.YAMLError as e:
-        logging.warning('Error reading metadata file %s: %s', metadata_file, e)
+        logging.warning("Error reading metadata file %s: %s", metadata_file, e)
 
     # update keywords to be unique
-    experiment.kw = { Keyword.as_unique(session, kw.keyword) for kw in experiment.kw }
+    experiment.kw = {Keyword.as_unique(session, kw.keyword) for kw in experiment.kw}
 
-class IndexingError(Exception): pass
 
-def index_experiment(experiment_dir, session=None, client=None, update=False, prune=True, delete=True, followsymlinks=False):
+class IndexingError(Exception):
+    pass
+
+
+def index_experiment(
+    experiment_dir,
+    session=None,
+    client=None,
+    update=False,
+    prune=True,
+    delete=True,
+    followsymlinks=False,
+):
     """Index all output files for a single experiment."""
 
     # find all netCDF files in the hierarchy below this directory
@@ -360,41 +420,50 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
 
     options = []
     if followsymlinks:
-        options.append('-L')
+        options.append("-L")
 
-    cmd = ['find', *options, experiment_dir, '-name', '*.nc']
-    proc = subprocess.run(cmd, encoding='utf-8', stdout=subprocess.PIPE, 
-                          stderr=subprocess.PIPE)
+    cmd = ["find", *options, experiment_dir, "-name", "*.nc"]
+    proc = subprocess.run(
+        cmd, encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     if proc.returncode != 0:
-        warnings.warn('Some files or directories could not be read while finding output files: %s', UserWarning)
+        warnings.warn(
+            "Some files or directories could not be read while finding output files: %s",
+            UserWarning,
+        )
 
     results = [s for s in proc.stdout.split()]
     files.extend(results)
 
     expt_path = Path(experiment_dir)
-    expt = NCExperiment(experiment=str(expt_path.name),
-                        root_dir=str(expt_path.absolute()))
+    expt = NCExperiment(
+        experiment=str(expt_path.name), root_dir=str(expt_path.absolute())
+    )
 
     # look for this experiment in the database
-    q = (session
-         .query(NCExperiment)
-         .filter(NCExperiment.experiment == expt.experiment)
-         .filter(NCExperiment.root_dir == expt.root_dir))
+    q = (
+        session.query(NCExperiment)
+        .filter(NCExperiment.experiment == expt.experiment)
+        .filter(NCExperiment.root_dir == expt.root_dir)
+    )
     r = q.one_or_none()
     if r is not None:
         if update:
             expt = r
         else:
-            print('Not re-indexing experiment: {}\nPass `update=True` to build_index()'
-                  .format(expt_path.name))
+            print(
+                "Not re-indexing experiment: {}\nPass `update=True` to build_index()".format(
+                    expt_path.name
+                )
+            )
             return 0
 
-    print('Indexing experiment: {}'.format(expt_path.name))
+    print("Indexing experiment: {}".format(expt_path.name))
 
     update_metadata(expt, session)
 
     # make all files relative to the experiment path
-    files = { str(Path(f).relative_to(expt_path)) for f in files }
+    files = {str(Path(f).relative_to(expt_path)) for f in files}
 
     for fobj in expt.ncfiles:
         f = fobj.ncfile
@@ -422,15 +491,23 @@ def index_experiment(experiment_dir, session=None, client=None, update=False, pr
     for ncfile in results:
         for ncvar in ncfile.ncvars:
             v = ncvar.variable
-            ncvar.variable = CFVariable.as_unique(session,
-                                                  v.name, v.long_name,
-                                                  v.standard_name, v.units)
+            ncvar.variable = CFVariable.as_unique(
+                session, v.name, v.long_name, v.standard_name, v.units
+            )
 
     session.add_all(results)
     return len(results)
 
-def build_index(directories, session, client=None, update=False, prune=True, 
-                delete=True, followsymlinks=False):
+
+def build_index(
+    directories,
+    session,
+    client=None,
+    update=False,
+    prune=True,
+    delete=True,
+    followsymlinks=False,
+):
     """Index all netcdf files contained within experiment directories.
 
     Requires a session for the database that's been created with the create_session() function.
@@ -448,12 +525,14 @@ def build_index(directories, session, client=None, update=False, prune=True,
 
     indexed = 0
     for directory in directories:
-        indexed += index_experiment(directory, session, client, update, prune, 
-                                    delete, followsymlinks)
+        indexed += index_experiment(
+            directory, session, client, update, prune, delete, followsymlinks
+        )
 
     # if everything went smoothly, commit these changes to the database
     session.commit()
     return indexed
+
 
 def prune_experiment(experiment, session, delete=True):
     """Delete or mark as not present the database entries for files
@@ -461,10 +540,11 @@ def prune_experiment(experiment, session, delete=True):
     index time.
     """
 
-    expt = (session
-            .query(NCExperiment)
-            .filter(NCExperiment.experiment == experiment)
-            .one_or_none())
+    expt = (
+        session.query(NCExperiment)
+        .filter(NCExperiment.experiment == experiment)
+        .one_or_none()
+    )
 
     if not expt:
         print("No such experiment: {}".format(experiment))
@@ -480,4 +560,3 @@ def prune_experiment(experiment, session, delete=True):
                 f.present = False
 
     session.commit()
-

@@ -14,8 +14,7 @@ import os, getpass, tempfile
 username = getpass.getuser()
 
 
-
 # pick up cachedir from an environment variable?
 # Append username to prevent clashes with others users
-cachedir = os.path.join(tempfile.gettempdir(),username)
+cachedir = os.path.join(tempfile.gettempdir(), username)
 memory = Memory(cachedir=cachedir, verbose=0)

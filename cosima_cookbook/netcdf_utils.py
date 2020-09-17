@@ -7,6 +7,7 @@ def find_record_dimension(d):
 
     return None
 
+
 def find_dimension_with_attribute(d, attribute, value):
     """Find a matching dimension with attribute=value, or None."""
 
@@ -19,17 +20,18 @@ def find_dimension_with_attribute(d, attribute, value):
 
     return None
 
+
 def find_time_dimension(d):
     """Find a time dimension in a netCDF4 Dataset."""
 
     # this is a bit heuristic, but we cascade through some checks, guided by
     # the CF conventions
 
-    dim = find_dimension_with_attribute(d, 'standard_name', 'time')
+    dim = find_dimension_with_attribute(d, "standard_name", "time")
     if dim is not None:
         return dim
 
-    dim = find_dimension_with_attribute(d, 'axis', 'T')
+    dim = find_dimension_with_attribute(d, "axis", "T")
     if dim is not None:
         return dim
 
@@ -38,7 +40,7 @@ def find_time_dimension(d):
         return dim
 
     for dim in d.dimensions:
-        if dim.lower() == 'time':
+        if dim.lower() == "time":
             return dim
 
     # CF conventions also suggests the units attribute,

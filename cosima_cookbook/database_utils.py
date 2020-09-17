@@ -1,7 +1,8 @@
 # enforce unique ORM objects: https://github.com/sqlalchemy/sqlalchemy/wiki/UniqueObject
 
+
 def _unique(session, cls, hashfunc, queryfunc, constructor, arg, kw):
-    cache = getattr(session, '_unique_cache', None)
+    cache = getattr(session, "_unique_cache", None)
     if cache is None:
         session._unique_cache = cache = {}
 
@@ -18,6 +19,7 @@ def _unique(session, cls, hashfunc, queryfunc, constructor, arg, kw):
                 session.add(obj)
         cache[key] = obj
         return obj
+
 
 class UniqueMixin(object):
     @classmethod
