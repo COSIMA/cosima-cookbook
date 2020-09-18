@@ -87,7 +87,9 @@ class NCExperiment(Base):
     keywords = association_proxy("kw", "keyword")
 
     #: Files in this experiment
-    ncfiles = relationship("NCFile", back_populates="experiment")
+    ncfiles = relationship(
+        "NCFile", back_populates="experiment", cascade="all, delete-orphan"
+    )
 
 
 class Keyword(UniqueMixin, Base):
@@ -560,3 +562,21 @@ def prune_experiment(experiment, session, delete=True):
                 f.present = False
 
     session.commit()
+
+
+def delete_experiment(experiment, session):
+    """Completely delete an experiment from the database.
+
+    This removes the experiment entry itself, as well as all
+    of its associated files.
+    """
+
+    expt = (
+        session.query(NCExperiment)
+        .filter(NCExperiment.experiment == experiment)
+        .one_or_none()
+    )
+
+    if expt is not None:
+        session.delete(expt)
+        session.commit()
