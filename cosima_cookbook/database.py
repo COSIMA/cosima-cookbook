@@ -187,7 +187,9 @@ class NCFile(Base):
 
     #: variables in this file
     ncvars = relationship(
-        "NCVar", back_populates="ncfile", cascade="all, delete-orphan"
+        "NCVar",
+        collection_class=attribute_mapped_collection("varname"),
+        cascade="all, delete-orphan",
     )
 
     #: file-level attributes
@@ -268,7 +270,7 @@ class NCVar(Base):
 
     #: The ncfile to which this variable belongs
     ncfile_id = Column(Integer, ForeignKey("ncfiles.id"), nullable=False, index=True)
-    ncfile = relationship("NCFile", back_populates="ncvars")
+    ncfile = relationship("NCFile")
     #: The generic form of this variable (name and attributes)
     variable_id = Column(Integer, ForeignKey("variables.id"), nullable=False)
     variable = relationship(
@@ -432,7 +434,7 @@ def index_file(ncfile_name, experiment):
                 for att in v.ncattrs():
                     ncvar.attrs[att] = str(v.getncattr(att))
 
-                ncfile.ncvars.append(ncvar)
+                ncfile.ncvars[v.name] = ncvar
 
             # add file-level attributes
             for att in ds.ncattrs():
@@ -563,7 +565,7 @@ def index_experiment(
 
     # update all variables to be unique
     for ncfile in results:
-        for ncvar in ncfile.ncvars:
+        for ncvar in ncfile.ncvars.values():
             v = ncvar.variable
             ncvar.variable = CFVariable.as_unique(
                 session, v.name, v.long_name, v.standard_name, v.units
