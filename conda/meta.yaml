@@ -27,6 +27,7 @@ requirements:
         - joblib
         - tqdm
         - sqlalchemy
+        - ipywidgets
 
 about:
     home: http://cosima-cookbook.readthedocs.io
