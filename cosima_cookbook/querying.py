@@ -185,21 +185,61 @@ def getvar(
         expt, variable, session, ncfile, start_time, end_time, n, frequency
     )
 
+    # we know at least one variable was returned
+    variables = _bounds_vars_for_variable(*ncfiles[0])
+
     # chunking -- use first row/file and assume it's the same across the whole dataset
     xr_kwargs = {"chunks": _parse_chunks(ncfiles[0].NCVar)}
     xr_kwargs.update(kwargs)
+
+    def _preprocess(d):
+        if variable in d.coords:
+            # just return coordinate data
+            return d
+
+        # otherwise, figure out if we need any ancilliary data
+        # like time_bounds
+        return d[variables]
 
     ds = xr.open_mfdataset(
         (str(f.NCFile.ncfile_path) for f in ncfiles),
         parallel=True,
         combine="by_coords",
-        preprocess=lambda d: d[variable].to_dataset()
-        if variable not in d.coords
-        else d,
+        preprocess=_preprocess,
         **xr_kwargs,
     )
 
-    return ds[variable]
+    da = ds[variable]
+
+    for attr in variables[1:]:
+        da.attrs[attr] = ds[attr]
+
+    return da
+
+
+def _bounds_vars_for_variable(ncfile, ncvar):
+    """Return a list of names for a variable and its bounds"""
+
+    variables = [ncvar.varname]
+
+    if "cell_methods" not in ncvar.attrs:
+        # no cell methods, so no need to look for bounds
+        return variables
+
+    # [cell methods] is a string attribute comprising a list of
+    # blank-separated words of the form "name: method"
+    cell_methods = iter(ncvar.attrs["cell_methods"].split())
+
+    # for the moment, we're only looking for a time mean
+    for dim, method in zip(cell_methods, cell_methods):
+        if not (dim[:-1] == "time" and method == "mean"):
+            continue
+
+    bounds_var = ncfile.ncvars["time"].attrs.get("bounds")
+    if bounds_var is not None:
+        variables.append(bounds_var)
+
+    return variables
 
 
 def _ncfiles_for_variable(
