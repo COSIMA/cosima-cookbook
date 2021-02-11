@@ -197,8 +197,8 @@ def test_get_data(session):
     ee._load_data(None)
 
     assert ee.frequency.options == ("1 yearly",)
-    assert ee.daterange.options[0][0] == " 166/12/31"
-    assert ee.daterange.options[1][0] == " 167/12/31"
+    assert ee.daterange.options[0][0] == "0166/12/31"
+    assert ee.daterange.options[1][0] == "0167/12/31"
 
     assert ee.data is not None
     assert ee.data.shape == (2, 1, 1, 1)
