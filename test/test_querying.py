@@ -217,3 +217,13 @@ def test_disambiguation_by_frequency(session):
     assert cc.querying.getvar(
         "querying", "time", session, frequency="1 yearly"
     ).shape == (2,)
+
+
+def test_time_bounds_on_dataarray(session):
+    var_salt = cc.querying.getvar("querying", "salt", session, decode_times=False)
+
+    # we should have added time_bounds into the DataArray's attributes
+    assert "time_bounds" in var_salt.attrs
+
+    # and time_bounds should itself be a DataArray
+    assert isinstance(var_salt.attrs["time_bounds"], xr.DataArray)
