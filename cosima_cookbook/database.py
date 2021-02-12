@@ -91,6 +91,11 @@ class NCExperiment(Base):
         "NCFile", back_populates="experiment", cascade="all, delete-orphan"
     )
 
+    def __repr__(self):
+        return "<NCExperiment('{e.experiment}', '{e.root_dir}', {} files)".format(
+            len(self.ncfiles), e=self
+        )
+
 
 class Keyword(UniqueMixin, Base):
     __tablename__ = "keywords"
@@ -164,6 +169,12 @@ class NCFile(Base):
         "NCVar", back_populates="ncfile", cascade="all, delete-orphan"
     )
 
+    def __repr__(self):
+        return """<NCFile('{e.ncfile}' in {e.experiment}, {} variables, \
+from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".format(
+            len(self.ncvars), "" if self.present else "not ", e=self
+        )
+
     @property
     def ncfile_path(self):
         return Path(self.experiment.root_dir) / Path(self.ncfile)
@@ -199,6 +210,9 @@ class CFVariable(UniqueMixin, Base):
         self.standard_name = standard_name
         self.units = units
 
+    def __repr__(self):
+        return "<CFVariable('{e.name}', in {} NCVars)>".format(len(self.ncvars), e=self)
+
     @classmethod
     def unique_hash(cls, name, long_name, *arg):
         return "{}_{}".format(name, long_name)
@@ -229,6 +243,9 @@ class NCVar(Base):
     dimensions = Column(String)
     #: Serialised tuple of chunking along each dimension
     chunking = Column(String)
+
+    def __repr__(self):
+        return "<NCVar('{e.varname}' in '{e.ncfile.ncfile_path}')>".format(e=self)
 
 
 def create_session(db=None, debug=False):
