@@ -227,3 +227,36 @@ def test_time_bounds_on_dataarray(session):
 
     # and time_bounds should itself be a DataArray
     assert isinstance(var_salt.attrs["time_bounds"], xr.DataArray)
+
+
+def test_query_with_attrs(session):
+    attrs = {
+        "long_name": "Practical Salinity",
+        "units": "psu",
+    }
+
+    # a valid set of attributes
+    var_salt = cc.querying.getvar(
+        "querying", "salt", session, decode_times=False, attrs=attrs
+    )
+
+    for attr, val in attrs.items():
+        assert var_salt.attrs[attr] == val
+
+    # make sure that this is actually applied as an additional filter
+    # by making failing queries
+    # first: incorrect attribute value
+    with pytest.raises(cc.querying.VariableNotFoundError):
+        cc.querying.getvar(
+            "querying",
+            "salt",
+            session,
+            decode_times=False,
+            attrs={"units": "degrees K"},
+        )
+
+    # second: non-present attribute name
+    with pytest.raises(cc.querying.VariableNotFoundError):
+        cc.querying.getvar(
+            "querying", "salt", session, decode_times=False, attrs={"not_found": "psu"}
+        )

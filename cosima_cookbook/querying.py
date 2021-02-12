@@ -148,6 +148,7 @@ def getvar(
     end_time=None,
     n=None,
     frequency=None,
+    attrs={},
     **kwargs,
 ):
     """For a given experiment, return an xarray DataArray containing the
@@ -168,6 +169,8 @@ def getvar(
         first n. pass a negative value to restrict to the last n
     frequency - specify frequency to disambiguate identical variables saved
                 at different temporal resolution
+    attrs - a dictionary of attribute names and their values that must be
+            present on the returned variables
 
     Note that if start_time and/or end_time are used, the time range
     of the resulting dataset may not be bounded exactly on those
@@ -182,7 +185,7 @@ def getvar(
     """
 
     ncfiles = _ncfiles_for_variable(
-        expt, variable, session, ncfile, start_time, end_time, n, frequency
+        expt, variable, session, ncfile, start_time, end_time, n, frequency, attrs
     )
 
     # we know at least one variable was returned
@@ -251,6 +254,7 @@ def _ncfiles_for_variable(
     end_time=None,
     n=None,
     frequency=None,
+    attrs={},
 ):
     """Return a list of (NCFile, NCVar) pairs corresponding to the
     database objects for a given variable.
@@ -279,6 +283,11 @@ def _ncfiles_for_variable(
         q = q.filter(f.time_start <= end_time)
     if frequency is not None:
         q = q.filter(f.frequency == frequency)
+
+    # requested specific attribute values
+    for attr, val in attrs.items():
+        q = q.filter(v.ncvar_attrs.any(name=attr, value=val))
+
     ncfiles = q.all()
 
     if n is not None:
