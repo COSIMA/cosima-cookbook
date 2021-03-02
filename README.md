@@ -34,6 +34,4 @@ If you like the cookbook, you may like to interact more closely with us:
  * All code submitted as part of the cookbook itself must be formatted with [black](https://github.com/psf/black)
 
 
-| Travis CI | Read the Docs |
-|:---------:|:-------------:|
-| [![Travis CI Build Status](https://travis-ci.org/COSIMA/cosima-cookbook.svg?branch=master)](https://travis-ci.org/COSIMA/cosima-cookbook) | [![Documentation Status](https://readthedocs.org/projects/cosima-cookbook/badge/?version=latest)](https://cosima-cookbook.readthedocs.org/en/latest) |
+[![Documentation Status](https://readthedocs.org/projects/cosima-cookbook/badge/?version=latest)](https://cosima-cookbook.readthedocs.org/en/latest)
