@@ -479,26 +479,15 @@ def update_metadata(experiment, session):
 class IndexingError(Exception):
     pass
 
+def find_files(searchdir, matchstring="*.nc", followsymlinks=False):
+    """Return netCDF files under search directory"""
 
-def index_experiment(
-    experiment_dir,
-    session=None,
-    client=None,
-    update=False,
-    prune=True,
-    delete=True,
-    followsymlinks=False,
-):
-    """Index all output files for a single experiment."""
-
-    # find all netCDF files in the hierarchy below this directory
-    files = []
-
+    # find all netCDF files in the hierarchy below searchdir
     options = []
     if followsymlinks:
         options.append("-L")
 
-    cmd = ["find", *options, experiment_dir, "-name", "*.nc"]
+    cmd = ["find", *options, searchdir, "-name", matchstring]
     proc = subprocess.run(
         cmd, encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -508,51 +497,24 @@ def index_experiment(
             UserWarning,
         )
 
-    results = [s for s in proc.stdout.split()]
-    files.extend(results)
+    # make all files relative to the search directory and return as set
+    return {str(Path(s).relative_to(searchdir)) for s in proc.stdout.split()}
 
-    expt_path = Path(experiment_dir)
-    expt = NCExperiment(
-        experiment=str(expt_path.name), root_dir=str(expt_path.absolute())
-    )
+def find_experiment(session, expt_path):
+    """Return experiment if it already exists in this DB session"""
 
-    # look for this experiment in the database
     q = (
         session.query(NCExperiment)
-        .filter(NCExperiment.experiment == expt.experiment)
-        .filter(NCExperiment.root_dir == expt.root_dir)
+        .filter(NCExperiment.experiment == str(expt_path.name))
+        .filter(NCExperiment.root_dir == str(expt_path.resolve()))
     )
-    r = q.one_or_none()
-    if r is not None:
-        if update:
-            expt = r
-        else:
-            print(
-                "Not re-indexing experiment: {}\nPass `update=True` to build_index()".format(
-                    expt_path.name
-                )
-            )
-            return 0
 
-    print("Indexing experiment: {}".format(expt_path.name))
+    return q.one_or_none()
+
+def index_experiment(files, session, expt, client=None):
+    """Index specified files for an experiment."""
 
     update_metadata(expt, session)
-
-    # make all files relative to the experiment path
-    files = {str(Path(f).relative_to(expt_path)) for f in files}
-
-    for fobj in expt.ncfiles:
-        f = fobj.ncfile
-        if f in files:
-            # remove existing files from list, only index new files
-            files.remove(f)
-        else:
-            if prune:
-                # prune missing files from database
-                if delete:
-                    session.delete(fobj)
-                else:
-                    fobj.present = False
 
     results = []
 
@@ -582,16 +544,19 @@ def build_index(
     update=False,
     prune=True,
     delete=True,
+    force=False,
     followsymlinks=False,
 ):
     """Index all netcdf files contained within experiment directories.
 
-    Requires a session for the database that's been created with the create_session() function.
-    If client is not None, use a distributed client for processing files in parallel.
-    May scan for only new entries to add to database with the update flag.
-    If prune is True files that are already in the database but are missing from the filesystem
-    will be either removed if delete is also True, or flagged as missing if delete is False.
-    Symbolically linked files and/or directories will be indexed if followsymlinks is True.
+    Requires a session for the database that's been created with the 
+    create_session() function. If client is not None, use a distributed 
+    client for processing files in parallel. May scan for only new entries 
+    to add to database with the update flag. If prune is True files that 
+    are already in the database but are missing from the filesystem will 
+    be either removed if delete is also True, or flagged as missing if 
+    delete is False. Symbolically linked files and/or directories will be 
+    indexed if followsymlinks is True.
 
     Returns the number of new files that were indexed.
     """
@@ -600,14 +565,61 @@ def build_index(
         directories = [directories]
 
     indexed = 0
-    for directory in directories:
+    for directory in [Path(d) for d in directories]:
+        # find all netCDF files in the experiment directory
+        files = find_files(directory, followsymlinks=followsymlinks)
+        expt = find_experiment(session, directory)
+
+        if expt is None:
+            expt = NCExperiment(
+                experiment=str(directory.name), 
+                root_dir=str(directory.resolve())
+            )
+        else:
+            if not update:
+                print(
+                    "Not re-indexing experiment: {}\n"
+                    "Pass `update=True` to build_index()".format(
+                        directory.name
+                    )
+                )
+                continue
+
+        print("Indexing experiment: {}".format(directory.name))
+
+        if prune:
+            # Prune files that exist in the database but are not present
+            # on the filesystem
+            missing_files = set([f.ncfile for f in expt.ncfiles]) - files
+            if len(missing_files) > 0:
+                # Make a list of NCFile objects to pass to prune_files
+                missing_files_objs = [f for f in expt.ncfiles if f.ncfile in missing_files]
+                prune_files(expt, session, missing_files_objs, delete=delete)
+
+        # Filter conditions
+        if not force:
+            # Only pass files that are not already in DB
+            files = files - set([f.ncfile for f in expt.ncfiles])
+
         indexed += index_experiment(
-            directory, session, client, update, prune, delete, followsymlinks
+            files, session, expt, client
         )
 
-    # if everything went smoothly, commit these changes to the database
-    session.commit()
+        # if everything went smoothly, commit these changes to the database
+        session.commit()
+
     return indexed
+
+
+def prune_files(expt, session, files, delete=True):
+    """Delete or mark as not present the database entries for specified 
+    files objects within the given experiment
+    """
+    for f in files:
+        if delete:
+            session.delete(f)
+        else:
+            f.present = False
 
 
 def prune_experiment(experiment, session, delete=True):
@@ -626,14 +638,9 @@ def prune_experiment(experiment, session, delete=True):
         print("No such experiment: {}".format(experiment))
         return
 
-    for f in expt.ncfiles:
-        # check whether file exists
-        if not f.ncfile_path.exists() or not f.present:
+    files = {f for f in expt.ncfiles if not f.present or not f.ncfile_path.exists()}
 
-            if delete:
-                session.delete(f)
-            else:
-                f.present = False
+    prune_files(expt, session, files, delete)
 
     session.commit()
 
