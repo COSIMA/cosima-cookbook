@@ -479,6 +479,7 @@ def update_metadata(experiment, session):
 class IndexingError(Exception):
     pass
 
+
 def find_files(searchdir, matchstring="*.nc", followsymlinks=False):
     """Return netCDF files under search directory"""
 
@@ -500,6 +501,7 @@ def find_files(searchdir, matchstring="*.nc", followsymlinks=False):
     # make all files relative to the search directory and return as set
     return {str(Path(s).relative_to(searchdir)) for s in proc.stdout.split()}
 
+
 def find_experiment(session, expt_path):
     """Return experiment if it already exists in this DB session"""
 
@@ -510,6 +512,7 @@ def find_experiment(session, expt_path):
     )
 
     return q.one_or_none()
+
 
 def index_experiment(files, session, expt, client=None):
     """Index specified files for an experiment."""
@@ -549,13 +552,13 @@ def build_index(
 ):
     """Index all netcdf files contained within experiment directories.
 
-    Requires a session for the database that's been created with the 
-    create_session() function. If client is not None, use a distributed 
-    client for processing files in parallel. May scan for only new entries 
-    to add to database with the update flag. If prune is True files that 
-    are already in the database but are missing from the filesystem will 
-    be either removed if delete is also True, or flagged as missing if 
-    delete is False. Symbolically linked files and/or directories will be 
+    Requires a session for the database that's been created with the
+    create_session() function. If client is not None, use a distributed
+    client for processing files in parallel. May scan for only new entries
+    to add to database with the update flag. If prune is True files that
+    are already in the database but are missing from the filesystem will
+    be either removed if delete is also True, or flagged as missing if
+    delete is False. Symbolically linked files and/or directories will be
     indexed if followsymlinks is True.
 
     Returns the number of new files that were indexed.
@@ -572,16 +575,13 @@ def build_index(
 
         if expt is None:
             expt = NCExperiment(
-                experiment=str(directory.name), 
-                root_dir=str(directory.resolve())
+                experiment=str(directory.name), root_dir=str(directory.resolve())
             )
         else:
             if not update:
                 print(
                     "Not re-indexing experiment: {}\n"
-                    "Pass `update=True` to build_index()".format(
-                        directory.name
-                    )
+                    "Pass `update=True` to build_index()".format(directory.name)
                 )
                 continue
 
@@ -593,7 +593,9 @@ def build_index(
             missing_files = set([f.ncfile for f in expt.ncfiles]) - files
             if len(missing_files) > 0:
                 # Make a list of NCFile objects to pass to prune_files
-                missing_files_objs = [f for f in expt.ncfiles if f.ncfile in missing_files]
+                missing_files_objs = [
+                    f for f in expt.ncfiles if f.ncfile in missing_files
+                ]
                 prune_files(expt, session, missing_files_objs, delete=delete)
 
         # Filter conditions
@@ -601,9 +603,7 @@ def build_index(
             # Only pass files that are not already in DB
             files = files - set([f.ncfile for f in expt.ncfiles])
 
-        indexed += index_experiment(
-            files, session, expt, client
-        )
+        indexed += index_experiment(files, session, expt, client)
 
         # if everything went smoothly, commit these changes to the database
         session.commit()
@@ -612,7 +612,7 @@ def build_index(
 
 
 def prune_files(expt, session, files, delete=True):
-    """Delete or mark as not present the database entries for specified 
+    """Delete or mark as not present the database entries for specified
     files objects within the given experiment
     """
     for f in files:
