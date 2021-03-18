@@ -23,7 +23,7 @@ setup(
         'f90nml',
         'joblib',
         'ipywidgets',
-    ]
+    ],
 
     extras_require = {
         'build': ['distributed', 'pytest']
