@@ -18,12 +18,12 @@ setup(
         'bokeh',
         'netcdf4',
         'tqdm',
-        'sqlalchemy',
+        'sqlalchemy<1.4',
         'cftime',
         'f90nml',
         'joblib',
         'ipywidgets',
-    ],
+    ]
 
     extras_require = {
         'build': ['distributed', 'pytest']
