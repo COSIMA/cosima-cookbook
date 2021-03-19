@@ -544,9 +544,7 @@ def build_index(
     directories,
     session,
     client=None,
-    update=False,
-    prune=True,
-    delete=True,
+    prune="flag",
     force=False,
     followsymlinks=False,
 ):
@@ -554,11 +552,12 @@ def build_index(
 
     Requires a session for the database that's been created with the
     create_session() function. If client is not None, use a distributed
-    client for processing files in parallel. May scan for only new entries
-    to add to database with the update flag. If prune is True files that
-    are already in the database but are missing from the filesystem will
-    be either removed if delete is also True, or flagged as missing if
-    delete is False. Symbolically linked files and/or directories will be
+    client for processing files in parallel. If prune is set to 'flag' files
+    that are already in the database but are missing from the filesystem will
+    be flagged as missing, or if set to 'delete' they will be removed from the
+    database. If force is False only files that are not in the database will
+    be indexed, othewise if True all files will be indexed and their database
+    entries updated. Symbolically linked files and/or directories will be
     indexed if followsymlinks is True.
 
     Returns the number of new files that were indexed.
@@ -566,6 +565,15 @@ def build_index(
 
     if not isinstance(directories, list):
         directories = [directories]
+
+    prune = prune.lower()
+    if not prune in {"flag", "delete"}:
+        print(
+            "build_index :: ERROR :: Value for option prune is incorrect,\n "
+            "must be flag or delete: {}\n"
+            "Resetting to 'flag'".format(prune)
+        )
+        prune = "flag"
 
     indexed = 0
     for directory in [Path(d) for d in directories]:
@@ -577,26 +585,16 @@ def build_index(
             expt = NCExperiment(
                 experiment=str(directory.name), root_dir=str(directory.resolve())
             )
-        else:
-            if not update:
-                print(
-                    "Not re-indexing experiment: {}\n"
-                    "Pass `update=True` to build_index()".format(directory.name)
-                )
-                continue
 
         print("Indexing experiment: {}".format(directory.name))
 
-        if prune:
-            # Prune files that exist in the database but are not present
-            # on the filesystem
-            missing_files = set([f.ncfile for f in expt.ncfiles]) - files
-            if len(missing_files) > 0:
-                # Make a list of NCFile objects to pass to prune_files
-                missing_files_objs = [
-                    f for f in expt.ncfiles if f.ncfile in missing_files
-                ]
-                prune_files(expt, session, missing_files_objs, delete=delete)
+        # Prune files that exist in the database but are not present
+        # on the filesystem
+        missing_files = set([f.ncfile for f in expt.ncfiles]) - files
+        if len(missing_files) > 0:
+            # Make a list of NCFile objects to pass to prune_files
+            missing_files_objs = [f for f in expt.ncfiles if f.ncfile in missing_files]
+            prune_files(expt, session, missing_files_objs, delete=(prune == "delete"))
 
         # Filter conditions
         if not force:
