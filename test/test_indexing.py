@@ -83,7 +83,9 @@ def test_reindex_force(session_db):
     assert db.check()
 
     # re-run the index, make sure re-index
-    reindexed = database.build_index("test/data/indexing/broken_file", session, force=True)
+    reindexed = database.build_index(
+        "test/data/indexing/broken_file", session, force=True
+    )
     assert reindexed == 1
 
 
