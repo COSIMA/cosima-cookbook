@@ -73,20 +73,18 @@ def test_update_nonew(session_db):
     assert db.check()
 
     # re-run the index, make sure we don't re-index anything
-    reindexed = database.build_index(
-        "test/data/indexing/broken_file", session
-    )
+    reindexed = database.build_index("test/data/indexing/broken_file", session)
     assert reindexed == 0
 
 
-def test_reindex_noupdate(session_db):
+def test_reindex_force(session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session)
     assert db.check()
 
-    # re-run the index, make sure we don't re-index anything
-    reindexed = database.build_index("test/data/indexing/broken_file", session)
-    assert reindexed == 0
+    # re-run the index, make sure re-index
+    reindexed = database.build_index("test/data/indexing/broken_file", session, force=True)
+    assert reindexed == 1
 
 
 def test_update_newfile(session_db, tmpdir):
@@ -357,7 +355,7 @@ def test_index_with_prune_nodelete(session_db, tmpdir):
 
     # remove the file and build with pruning
     os.remove(expt_dir / "test1.nc")
-    database.build_index(str(expt_dir), session, prune='flag')
+    database.build_index(str(expt_dir), session, prune="flag")
 
     # now we should still have one file, but now not present
     q = session.query(database.NCFile)
@@ -384,7 +382,7 @@ def test_index_with_prune_delete(session_db, tmpdir):
 
     # remove the file and build with pruning
     os.remove(expt_dir / "test1.nc")
-    database.build_index(str(expt_dir), session, prune='delete')
+    database.build_index(str(expt_dir), session, prune="delete")
 
     # now we should still have no files
     q = session.query(database.NCFile)
