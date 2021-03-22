@@ -530,6 +530,7 @@ def index_experiment(files, session, expt, client=None):
 
     # update all variables to be unique
     for ncfile in results:
+
         for ncvar in ncfile.ncvars.values():
             v = ncvar.variable
             ncvar.variable = CFVariable.as_unique(
@@ -588,18 +589,34 @@ def build_index(
 
         print("Indexing experiment: {}".format(directory.name))
 
+        existing_files = set([f.ncfile for f in expt.ncfiles])
+
         # Prune files that exist in the database but are not present
         # on the filesystem
-        missing_files = set([f.ncfile for f in expt.ncfiles]) - files
+        missing_files = existing_files - files
         if len(missing_files) > 0:
             # Make a list of NCFile objects to pass to prune_files
             missing_files_objs = [f for f in expt.ncfiles if f.ncfile in missing_files]
             prune_files(expt, session, missing_files_objs, delete=(prune == "delete"))
 
-        # Filter conditions
-        if not force:
+        if force:
+            # Delete entries that we're reindexing
+            for f in files & existing_files:
+                existing_ncfile = (
+                    session.query(NCFile)
+                    .join(NCExperiment)
+                    .filter(NCExperiment.experiment == str(directory.name))
+                    .filter(NCExperiment.root_dir == str(directory.resolve()))
+                    .filter(NCFile.ncfile == f)
+                    .one_or_none()
+                )
+                if existing_ncfile is not None:
+                    print('Re-indexing {}'.format(f))
+                    session.delete(existing_ncfile)
+            session.flush()
+        else:
             # Only pass files that are not already in DB
-            files = files - set([f.ncfile for f in expt.ncfiles])
+            files = files - existing_files
 
         indexed += index_experiment(files, session, expt, client)
 
