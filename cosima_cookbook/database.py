@@ -611,7 +611,7 @@ def build_index(
                     .one_or_none()
                 )
                 if existing_ncfile is not None:
-                    print('Re-indexing {}'.format(f))
+                    print("Re-indexing {}".format(f))
                     session.delete(existing_ncfile)
             session.flush()
         else:
