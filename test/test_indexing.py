@@ -22,21 +22,21 @@ def unreadable_dir(tmpdir):
 
 def test_find_files():
 
-    files = database.find_files('test/data/indexing/')
-    assert( len(files) == 16 )
+    files = database.find_files("test/data/indexing/")
+    assert len(files) == 16
 
     for f in files:
-        assert(Path(f).suffix == '.nc')
+        assert Path(f).suffix == ".nc"
 
     # No python source files in data subdirectory
-    assert( len(database.find_files('test/data/indexing/', "*.py")) == 0 )
+    assert len(database.find_files("test/data/indexing/", "*.py")) == 0
 
     # Test works with alternative suffix
-    files = database.find_files('test/', "*.py")
-    assert( len(files) == 7 )
+    files = database.find_files("test/", "*.py")
+    assert len(files) == 7
 
     for f in files:
-        assert( Path(f).suffix == '.py' )
+        assert Path(f).suffix == ".py"
 
 
 def test_find_experiment(session_db):
@@ -48,7 +48,7 @@ def test_find_experiment(session_db):
     )
     session.add(expt)
 
-    assert( expt == database.find_experiment(session, directory) )
+    assert expt == database.find_experiment(session, directory)
 
 
 def test_index_experiment(session_db):
@@ -64,14 +64,14 @@ def test_index_experiment(session_db):
     # Index just one file
     database.index_experiment(set(list(files)[:1]), session, expt)
 
-    assert( expt == database.find_experiment(session, directory) )
-    assert( len(database.find_experiment(session, directory).ncfiles) == 1 )
+    assert expt == database.find_experiment(session, directory)
+    assert len(database.find_experiment(session, directory).ncfiles) == 1
 
     # Index the other file
     database.index_experiment(set(list(files)[1:]), session, expt)
 
-    assert( expt == database.find_experiment(session, directory) )
-    assert( len(database.find_experiment(session, directory).ncfiles) == 2 )
+    assert expt == database.find_experiment(session, directory)
+    assert len(database.find_experiment(session, directory).ncfiles) == 2
 
 
 def test_unreadable(session_db, unreadable_dir):
