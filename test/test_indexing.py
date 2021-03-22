@@ -4,6 +4,7 @@ import shutil
 import xarray as xr
 from cosima_cookbook import database
 from sqlalchemy import func
+from pathlib import Path
 
 
 @pytest.fixture
@@ -17,6 +18,60 @@ def unreadable_dir(tmpdir):
     yield idx_dir
 
     expt_path.remove(ignore_errors=True)
+
+
+def test_find_files():
+
+    files = database.find_files('test/data/indexing/')
+    assert( len(files) == 16 )
+
+    for f in files:
+        assert(Path(f).suffix == '.nc')
+
+    # No python source files in data subdirectory
+    assert( len(database.find_files('test/data/indexing/', "*.py")) == 0 )
+
+    # Test works with alternative suffix
+    files = database.find_files('test/', "*.py")
+    assert( len(files) == 7 )
+
+    for f in files:
+        assert( Path(f).suffix == '.py' )
+
+
+def test_find_experiment(session_db):
+    session, db = session_db
+
+    directory = Path("test/data/indexing/broken_file")
+    expt = database.NCExperiment(
+        experiment=str(directory.name), root_dir=str(directory.resolve())
+    )
+    session.add(expt)
+
+    assert( expt == database.find_experiment(session, directory) )
+
+
+def test_index_experiment(session_db):
+    session, db = session_db
+
+    directory = Path("test/data/indexing/longnames")
+    expt = database.NCExperiment(
+        experiment=str(directory.name), root_dir=str(directory.resolve())
+    )
+
+    files = database.find_files(directory)
+
+    # Index just one file
+    database.index_experiment(set(list(files)[:1]), session, expt)
+
+    assert( expt == database.find_experiment(session, directory) )
+    assert( len(database.find_experiment(session, directory).ncfiles) == 1 )
+
+    # Index the other file
+    database.index_experiment(set(list(files)[1:]), session, expt)
+
+    assert( expt == database.find_experiment(session, directory) )
+    assert( len(database.find_experiment(session, directory).ncfiles) == 2 )
 
 
 def test_unreadable(session_db, unreadable_dir):
