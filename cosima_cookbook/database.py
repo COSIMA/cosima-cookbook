@@ -578,10 +578,8 @@ def build_index(
 
     indexed = 0
     for directory in [Path(d) for d in directories]:
-        # find all netCDF files in the experiment directory
-        files = find_files(directory, followsymlinks=followsymlinks)
-        expt = find_experiment(session, directory)
 
+        expt = find_experiment(session, directory)
         if expt is None:
             expt = NCExperiment(
                 experiment=str(directory.name), root_dir=str(directory.resolve())
@@ -589,75 +587,78 @@ def build_index(
 
         print("Indexing experiment: {}".format(directory.name))
 
-        existing_files = set([f.ncfile for f in expt.ncfiles])
-
-        # Prune files that exist in the database but are not present
-        # on the filesystem
-        missing_files = existing_files - files
-        if len(missing_files) > 0:
-            # Make a list of NCFile objects to pass to prune_files
-            missing_files_objs = [f for f in expt.ncfiles if f.ncfile in missing_files]
-            prune_files(expt, session, missing_files_objs, delete=(prune == "delete"))
+        # find all netCDF files in the experiment directory
+        files = find_files(directory, followsymlinks=followsymlinks)
 
         if force:
-            # Delete entries that we're reindexing
-            for f in files & existing_files:
-                existing_ncfile = (
-                    session.query(NCFile)
-                    .join(NCExperiment)
-                    .filter(NCExperiment.experiment == str(directory.name))
-                    .filter(NCExperiment.root_dir == str(directory.resolve()))
-                    .filter(NCFile.ncfile == f)
-                    .one_or_none()
-                )
-                if existing_ncfile is not None:
-                    print("Re-indexing {}".format(f))
-                    session.delete(existing_ncfile)
-            session.flush()
+            # Prune all files to force re-indexing data
+            _prune_files(expt, session, {}, delete=True)
         else:
-            # Only pass files that are not already in DB
-            files = files - existing_files
+            # Prune files that exist in the database but are not present on disk
+            _prune_files(expt, session, files, delete=(prune == "delete"))
 
-        indexed += index_experiment(files, session, expt, client)
+        if len(files) > 0:
+            if len(expt.ncfiles) > 0:
+                # Only pass files that are not already in DB
+                files = {f.ncfile for f in session.query(NCFile).with_parent(expt).filter(NCFile.ncfile.notin_(files))}
 
-        # if everything went smoothly, commit these changes to the database
-        session.commit()
+            indexed += index_experiment(files, session, expt, client)
+
+            # if everything went smoothly, commit these changes to the database
+            session.commit()
 
     return indexed
 
 
-def prune_files(expt, session, files, delete=True):
-    """Delete or mark as not present the database entries for specified
-    files objects within the given experiment
+def _prune_files(expt, session, files, delete=True):
+    """Delete or mark as not present the database entries that are
+    not present in the list of files
     """
-    for f in files:
-        if delete:
-            session.delete(f)
-        else:
-            f.present = False
-
-
-def prune_experiment(experiment, session, delete=True):
-    """Delete or mark as not present the database entries for files
-    within the given experiment that no longer exist or were broken at
-    index time.
-    """
-
-    expt = (
-        session.query(NCExperiment)
-        .filter(NCExperiment.experiment == experiment)
-        .one_or_none()
-    )
-
-    if not expt:
-        print("No such experiment: {}".format(experiment))
+    if len(expt.ncfiles) == 0:
+        # No entries in DB, special case just return as there is nothing
+        # to prune and trying to do so will raise errors
         return
 
-    files = {f for f in expt.ncfiles if not f.present or not f.ncfile_path.exists()}
+    # Missing are physically missing from disk, or where marked as not
+    # present previously. Can also be a broken file which didn't index
+    missing_ncfiles = (session.query(NCFile)
+                       .with_parent(expt)
+                       .filter(NCFile.ncfile.notin_(files) |
+                               (NCFile.present == False)) )
+    if missing_ncfiles.first() is not None:
+        if delete:
+            missing_ncfiles.delete(synchronize_session=False)
+        else:
+            missing_ncfiles.update({NCFile.present: False}, synchronize_session=False)
+    
+        session.commit()
 
-    prune_files(expt, session, files, delete)
 
-    session.commit()
+def prune_experiment(experiment, session, delete=True, followsymlinks=False):
+    """Delete or mark as not present the database entries for files
+    within the given experiment that no longer exist or were broken at
+    index time. Experiment can be either an NCExperiment object, or the
+    name of an experiment available within the current session.
+    """
+    
+    if isinstance(experiment, NCExperiment):
+        expt = experiment
+        experiment = expt.experiment
+    else:
+        expt = (
+            session.query(NCExperiment)
+            .filter(NCExperiment.experiment == experiment)
+            .one_or_none()
+        )
+        if not expt:
+            print("No such experiment: {}".format(experiment))
+            return
+
+    files = find_files(expt.root_dir, followsymlinks=followsymlinks)
+
+    # Prune files that exist in the database but are not present
+    # on the filesystem
+    _prune_files(expt, session, files, delete)
 
 
 def delete_experiment(experiment, session):
