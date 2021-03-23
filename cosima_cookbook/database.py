@@ -600,7 +600,12 @@ def build_index(
         if len(files) > 0:
             if len(expt.ncfiles) > 0:
                 # Only pass files that are not already in DB
-                files = {f.ncfile for f in session.query(NCFile).with_parent(expt).filter(NCFile.ncfile.notin_(files))}
+                files = {
+                    f.ncfile
+                    for f in session.query(NCFile)
+                    .with_parent(expt)
+                    .filter(NCFile.ncfile.notin_(files))
+                }
 
             indexed += index_experiment(files, session, expt, client)
 
@@ -621,16 +626,17 @@ def _prune_files(expt, session, files, delete=True):
 
     # Missing are physically missing from disk, or where marked as not
     # present previously. Can also be a broken file which didn't index
-    missing_ncfiles = (session.query(NCFile)
-                       .with_parent(expt)
-                       .filter(NCFile.ncfile.notin_(files) |
-                               (NCFile.present == False)) )
+    missing_ncfiles = (
+        session.query(NCFile)
+        .with_parent(expt)
+        .filter(NCFile.ncfile.notin_(files) | (NCFile.present == False))
+    )
     if missing_ncfiles.first() is not None:
         if delete:
             missing_ncfiles.delete(synchronize_session=False)
         else:
             missing_ncfiles.update({NCFile.present: False}, synchronize_session=False)
-    
+
         session.commit()
 
 
@@ -640,7 +646,7 @@ def prune_experiment(experiment, session, delete=True, followsymlinks=False):
     index time. Experiment can be either an NCExperiment object, or the
     name of an experiment available within the current session.
     """
-    
+
     if isinstance(experiment, NCExperiment):
         expt = experiment
         experiment = expt.experiment
