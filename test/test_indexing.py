@@ -43,6 +43,9 @@ def test_find_experiment(session_db):
     session, db = session_db
 
     directory = Path("test/data/indexing/broken_file")
+
+    assert None == database.find_experiment(session, directory)
+
     expt = database.NCExperiment(
         experiment=str(directory.name), root_dir=str(directory.resolve())
     )
@@ -339,6 +342,23 @@ def test_prune_broken(session_db):
     q = session.query(database.NCFile)
     r = q.all()
     assert len(r) == 0
+
+
+def test_prune_missing_experiment(session_db):
+    session, db = session_db
+    database.build_index("test/data/indexing/broken_file", session)
+
+    assert db.check()
+
+    # check that we have one file
+    q = session.query(database.NCFile)
+    r = q.all()
+    assert len(r) == 1
+
+    # prune experiment
+    experiment = "incorrect_experiment"
+    with pytest.raises(RuntimeError):
+        database.prune_experiment(experiment, session)
 
 
 def test_prune_nodelete(session_db, tmpdir):

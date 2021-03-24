@@ -655,8 +655,8 @@ def prune_experiment(experiment, session, delete=True, followsymlinks=False):
             .one_or_none()
         )
         if not expt:
-            print("No such experiment: {}".format(experiment))
-            return
+            logging.error("No such experiment: {}".format(experiment))
+            raise RuntimeError
 
     files = find_files(expt.root_dir, followsymlinks=followsymlinks)
 
