@@ -357,7 +357,7 @@ def test_prune_missing_experiment(session_db):
 
     # prune experiment
     experiment = "incorrect_experiment"
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match='No such experiment: '.format(experiment)):
         database.prune_experiment(experiment, session)
 
 
