@@ -631,13 +631,11 @@ def _prune_files(expt, session, files, delete=True):
         .with_parent(expt)
         .filter(NCFile.ncfile.notin_(files) | (NCFile.present == False))
     )
-    if missing_ncfiles.first() is not None:
-        if delete:
-            missing_ncfiles.delete(synchronize_session=False)
-        else:
-            missing_ncfiles.update({NCFile.present: False}, synchronize_session=False)
-
-        session.commit()
+    session.expire_all()
+    if delete:
+        missing_ncfiles.delete(synchronize_session=False)
+    else:
+        missing_ncfiles.update({NCFile.present: False}, synchronize_session=False)
 
 
 def prune_experiment(experiment, session, delete=True, followsymlinks=False):
