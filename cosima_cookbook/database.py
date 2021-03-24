@@ -601,8 +601,8 @@ def build_index(
             if len(expt.ncfiles) > 0:
                 # Only pass files that are not already in DB
                 files = {
-                    f.ncfile
-                    for f in session.query(NCFile)
+                    f
+                    for f, in session.query(NCFile.ncfile)
                     .with_parent(expt)
                     .filter(NCFile.ncfile.notin_(files))
                 }
