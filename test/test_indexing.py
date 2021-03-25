@@ -4,6 +4,7 @@ import shutil
 import xarray as xr
 from cosima_cookbook import database
 from sqlalchemy import func
+from pathlib import Path
 
 
 @pytest.fixture
@@ -17,6 +18,63 @@ def unreadable_dir(tmpdir):
     yield idx_dir
 
     expt_path.remove(ignore_errors=True)
+
+
+def test_find_files():
+
+    files = database.find_files("test/data/indexing/")
+    assert len(files) == 16
+
+    for f in files:
+        assert Path(f).suffix == ".nc"
+
+    # No python source files in data subdirectory
+    assert len(database.find_files("test/data/indexing/", "*.py")) == 0
+
+    # Test works with alternative suffix
+    files = database.find_files("test/", "*.py")
+    assert len(files) == 7
+
+    for f in files:
+        assert Path(f).suffix == ".py"
+
+
+def test_find_experiment(session_db):
+    session, db = session_db
+
+    directory = Path("test/data/indexing/broken_file")
+
+    assert None == database.find_experiment(session, directory)
+
+    expt = database.NCExperiment(
+        experiment=str(directory.name), root_dir=str(directory.resolve())
+    )
+    session.add(expt)
+
+    assert expt == database.find_experiment(session, directory)
+
+
+def test_index_experiment(session_db):
+    session, db = session_db
+
+    directory = Path("test/data/indexing/longnames")
+    expt = database.NCExperiment(
+        experiment=str(directory.name), root_dir=str(directory.resolve())
+    )
+
+    files = database.find_files(directory)
+
+    # Index just one file
+    database.index_experiment(set(list(files)[:1]), session, expt)
+
+    assert expt == database.find_experiment(session, directory)
+    assert len(database.find_experiment(session, directory).ncfiles) == 1
+
+    # Index the other file
+    database.index_experiment(set(list(files)[1:]), session, expt)
+
+    assert expt == database.find_experiment(session, directory)
+    assert len(database.find_experiment(session, directory).ncfiles) == 2
 
 
 def test_unreadable(session_db, unreadable_dir):
@@ -73,20 +131,20 @@ def test_update_nonew(session_db):
     assert db.check()
 
     # re-run the index, make sure we don't re-index anything
-    reindexed = database.build_index(
-        "test/data/indexing/broken_file", session, update=True
-    )
+    reindexed = database.build_index("test/data/indexing/broken_file", session)
     assert reindexed == 0
 
 
-def test_reindex_noupdate(session_db):
+def test_reindex_force(session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session)
     assert db.check()
 
-    # re-run the index, make sure we don't re-index anything
-    reindexed = database.build_index("test/data/indexing/broken_file", session)
-    assert reindexed == 0
+    # re-run the index, make sure re-index
+    reindexed = database.build_index(
+        "test/data/indexing/broken_file", session, force=True
+    )
+    assert reindexed == 1
 
 
 def test_update_newfile(session_db, tmpdir):
@@ -100,7 +158,7 @@ def test_update_newfile(session_db, tmpdir):
     shutil.copy(
         "test/data/indexing/longnames/output000/test2.nc", str(tmpdir / "test2.nc")
     )
-    database.build_index(str(tmpdir), session, update=True)
+    database.build_index(str(tmpdir), session)
 
 
 def test_single_broken(session_db):
@@ -286,6 +344,23 @@ def test_prune_broken(session_db):
     assert len(r) == 0
 
 
+def test_prune_missing_experiment(session_db):
+    session, db = session_db
+    database.build_index("test/data/indexing/broken_file", session)
+
+    assert db.check()
+
+    # check that we have one file
+    q = session.query(database.NCFile)
+    r = q.all()
+    assert len(r) == 1
+
+    # prune experiment
+    experiment = "incorrect_experiment"
+    with pytest.raises(RuntimeError, match="No such experiment: ".format(experiment)):
+        database.prune_experiment(experiment, session)
+
+
 def test_prune_nodelete(session_db, tmpdir):
     session, db = session_db
     expt_dir = tmpdir / "expt"
@@ -357,7 +432,7 @@ def test_index_with_prune_nodelete(session_db, tmpdir):
 
     # remove the file and build with pruning
     os.remove(expt_dir / "test1.nc")
-    database.build_index(str(expt_dir), session, update=True, prune=True, delete=False)
+    database.build_index(str(expt_dir), session, prune="flag")
 
     # now we should still have one file, but now not present
     q = session.query(database.NCFile)
@@ -384,7 +459,7 @@ def test_index_with_prune_delete(session_db, tmpdir):
 
     # remove the file and build with pruning
     os.remove(expt_dir / "test1.nc")
-    database.build_index(str(expt_dir), session, update=True, prune=True, delete=True)
+    database.build_index(str(expt_dir), session, prune="delete")
 
     # now we should still have no files
     q = session.query(database.NCFile)
