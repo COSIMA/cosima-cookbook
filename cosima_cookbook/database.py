@@ -23,9 +23,15 @@ from sqlalchemy import (
     ForeignKey,
     Index,
 )
-from sqlalchemy import MetaData, Table, select, sql, exists
+from sqlalchemy import MetaData, Table, select, sql, exists, event
 
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import (
+    object_session,
+    relationship,
+    Session,
+    sessionmaker,
+    validates,
+)
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -140,6 +146,45 @@ class Keyword(UniqueMixin, Base):
         return query.filter(Keyword.keyword == keyword)
 
 
+class NCAttributeString(Base):
+    # unique-ified table of strings (keys/values) encountered in attribute processing
+    #
+    # this doesn't use the usual unique mixin pattern because it's hard to enforce
+    # uniqueness through the dictionary mapped collection on NCFile and NCVar
+    __tablename__ = "ncattribute_strings"
+
+    id = Column(Integer, primary_key=True)
+    value = Column(String, unique=True)
+
+
+def _setup_ncattribute(session, attr_object):
+    """
+    Return the existing NCAttributeString with the same value as attr_object
+    if it already exists in session, else return attr_object.
+    """
+
+    # create a cache on the session just for attributes (ignoring the global
+    # cache for UniqueMixin, for example)
+    cache = getattr(session, "_ncattribute_cache", None)
+    if cache is None:
+        session._ncattribute_cache = cache = {}
+
+    if attr_object.value in cache:
+        return cache[attr_object.value]
+
+    with session.no_autoflush:
+        r = (
+            session.query(NCAttributeString)
+            .filter_by(value=attr_object.value)
+            .one_or_none()
+        )
+        if r is not None:
+            return r
+
+    cache[attr_object.value] = attr_object
+    return attr_object
+
+
 class NCAttribute(Base):
     __tablename__ = "ncattributes"
 
@@ -149,14 +194,69 @@ class NCAttribute(Base):
     ncvar_id = Column(Integer, ForeignKey("ncvars.id"))
     ncfile_id = Column(Integer, ForeignKey("ncfiles.id"))
 
+    name_id = Column(Integer, ForeignKey("ncattribute_strings.id"))
+    value_id = Column(Integer, ForeignKey("ncattribute_strings.id"))
+
+    _name = relationship("NCAttributeString", foreign_keys=name_id)
+    _value = relationship("NCAttributeString", foreign_keys=value_id)
+
     #: Attribute name
-    name = Column(String, nullable=False, index=True)
+    name = association_proxy(
+        "_name", "value", creator=lambda value: NCAttributeString(value=value)
+    )
     #: Attribute value (cast to a string)
-    value = Column(String)
+    value = association_proxy(
+        "_value", "value", creator=lambda value: NCAttributeString(value=value)
+    )
 
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
+    @validates("_name", "_value")
+    def _validate_name(self, key, value):
+        # called when the _name or _value objects are modified: look to see if
+        # an existing attribute key/value with the same string already exists
+        # in the session
+
+        sess = object_session(self)
+        if sess is not None:
+            return _setup_ncattribute(sess, value)
+
+        return value
+
+
+@event.listens_for(Session, "transient_to_pending")
+def _validate_ncattribute(session, object_):
+    # this is the second part of the attribute uniqueness constraint: the transient -> pending
+    # event is fired when an object is added to the session, so at this point we'll have access
+    # to all the other attribute key/value pairs on objects already in the session
+
+    if (
+        isinstance(object_, NCAttribute)
+        and object_._name is not None
+        and object_._name.id is None
+    ):
+        old_name = object_._name
+
+        # make sure to expunge this NCATtributeString from the session
+        # so we don't accidentally add it and create an (unreferenced)
+        # duplicate
+        if old_name in session:
+            session.expunge(old_name)
+
+        object_._name = _setup_ncattribute(session, old_name)
+
+    if (
+        isinstance(object_, NCAttribute)
+        and object_._value is not None
+        and object_._value.id is None
+    ):
+        old_value = object_._value
+        if old_value in session:
+            session.expunge(old_value)
+
+        object_._value = _setup_ncattribute(session, old_value)
 
 
 class NCFile(Base):
@@ -530,7 +630,6 @@ def index_experiment(files, session, expt, client=None):
 
     # update all variables to be unique
     for ncfile in results:
-
         for ncvar in ncfile.ncvars.values():
             v = ncvar.variable
             ncvar.variable = CFVariable.as_unique(
