@@ -1,6 +1,7 @@
 import pytest
 
 import os.path
+import shutil
 import xarray as xr
 import pandas as pd
 from pandas.util.testing import assert_frame_equal, assert_series_equal
@@ -45,8 +46,15 @@ def session(tmpdir_factory):
     db = d.join("test.db")
     session = cc.database.create_session(str(db))
 
+    # Copy experiment to new location to test splitting an experiment over multiple
+    # root directories
+    shutil.copytree("test/data/explore/one", "test/data/explore/duplicate/one", dirs_exist_ok=True)
+
     # build index for entire module
-    cc.database.build_index(["test/data/explore/one", "test/data/explore/two"], session)
+    cc.database.build_index(["test/data/explore/one", 
+                             "test/data/explore/duplicate/one", 
+                             "test/data/explore/two"], 
+                             session)
 
     # force all files to be marked as present, even if they're empty
     ncfiles = session.query(cc.database.NCFile).all()
@@ -59,12 +67,12 @@ def session(tmpdir_factory):
 
 def test_database_extension(session):
 
-    # DatabaseExtension adds a layer of logic, inferrs model type, identifies
+    # DatabaseExtension adds a layer of logic, infers model type, identifies
     # coordinate and restart variables, and creates a mapping from variables
     # to experiment
     de = cc.explore.DatabaseExtension(session=session)
 
-    assert de.experiments.shape == (2, 8)
+    assert de.experiments.shape == (3, 8)
     assert de.expt_variable_map.shape == (108, 5)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (12, 5)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (44, 5)

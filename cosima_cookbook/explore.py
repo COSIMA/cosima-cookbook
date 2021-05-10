@@ -65,7 +65,7 @@ class DatabaseExtension:
         """
         allvars = pd.concat(
             [self.get_variables(expt) for expt in self.experiments.experiment],
-            keys=self.experiments.experiment,
+            keys=set(self.experiments.experiment),
         )
 
         # Create a new column to flag if variable is from a restart directory
