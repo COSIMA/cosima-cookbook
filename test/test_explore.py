@@ -46,14 +46,11 @@ def session(tmpdir_factory):
     db = d.join("test.db")
     session = cc.database.create_session(str(db))
 
-    # Copy experiment to new location to test splitting an experiment over multiple
-    # root directories
-    shutil.copytree("test/data/explore/one", "test/data/explore/duplicate/one", dirs_exist_ok=True)
-
     # build index for entire module
     cc.database.build_index(["test/data/explore/one", 
+                             "test/data/explore/two",
                              "test/data/explore/duplicate/one", 
-                             "test/data/explore/two"], 
+                             ], 
                              session)
 
     # force all files to be marked as present, even if they're empty
@@ -98,8 +95,8 @@ def test_database_extension(session):
         ],
     )
 
-    assert de.experiments.shape == (1, 8)
-    assert de.allexperiments.shape == (2, 8)
+    assert de.experiments.shape == (2, 8)
+    assert de.allexperiments.shape == (3, 8)
     assert de.expt_variable_map.shape == (52, 5)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 5)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 5)
@@ -125,7 +122,7 @@ def test_database_extension(session):
     )
 
     assert de.experiments.shape == (1, 8)
-    assert de.allexperiments.shape == (2, 8)
+    assert de.allexperiments.shape == (3, 8)
     assert de.expt_variable_map.shape == (56, 5)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 5)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 5)

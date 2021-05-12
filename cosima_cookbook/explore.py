@@ -722,7 +722,7 @@ class DatabaseExplorer(VBox):
 
         # Experiment selector box
         self.expt_selector = Select(
-            options=sorted(self.de.experiments.experiment, key=str.casefold),
+            options=sorted(set(self.de.experiments.experiment), key=str.casefold),
             rows=24,
             layout={"padding": "0px 5px", "width": "auto"},
             disabled=False,
@@ -970,7 +970,7 @@ class ExperimentExplorer(VBox):
         )
         # Experiment selector element
         self.expt_selector = Dropdown(
-            options=sorted(self.de.allexperiments.experiment, key=str.casefold),
+            options=sorted(set(self.de.allexperiments.experiment), key=str.casefold),
             value=self.experiment_name,
             description="",
             layout={"width": "40%"},
