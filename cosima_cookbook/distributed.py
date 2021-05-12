@@ -42,7 +42,7 @@ def start_cluster(diagnostics_port=0):
 
 
 def compute_by_block(dsx):
-    """"""
+    """ """
 
     # determine index key for each chunk
     slices = []
