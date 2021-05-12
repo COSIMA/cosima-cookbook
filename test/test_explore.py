@@ -47,11 +47,14 @@ def session(tmpdir_factory):
     session = cc.database.create_session(str(db))
 
     # build index for entire module
-    cc.database.build_index(["test/data/explore/one", 
-                             "test/data/explore/two",
-                             "test/data/explore/duplicate/one", 
-                             ], 
-                             session)
+    cc.database.build_index(
+        [
+            "test/data/explore/one",
+            "test/data/explore/two",
+            "test/data/explore/duplicate/one",
+        ],
+        session,
+    )
 
     # force all files to be marked as present, even if they're empty
     ncfiles = session.query(cc.database.NCFile).all()
