@@ -6,7 +6,7 @@ import logging
 
 @memory.cache
 def annual_scalar(expt, variables):
-    """"""
+    """ """
 
     logging.debug("Building dataset")
     darray = get_nc_variable(

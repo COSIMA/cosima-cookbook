@@ -1,6 +1,7 @@
 import pytest
 
 import os.path
+import shutil
 import xarray as xr
 import pandas as pd
 from pandas.util.testing import assert_frame_equal, assert_series_equal
@@ -46,7 +47,14 @@ def session(tmpdir_factory):
     session = cc.database.create_session(str(db))
 
     # build index for entire module
-    cc.database.build_index(["test/data/explore/one", "test/data/explore/two"], session)
+    cc.database.build_index(
+        [
+            "test/data/explore/one",
+            "test/data/explore/two",
+            "test/data/explore/duplicate/one",
+        ],
+        session,
+    )
 
     # force all files to be marked as present, even if they're empty
     ncfiles = session.query(cc.database.NCFile).all()
@@ -59,12 +67,12 @@ def session(tmpdir_factory):
 
 def test_database_extension(session):
 
-    # DatabaseExtension adds a layer of logic, inferrs model type, identifies
+    # DatabaseExtension adds a layer of logic, infers model type, identifies
     # coordinate and restart variables, and creates a mapping from variables
     # to experiment
     de = cc.explore.DatabaseExtension(session=session)
 
-    assert de.experiments.shape == (2, 8)
+    assert de.experiments.shape == (3, 8)
     assert de.expt_variable_map.shape == (108, 5)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (12, 5)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (44, 5)
@@ -90,8 +98,8 @@ def test_database_extension(session):
         ],
     )
 
-    assert de.experiments.shape == (1, 8)
-    assert de.allexperiments.shape == (2, 8)
+    assert de.experiments.shape == (2, 8)
+    assert de.allexperiments.shape == (3, 8)
     assert de.expt_variable_map.shape == (52, 5)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 5)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 5)
@@ -117,7 +125,7 @@ def test_database_extension(session):
     )
 
     assert de.experiments.shape == (1, 8)
-    assert de.allexperiments.shape == (2, 8)
+    assert de.allexperiments.shape == (3, 8)
     assert de.expt_variable_map.shape == (56, 5)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 5)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 5)
