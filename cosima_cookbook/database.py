@@ -699,12 +699,14 @@ def build_index(
         if len(files) > 0:
             if len(expt.ncfiles) > 0:
                 # Remove files that are already in the DB
-                files.difference_update({
-                    f
-                    for f, in session.query(NCFile.ncfile)
-                    .with_parent(expt)
-                    .filter(NCFile.ncfile.in_(files))
-                })
+                files.difference_update(
+                    {
+                        f
+                        for f, in session.query(NCFile.ncfile)
+                        .with_parent(expt)
+                        .filter(NCFile.ncfile.in_(files))
+                    }
+                )
 
             indexed += index_experiment(files, session, expt, client)
 
