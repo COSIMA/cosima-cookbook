@@ -158,7 +158,8 @@ def test_update_newfile(session_db, tmpdir):
     shutil.copy(
         "test/data/indexing/longnames/output000/test2.nc", str(tmpdir / "test2.nc")
     )
-    database.build_index(str(tmpdir), session)
+    reindexed = database.build_index(str(tmpdir), session)
+    assert reindexed == 1
 
 
 def test_single_broken(session_db):
