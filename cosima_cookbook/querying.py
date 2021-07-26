@@ -47,8 +47,7 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
             columns.append(getattr(NCExperiment, f))
 
     q = (
-        session.query(
-            *columns, func.count(NCFile.experiment_id).label("ncfiles"))
+        session.query(*columns, func.count(NCFile.experiment_id).label("ncfiles"))
         .join(NCFile.experiment)
         .group_by(NCFile.experiment_id)
     )
@@ -84,8 +83,7 @@ def get_keywords(session, experiment=None):
     """
 
     if experiment is not None:
-        q = session.query(NCExperiment).filter(
-            NCExperiment.experiment == experiment)
+        q = session.query(NCExperiment).filter(NCExperiment.experiment == experiment)
         return q.scalar().keywords
     else:
         q = session.query(Keyword)
@@ -270,7 +268,7 @@ def _ncfiles_for_variable(
     database objects for a given variable.
 
     Optionally, pass ncfile, start_time, end_time, frequency, attrs,
-    attrs_unique, or n for additional disambiguation (see getvar 
+    attrs_unique, or n for additional disambiguation (see getvar
     documentation for their semantics).
     """
 
