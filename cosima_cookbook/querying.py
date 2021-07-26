@@ -151,7 +151,7 @@ def getvar(
     n=None,
     frequency=None,
     attrs={},
-    attrs_unique={'cell_methods': 'time: mean'},
+    attrs_unique={"cell_methods": "time: mean"},
     **kwargs,
 ):
     """For a given experiment, return an xarray DataArray containing the
@@ -176,7 +176,7 @@ def getvar(
                 at different temporal resolution
     attrs - a dictionary of attribute names and their values that must be
             present on the returned variables
-    attrs_unique - a dictionary of attribute names and their values that 
+    attrs_unique - a dictionary of attribute names and their values that
             must be unique on the returned variables. Defaults to
             {'cell_methods': 'time: mean'} and should not generally be
             changed.
@@ -269,9 +269,9 @@ def _ncfiles_for_variable(
     """Return a list of (NCFile, NCVar) pairs corresponding to the
     database objects for a given variable.
 
-    Optionally, pass ncfile, start_time, end_time, frequency, attrs
-    or n for additional disambiguation (see getvar documentation for 
-    their semantics).
+    Optionally, pass ncfile, start_time, end_time, frequency, attrs,
+    attrs_unique, or n for additional disambiguation (see getvar 
+    documentation for their semantics).
     """
 
     f, v = database.NCFile, database.NCVar
@@ -325,9 +325,7 @@ def _ncfiles_for_variable(
 
     # check whether the results are unique
     for attr, val in attrs_unique.items():
-        unique_attributes = set(
-            str(f.NCVar.attrs[attr]) for f in ncfiles
-        )
+        unique_attributes = set(str(f.NCVar.attrs[attr]) for f in ncfiles)
         if len(unique_attributes) > 1:
             warnings.warn(
                 f"Your query returns variables from files with different {attr}: {unique_attributes}. "
