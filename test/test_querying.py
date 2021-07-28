@@ -3,8 +3,7 @@ import pytest
 import os.path
 import xarray as xr
 import pandas as pd
-from pandas.util.testing import assert_frame_equal, assert_series_equal
-from pandas.util.testing import assert_frame_equal, assert_series_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 import cosima_cookbook as cc
 
