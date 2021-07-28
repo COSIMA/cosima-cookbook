@@ -4,6 +4,7 @@ import os.path
 import xarray as xr
 import pandas as pd
 from pandas.util.testing import assert_frame_equal, assert_series_equal
+from pandas.util.testing import assert_frame_equal, assert_series_equal
 
 import cosima_cookbook as cc
 
@@ -39,17 +40,47 @@ def test_invalid_query(session):
         cc.querying.getvar("querying", "notfound", session, decode_times=False)
 
 
-def test_warning_on_ambiguous(session):
+def test_warning_on_ambiguous_attr(session):
+
     with pytest.warns(UserWarning) as record:
-        cc.querying._ncfiles_for_variable("querying_disambiguation", "temp", session)
+        cc.querying._ncfiles_for_variable("querying_disambiguation", "v", session, attrs_unique={'cell_methods': 'bar'},)
 
     assert len(record) == 1
     assert (
         record[0]
         .message.args[0]
-        .startswith("Your query gets a variable from differently-named files:")
+        .startswith("Your query returns variables from files with different cell_methods")
     )
 
+def test_disambiguation_on_default_attr(session):
+
+    files = cc.querying._ncfiles_for_variable("querying_disambiguation", 
+                                              "v", 
+                                              session, 
+                                              attrs_unique={'cell_methods': 'mean_pow(02)'},
+                                              )
+
+    assert len(files) == 1
+    assert files[0].NCVar.attrs['cell_methods'] == 'mean_pow(02)'
+
+    files = cc.querying._ncfiles_for_variable("querying_disambiguation", 
+                                              "v", 
+                                              session, 
+                                              attrs_unique={'cell_methods': 'time: mean'},
+                                              )
+
+    assert len(files) == 1
+    assert files[0].NCVar.attrs['cell_methods'] == 'time: mean'
+
+    # Add another unique attribute not present (should be ignored)
+    files = cc.querying._ncfiles_for_variable("querying_disambiguation", 
+                                              "v", 
+                                              session, 
+                                              attrs_unique={'cell_methods': 'time: mean', 'foo': 'bar'},
+                                              )
+
+    assert len(files) == 1
+    assert files[0].NCVar.attrs['cell_methods'] == 'time: mean'
 
 def test_query_times(session):
     with cc.querying.getvar("querying", "ty_trans", session) as v:
@@ -181,14 +212,9 @@ def test_disambiguation_by_frequency(session):
     with pytest.warns(UserWarning) as record:
         assert len(cc.querying._ncfiles_for_variable("querying", "time", session)) == 3
 
-    assert len(record) == 2
+    assert len(record) == 1
     assert (
         record[0]
-        .message.args[0]
-        .startswith("Your query gets a variable from differently-named files:")
-    )
-    assert (
-        record[1]
         .message.args[0]
         .startswith("Your query returns files with differing frequencies:")
     )

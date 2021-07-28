@@ -138,7 +138,6 @@ def get_frequencies(session, experiment=None):
 
     return pd.DataFrame(q)
 
-
 def getvar(
     expt,
     variable,
@@ -148,8 +147,8 @@ def getvar(
     end_time=None,
     n=None,
     frequency=None,
-    attrs={},
-    attrs_unique={"cell_methods": "time: mean"},
+    attrs=None,
+    attrs_unique=None,
     **kwargs,
 ):
     """For a given experiment, return an xarray DataArray containing the
@@ -161,8 +160,6 @@ def getvar(
     ncfile -  an optional text string indicating the pattern for filenames
               to load. All filenames containing this string will match, so
               be specific. '/' can be used to match the start of the
-    # Attributes that are required to be unique to ensure disambiguation
-    attrs_unique = {'cell_methods': 'time: mean'},
               filename, and '%' is a wildcard character.
     start_time - only load data after this date. specify as a text string,
                  e.g. '1900-01-01'
@@ -191,8 +188,11 @@ def getvar(
 
     """
 
+    if attrs_unique is None:
+        attrs_unique={"cell_methods": "time: mean"}
+
     ncfiles = _ncfiles_for_variable(
-        expt, variable, session, ncfile, start_time, end_time, n, frequency, attrs
+        expt, variable, session, ncfile, start_time, end_time, n, frequency, attrs, attrs_unique
     )
 
     # we know at least one variable was returned
@@ -261,8 +261,8 @@ def _ncfiles_for_variable(
     end_time=None,
     n=None,
     frequency=None,
-    attrs={},
-    attrs_unique={},
+    attrs=None,
+    attrs_unique=None,
 ):
     """Return a list of (NCFile, NCVar) pairs corresponding to the
     database objects for a given variable.
@@ -271,6 +271,12 @@ def _ncfiles_for_variable(
     attrs_unique, or n for additional disambiguation (see getvar
     documentation for their semantics).
     """
+
+    if attrs is None:
+        attrs = {}
+
+    if attrs_unique is None:
+        attrs_unique = {}
 
     f, v = database.NCFile, database.NCVar
     q = (
@@ -299,7 +305,7 @@ def _ncfiles_for_variable(
         # add to attributes filter
         if attr not in attrs:
             if q.filter(v.ncvar_attrs.any(name=attr, value=val)).first():
-                attrs.update(attrs_unique)
+                attrs.update({attr: val})
 
     # requested specific attribute values
     for attr, val in attrs.items():
@@ -323,7 +329,10 @@ def _ncfiles_for_variable(
 
     # check whether the results are unique
     for attr, val in attrs_unique.items():
-        unique_attributes = set(str(f.NCVar.attrs[attr]) for f in ncfiles)
+        unique_attributes = set()
+        for f in ncfiles:
+            if attr in f.NCVar.attrs:
+                unique_attributes.add(str(f.NCVar.attrs[attr]))
         if len(unique_attributes) > 1:
             warnings.warn(
                 f"Your query returns variables from files with different {attr}: {unique_attributes}. "
