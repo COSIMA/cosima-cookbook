@@ -138,6 +138,7 @@ def get_frequencies(session, experiment=None):
 
     return pd.DataFrame(q)
 
+
 def getvar(
     expt,
     variable,
@@ -189,10 +190,19 @@ def getvar(
     """
 
     if attrs_unique is None:
-        attrs_unique={"cell_methods": "time: mean"}
+        attrs_unique = {"cell_methods": "time: mean"}
 
     ncfiles = _ncfiles_for_variable(
-        expt, variable, session, ncfile, start_time, end_time, n, frequency, attrs, attrs_unique
+        expt,
+        variable,
+        session,
+        ncfile,
+        start_time,
+        end_time,
+        n,
+        frequency,
+        attrs,
+        attrs_unique,
     )
 
     # we know at least one variable was returned

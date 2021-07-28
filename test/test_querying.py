@@ -42,44 +42,56 @@ def test_invalid_query(session):
 def test_warning_on_ambiguous_attr(session):
 
     with pytest.warns(UserWarning) as record:
-        cc.querying._ncfiles_for_variable("querying_disambiguation", "v", session, attrs_unique={'cell_methods': 'bar'},)
+        cc.querying._ncfiles_for_variable(
+            "querying_disambiguation",
+            "v",
+            session,
+            attrs_unique={"cell_methods": "bar"},
+        )
 
     assert len(record) == 1
     assert (
         record[0]
         .message.args[0]
-        .startswith("Your query returns variables from files with different cell_methods")
+        .startswith(
+            "Your query returns variables from files with different cell_methods"
+        )
     )
+
 
 def test_disambiguation_on_default_attr(session):
 
-    files = cc.querying._ncfiles_for_variable("querying_disambiguation", 
-                                              "v", 
-                                              session, 
-                                              attrs_unique={'cell_methods': 'mean_pow(02)'},
-                                              )
+    files = cc.querying._ncfiles_for_variable(
+        "querying_disambiguation",
+        "v",
+        session,
+        attrs_unique={"cell_methods": "mean_pow(02)"},
+    )
 
     assert len(files) == 1
-    assert files[0].NCVar.attrs['cell_methods'] == 'mean_pow(02)'
+    assert files[0].NCVar.attrs["cell_methods"] == "mean_pow(02)"
 
-    files = cc.querying._ncfiles_for_variable("querying_disambiguation", 
-                                              "v", 
-                                              session, 
-                                              attrs_unique={'cell_methods': 'time: mean'},
-                                              )
+    files = cc.querying._ncfiles_for_variable(
+        "querying_disambiguation",
+        "v",
+        session,
+        attrs_unique={"cell_methods": "time: mean"},
+    )
 
     assert len(files) == 1
-    assert files[0].NCVar.attrs['cell_methods'] == 'time: mean'
+    assert files[0].NCVar.attrs["cell_methods"] == "time: mean"
 
     # Add another unique attribute not present (should be ignored)
-    files = cc.querying._ncfiles_for_variable("querying_disambiguation", 
-                                              "v", 
-                                              session, 
-                                              attrs_unique={'cell_methods': 'time: mean', 'foo': 'bar'},
-                                              )
+    files = cc.querying._ncfiles_for_variable(
+        "querying_disambiguation",
+        "v",
+        session,
+        attrs_unique={"cell_methods": "time: mean", "foo": "bar"},
+    )
 
     assert len(files) == 1
-    assert files[0].NCVar.attrs['cell_methods'] == 'time: mean'
+    assert files[0].NCVar.attrs["cell_methods"] == "time: mean"
+
 
 def test_query_times(session):
     with cc.querying.getvar("querying", "ty_trans", session) as v:
