@@ -338,13 +338,11 @@ def _ncfiles_for_variable(
         )
 
     # check whether the results are unique
-    for attr in attrs_unique:
+    for attr, val in attrs_unique.items():
         unique_attributes = set()
         for f in ncfiles:
             if attr in f.NCVar.attrs:
                 unique_attributes.add(str(f.NCVar.attrs[attr]))
-            else:
-                unique_attributes.add(None)
         if len(unique_attributes) > 1:
             warnings.warn(
                 f"Your query returns variables from files with different {attr}: {unique_attributes}. "
