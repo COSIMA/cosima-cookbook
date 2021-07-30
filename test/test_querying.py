@@ -1,3 +1,5 @@
+import warnings
+
 import pytest
 
 import os.path
@@ -6,6 +8,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
 
 import cosima_cookbook as cc
+from cosima_cookbook.querying import QueryWarning
 
 
 @pytest.fixture(scope="module")
@@ -41,7 +44,7 @@ def test_invalid_query(session):
 
 def test_warning_on_ambiguous_attr(session):
 
-    with pytest.warns(UserWarning) as record:
+    with pytest.warns(QueryWarning) as record:
         cc.querying._ncfiles_for_variable(
             "querying_disambiguation",
             "v",
@@ -57,6 +60,48 @@ def test_warning_on_ambiguous_attr(session):
             "Your query returns variables from files with different cell_methods"
         )
     )
+
+    with pytest.warns(QueryWarning) as record:
+        files = cc.querying._ncfiles_for_variable(
+            "querying_disambiguation",
+            "u",
+            session,
+            attrs_unique={"cell_methods": "time: no_valid"},
+        )
+
+    assert len(files) == 2
+    assert len(record) == 1
+    assert (
+        record[0]
+        .message.args[0]
+        .startswith(
+            "Your query returns variables from files with different cell_methods"
+        )
+    )
+
+    # Raise an exception if QueryWarning set to error
+    warnings.simplefilter("error", QueryWarning)
+    with pytest.raises(QueryWarning) as record:
+        cc.querying._ncfiles_for_variable(
+            "querying_disambiguation",
+            "v",
+            session,
+            attrs_unique={"cell_methods": "bar"},
+        )
+
+    with warnings.catch_warnings(record=True) as record:
+        # Turn off warnings, will run without exception
+        # and record will be empty
+        warnings.simplefilter("ignore", QueryWarning)
+
+        cc.querying._ncfiles_for_variable(
+            "querying_disambiguation",
+            "v",
+            session,
+            attrs_unique={"cell_methods": "bar"},
+        )
+
+    assert len(record) == 0
 
 
 def test_disambiguation_on_default_attr(session):
@@ -74,6 +119,17 @@ def test_disambiguation_on_default_attr(session):
     files = cc.querying._ncfiles_for_variable(
         "querying_disambiguation",
         "v",
+        session,
+        attrs_unique={"cell_methods": "time: mean"},
+    )
+
+    assert len(files) == 1
+    assert files[0].NCVar.attrs["cell_methods"] == "time: mean"
+
+    # One file has no cell_methods attribute
+    files = cc.querying._ncfiles_for_variable(
+        "querying_disambiguation",
+        "u",
         session,
         attrs_unique={"cell_methods": "time: mean"},
     )
