@@ -81,7 +81,7 @@ def test_warning_on_ambiguous_attr(session):
 
     # Raise an exception if QueryWarning set to error
     warnings.simplefilter("error", QueryWarning)
-    with pytest.raises(QueryWarning) as record:  
+    with pytest.raises(QueryWarning) as record:
         cc.querying._ncfiles_for_variable(
             "querying_disambiguation",
             "v",
@@ -91,7 +91,7 @@ def test_warning_on_ambiguous_attr(session):
 
     with warnings.catch_warnings(record=True) as record:
         # Turn off warnings, will run without exception
-        # and record will be empty 
+        # and record will be empty
         warnings.simplefilter("ignore", QueryWarning)
 
         cc.querying._ncfiles_for_variable(
