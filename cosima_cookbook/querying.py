@@ -19,6 +19,14 @@ class VariableNotFoundError(Exception):
     pass
 
 
+class QueryWarning(UserWarning):
+    pass
+
+
+# By default all ambiguous queries will raise an exception
+warnings.simplefilter("error", category=QueryWarning, lineno=0, append=False)
+
+
 def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs):
     """
     Returns a DataFrame of all experiments and the number of netCDF4 files contained
@@ -349,7 +357,8 @@ def _ncfiles_for_variable(
             warnings.warn(
                 f"Your query returns variables from files with different {attr}: {unique_attributes}. "
                 "This could lead to unexpected behaviour! Disambiguate by passing "
-                f"attrs={{'{attr}'=''}} to getvar, specifying the desired attribute value."
+                f"attrs={{'{attr}'=''}} to getvar, specifying the desired attribute value.",
+                QueryWarning,
             )
 
     unique_freqs = set(f.NCFile.frequency for f in ncfiles)
@@ -357,7 +366,8 @@ def _ncfiles_for_variable(
         warnings.warn(
             f"Your query returns files with differing frequencies: {unique_freqs}. "
             "This could lead to unexpected behaviour! Disambiguate by passing "
-            "frequency= to getvar, specifying the desired frequency."
+            "frequency= to getvar, specifying the desired frequency.",
+            QueryWarning,
         )
 
     return ncfiles
