@@ -66,7 +66,7 @@ class DatabaseExtension:
         allvars = pd.concat(
             [self.get_variables(expt) for expt in self.experiments.experiment],
             keys=set(self.experiments.experiment),
-        )
+        ).rename_axis(["experiment", "number"], axis="rows")
 
         # Create a new column to flag if variable is from a restart directory
         allvars["restart"] = allvars.ncfile.str.contains("restart")
