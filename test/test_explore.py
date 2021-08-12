@@ -142,6 +142,9 @@ def test_database_extension(session):
     assert de.variables[de.variables.model == "ice"].shape == (0, 5)
     assert de.variables[de.variables.model == ""].shape == (12, 5)
 
+    # import pdb; pdb.set_trace()
+    assert de.variable_filter(["salt"]) == {"two"}
+
 
 def test_database_explorer(session):
 
