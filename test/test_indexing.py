@@ -3,7 +3,7 @@ import os
 import shutil
 import xarray as xr
 from cosima_cookbook import database
-from sqlalchemy import func
+from sqlalchemy import func, inspect
 from pathlib import Path
 
 
@@ -283,6 +283,13 @@ def test_time_dimension(session_db):
 def test_index_attributes(session_db):
     session, db = session_db
     database.build_index("test/data/querying", session)
+
+    inspector = inspect(session.get_bind())
+    assert inspector.get_indexes("ncattributes")[0] == {
+        "name": "ix_ncattributes_ncvar_id",
+        "column_names": ["ncvar_id"],
+        "unique": 0,
+    }
 
     ncfile = "output000/ocean.nc"
 
