@@ -35,6 +35,8 @@ def session(tmpdir_factory):
 def test_valid_query(session):
     with cc.querying.getvar("querying", "temp", session, decode_times=False) as v:
         assert isinstance(v, xr.DataArray)
+        assert len(v.attrs["ncfiles"]) == 1
+        assert v.attrs["ncfiles"][0].endswith("test/data/querying/output000/ocean.nc")
 
 
 def test_invalid_query(session):
