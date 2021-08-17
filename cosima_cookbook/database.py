@@ -191,7 +191,7 @@ class NCAttribute(Base):
     id = Column(Integer, primary_key=True)
 
     # an NCAttribute may belong to an NCVar, or an NCFile directly
-    ncvar_id = Column(Integer, ForeignKey("ncvars.id"))
+    ncvar_id = Column(Integer, ForeignKey("ncvars.id"), index=True)
     ncfile_id = Column(Integer, ForeignKey("ncfiles.id"))
 
     name_id = Column(Integer, ForeignKey("ncattribute_strings.id"))
