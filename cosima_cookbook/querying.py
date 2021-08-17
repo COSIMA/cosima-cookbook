@@ -229,8 +229,10 @@ def getvar(
         # like time_bounds
         return d[variables]
 
+    ncfiles = list(str(f.NCFile.ncfile_path) for f in ncfiles)
+    
     ds = xr.open_mfdataset(
-        (str(f.NCFile.ncfile_path) for f in ncfiles),
+        ncfiles,
         parallel=True,
         combine="by_coords",
         preprocess=_preprocess,
@@ -241,6 +243,8 @@ def getvar(
 
     for attr in variables[1:]:
         da.attrs[attr] = ds[attr]
+
+    da.attrs['ncfiles'] = ncfiles 
 
     return da
 
