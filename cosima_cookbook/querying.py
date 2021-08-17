@@ -230,7 +230,7 @@ def getvar(
         return d[variables]
 
     ncfiles = list(str(f.NCFile.ncfile_path) for f in ncfiles)
-    
+
     ds = xr.open_mfdataset(
         ncfiles,
         parallel=True,
@@ -244,7 +244,7 @@ def getvar(
     for attr in variables[1:]:
         da.attrs[attr] = ds[attr]
 
-    da.attrs['ncfiles'] = ncfiles 
+    da.attrs["ncfiles"] = ncfiles
 
     return da
 
