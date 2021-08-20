@@ -116,7 +116,7 @@ class DatabaseExtension:
             )
         )  # legit units: %/day, day of year
 
-        return allvars[["name", "long_name", "model", "restart", "coordinate"]]
+        return allvars[["name", "long_name", "model", "restart", "units", "coordinate"]]
 
     def unique_variable_list(self):
         """
@@ -299,10 +299,31 @@ class VariableSelector(VBox):
                 options["{} only".format(model.capitalize())] = model
         self.model.options = options
 
+        options = dict()
+        for vals in variables.sort_values(["name"])[
+            ["name", "long_name", "units"]
+        ].values:
+
+            var, name, units = map(str, vals)
+
+            if name.lower() == "none" or name == "":
+                name = var
+
+            # Add units string if suitable value exists
+            if (
+                units.lower() == "none"
+                or units.lower() == "nounits"
+                or units.lower() == "no units"
+                or units.lower() == "dimensionless"
+                or units.lower() == "1"
+                or units == ""
+            ):
+                options[var] = "{}".format(name)
+            else:
+                options[var] = "{} ({})".format(name, units)
+
         # Populate variable selector
-        self.selector.options = dict(
-            variables.sort_values(["name"])[["name", "long_name"]].values
-        )
+        self.selector.options = options
 
     def _reset_filters(self):
         """
@@ -373,7 +394,7 @@ class VariableSelector(VBox):
                     )
                 ]
             except:
-                print("Illegal character in search!")
+                warnings.warn("Illegal character in search!", UserWarning)
                 search_term = self.search.value
 
         self._update_selector(variables)
@@ -1104,7 +1125,7 @@ class ExperimentExplorer(VBox):
             self.de.variables,
             self.de.get_variables(self.experiment_name),
             how="inner",
-            on=["name", "long_name"],
+            on=["name", "long_name", "units"],
         )
         self._load_variables()
 
