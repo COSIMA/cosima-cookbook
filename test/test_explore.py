@@ -73,22 +73,22 @@ def test_database_extension(session):
     de = cc.explore.DatabaseExtension(session=session)
 
     assert de.experiments.shape == (3, 8)
-    assert de.expt_variable_map.shape == (108, 5)
-    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (12, 5)
-    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (44, 5)
+    assert de.expt_variable_map.shape == (108, 6)
+    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (12, 6)
+    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (44, 6)
     assert de.keywords == ["access-om2-01", "another-keyword", "cosima", "ryf9091"]
     # All unique variables contained in the database
-    assert de.variables.shape == (68, 5)
+    assert de.variables.shape == (68, 6)
     # Check restart and coordinate variables correctly assigned
     assert de.variables[~de.variables.restart & ~de.variables.coordinate].shape == (
         32,
-        5,
+        6,
     )
     # Check model assignment
-    assert de.variables[de.variables.model == "ocean"].shape == (38, 5)
-    assert de.variables[de.variables.model == "atmosphere"].shape == (12, 5)
-    assert de.variables[de.variables.model == "ice"].shape == (6, 5)
-    assert de.variables[de.variables.model == ""].shape == (12, 5)
+    assert de.variables[de.variables.model == "ocean"].shape == (38, 6)
+    assert de.variables[de.variables.model == "atmosphere"].shape == (12, 6)
+    assert de.variables[de.variables.model == "ice"].shape == (6, 6)
+    assert de.variables[de.variables.model == ""].shape == (12, 6)
 
     # Now specify only one experiment, which is what happens in ExperimentExplorer
     de = cc.explore.DatabaseExtension(
@@ -100,21 +100,21 @@ def test_database_extension(session):
 
     assert de.experiments.shape == (2, 8)
     assert de.allexperiments.shape == (3, 8)
-    assert de.expt_variable_map.shape == (52, 5)
-    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 5)
-    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 5)
+    assert de.expt_variable_map.shape == (52, 6)
+    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 6)
+    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 6)
     assert de.keywords == ["access-om2-01", "another-keyword", "cosima", "ryf9091"]
     # All unique variables contained in the database
-    assert de.variables.shape == (52, 5)
+    assert de.variables.shape == (52, 6)
     # Check restart and coordinate variables correctly assigned
     assert de.variables[~de.variables.restart & ~de.variables.coordinate].shape == (
         24,
-        5,
+        6,
     )
-    assert de.variables[de.variables.model == "ocean"].shape == (34, 5)
-    assert de.variables[de.variables.model == "atmosphere"].shape == (6, 5)
-    assert de.variables[de.variables.model == "ice"].shape == (6, 5)
-    assert de.variables[de.variables.model == ""].shape == (6, 5)
+    assert de.variables[de.variables.model == "ocean"].shape == (34, 6)
+    assert de.variables[de.variables.model == "atmosphere"].shape == (6, 6)
+    assert de.variables[de.variables.model == "ice"].shape == (6, 6)
+    assert de.variables[de.variables.model == ""].shape == (6, 6)
 
     # Now specify only one experiment, which is what happens in ExperimentExplorer
     de = cc.explore.DatabaseExtension(
@@ -126,21 +126,21 @@ def test_database_extension(session):
 
     assert de.experiments.shape == (1, 8)
     assert de.allexperiments.shape == (3, 8)
-    assert de.expt_variable_map.shape == (56, 5)
-    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 5)
-    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 5)
+    assert de.expt_variable_map.shape == (56, 6)
+    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 6)
+    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 6)
     assert de.keywords == ["access-om2-01", "another-keyword", "cosima", "ryf9091"]
     # All unique variables contained in the database
-    assert de.variables.shape == (56, 5)
+    assert de.variables.shape == (56, 6)
     # Check restart and coordinate variables correctly assigned
     assert de.variables[~de.variables.restart & ~de.variables.coordinate].shape == (
         28,
-        5,
+        6,
     )
-    assert de.variables[de.variables.model == "ocean"].shape == (38, 5)
-    assert de.variables[de.variables.model == "atmosphere"].shape == (6, 5)
-    assert de.variables[de.variables.model == "ice"].shape == (0, 5)
-    assert de.variables[de.variables.model == ""].shape == (12, 5)
+    assert de.variables[de.variables.model == "ocean"].shape == (38, 6)
+    assert de.variables[de.variables.model == "atmosphere"].shape == (6, 6)
+    assert de.variables[de.variables.model == "ice"].shape == (0, 6)
+    assert de.variables[de.variables.model == ""].shape == (12, 6)
 
     # import pdb; pdb.set_trace()
     assert de.variable_filter(["salt"]) == {"two"}
@@ -160,9 +160,24 @@ def test_database_explorer(session):
 
     # The variable filter box
     variables = dbx.var_filter.selector.variables
-    assert dbx.var_filter.selector.selector.options == dict(
-        zip(variables[variables.visible].name, variables[variables.visible].long_name)
-    )
+
+    truth = {
+        "age_global": "Age (global) (yr)",
+        "diff_cbt_t": "total vert diff_cbt(temp) (w/o neutral included) (m^2/s)",
+        "dzt": "t-cell thickness (m)",
+        "hi_m": "grid cell mean ice thickness (m)",
+        "neutral": "neutral density (kg/m^3)",
+        "neutralrho_edges": "neutral density edges (kg/m^3)",
+        "nv": "vertex number",
+        "pot_rho_0": "potential density referenced to 0 dbar (kg/m^3)",
+        "pot_rho_2": "potential density referenced to 2000 dbar (kg/m^3)",
+        "salt": "Practical Salinity (psu)",
+        "st_edges_ocean": "tcell zstar depth edges (meters)",
+        "st_ocean": "tcell zstar depth (meters)",
+    }
+
+    for var, label in truth.items():
+        assert dbx.var_filter.selector.selector.options[var] == label
 
 
 def test_experiment_explorer(session):
