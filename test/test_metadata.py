@@ -293,14 +293,15 @@ def test_get_experiments_with_keywords(session_db):
     df = pd.DataFrame()
     assert_frame_equal(r, df)
 
+
 def test_getvar_with_metadata(session_db):
 
     session, db = session_db
     database.build_index("test/data/indexing/metadata", session)
 
     with querying.getvar("metadata", "test", session, decode_times=False) as v:
-        assert v.attrs['long_name']   == 'Test Variable'
-        assert v.attrs['contact']     == 'The ACCESS Oracle'
-        assert v.attrs['email']       == 'oracle@example.com'
-        assert v.attrs['created']     == '2018-01-01'
-        assert 'description' in v.attrs
+        assert v.attrs["long_name"] == "Test Variable"
+        assert v.attrs["contact"] == "The ACCESS Oracle"
+        assert v.attrs["email"] == "oracle@example.com"
+        assert v.attrs["created"] == "2018-01-01"
+        assert "description" in v.attrs
