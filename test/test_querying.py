@@ -37,6 +37,11 @@ def test_valid_query(session):
         assert isinstance(v, xr.DataArray)
         assert len(v.attrs["ncfiles"]) == 1
         assert v.attrs["ncfiles"][0].endswith("test/data/querying/output000/ocean.nc")
+        # Make sure empty metadata fields haven't been included as attributes
+        assert 'contact' not in v.attrs
+        assert 'notes' not in v.attrs
+        assert 'description' not in v.attrs
+        assert 'email' not in v.attrs
 
 
 def test_invalid_query(session):
@@ -219,6 +224,11 @@ def test_get_experiments(session):
     # Functionally equivalent to above
     r = cc.querying.get_experiments(session, **{k: True for k in metadata_keys})
     assert r.shape == (2, 8)
+
+    # Functionally equivalent to above
+    r = cc.querying.get_experiments(session, experiment=False, exptname='querying', all=True)
+    assert r.shape == (1, 7)
+    assert 'experiment' not in r
 
 
 def test_get_ncfiles(session):
