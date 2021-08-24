@@ -598,6 +598,9 @@ def find_files(searchdir, matchstring="*.nc", followsymlinks=False):
             UserWarning,
         )
 
+    # Make unique list of all found files
+    paths = {Path(s) for s in proc.stdout.split()}
+
     # make all files relative to the search directory and return as set
     return {str(Path(s).relative_to(searchdir)) for s in proc.stdout.split()}
 
@@ -725,13 +728,27 @@ def _prune_files(expt, session, files, delete=True):
         # to prune and trying to do so will raise errors
         return
 
+    # Make a list of ids for files which are newer than the index date
+    oldids = []
+    for f in (
+        session.query(NCFile)
+        .with_parent(expt)
+        .filter(NCFile.ncfile.in_(files) & (NCFile.present == True))
+    ):
+        if f.index_time < datetime.fromtimestamp(f.ncfile_path.stat().st_mtime):
+            oldids.append(f.id)
+
     # Missing are physically missing from disk, or where marked as not
-    # present previously. Can also be a broken file which didn't index
+    # present previously. Can also be a broken file which didn't index,
+    # or file which is newer than last index
     missing_ncfiles = (
         session.query(NCFile)
         .with_parent(expt)
-        .filter(NCFile.ncfile.notin_(files) | (NCFile.present == False))
+        .filter(NCFile.ncfile.notin_(files) 
+                | (NCFile.present == False) 
+                | (NCFile.id.in_(oldids)))
     )
+
     session.expire_all()
     if delete:
         missing_ncfiles.delete(synchronize_session=False)

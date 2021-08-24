@@ -1,6 +1,7 @@
 import pytest
 import os
 import shutil
+import time
 import xarray as xr
 from cosima_cookbook import database
 from sqlalchemy import func, inspect
@@ -159,6 +160,29 @@ def test_update_newfile(session_db, tmpdir):
         "test/data/indexing/longnames/output000/test2.nc", str(tmpdir / "test2.nc")
     )
     reindexed = database.build_index(str(tmpdir), session)
+    assert reindexed == 1
+
+
+def test_updated_file(session_db, tmpdir):
+    session, db = session_db
+
+    # Make tmpdir a concrete path otherwise filesystem ops won't work
+    tmpdir = Path(tmpdir)
+
+    ncfile = "test1.nc"
+    ncpath = Path("test/data/indexing/longnames/output000/") / ncfile
+    shutil.copy(str(ncpath), str(tmpdir / ncfile))
+    indexed = database.build_index(str(tmpdir), session)
+    assert indexed == 1
+
+    # Should not reindex
+    reindexed = database.build_index(str(tmpdir), session)
+    assert reindexed == 0
+
+    # Should reindex as file is updated, as long as prune='delete'
+    time.sleep(1)
+    (tmpdir / ncfile).touch()
+    reindexed = database.build_index(str(tmpdir), session, prune='delete')
     assert reindexed == 1
 
 
