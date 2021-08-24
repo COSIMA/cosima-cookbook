@@ -182,7 +182,7 @@ def test_updated_file(session_db, tmpdir):
     # Should reindex as file is updated, as long as prune='delete'
     time.sleep(1)
     (tmpdir / ncfile).touch()
-    reindexed = database.build_index(str(tmpdir), session, prune='delete')
+    reindexed = database.build_index(str(tmpdir), session, prune="delete")
     assert reindexed == 1
 
 

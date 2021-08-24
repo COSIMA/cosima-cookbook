@@ -744,9 +744,11 @@ def _prune_files(expt, session, files, delete=True):
     missing_ncfiles = (
         session.query(NCFile)
         .with_parent(expt)
-        .filter(NCFile.ncfile.notin_(files) 
-                | (NCFile.present == False) 
-                | (NCFile.id.in_(oldids)))
+        .filter(
+            NCFile.ncfile.notin_(files)
+            | (NCFile.present == False)
+            | (NCFile.id.in_(oldids))
+        )
     )
 
     session.expire_all()
