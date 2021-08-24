@@ -598,9 +598,6 @@ def find_files(searchdir, matchstring="*.nc", followsymlinks=False):
             UserWarning,
         )
 
-    # Make unique list of all found files
-    paths = {Path(s) for s in proc.stdout.split()}
-
     # make all files relative to the search directory and return as set
     return {str(Path(s).relative_to(searchdir)) for s in proc.stdout.split()}
 
@@ -744,11 +741,9 @@ def _prune_files(expt, session, files, delete=True):
     missing_ncfiles = (
         session.query(NCFile)
         .with_parent(expt)
-        .filter(
-            NCFile.ncfile.notin_(files)
-            | (NCFile.present == False)
-            | (NCFile.id.in_(oldids))
-        )
+        .filter(NCFile.ncfile.notin_(files) 
+                | (NCFile.present == False) 
+                | (NCFile.id.in_(oldids)))
     )
 
     session.expire_all()
