@@ -211,7 +211,15 @@ def test_get_experiments(session):
     )
     assert_frame_equal(r, df)
 
-    metadata_keys = ["root_dir", "contact", "email", "created", "url", "description", "notes"]
+    metadata_keys = [
+        "root_dir",
+        "contact",
+        "email",
+        "created",
+        "url",
+        "description",
+        "notes",
+    ]
 
     # Won't try and match everything, there is not much useful metadata, just
     # check dimensions are correct. Metadata correctness checked in test_metadata

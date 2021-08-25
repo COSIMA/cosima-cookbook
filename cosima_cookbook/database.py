@@ -74,11 +74,19 @@ class NCExperiment(Base):
     root_dir = Column(String, nullable=False)
 
     # Other experiment metadata (populated from metadata.yaml)
-    metadata_keys = ["contact", "email", "created", "description", "notes", "url", "keywords"]
+    metadata_keys = [
+        "contact",
+        "email",
+        "created",
+        "description",
+        "notes",
+        "url",
+        "keywords",
+    ]
     contact = Column(String)
     email = Column(String)
     created = Column(String)
-    #: Experimental configuration control repository, e.g. GitHub payu control repo 
+    #: Experimental configuration control repository, e.g. GitHub payu control repo
     url = Column(String)
     #: Human-readable experiment description
     description = Column(Text)
