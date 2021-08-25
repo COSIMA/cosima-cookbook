@@ -256,9 +256,10 @@ def getvar(
     ).to_dict(orient="records")[0]
 
     metadata = {
-        k: v for k, v in metadata.items()
+        k: v
+        for k, v in metadata.items()
         if k not in ["ncfiles", "index", "root_dir"]
-            and (v is not None and v != "None" and v != "")
+        and (v is not None and v != "None" and v != "")
     }
 
     da.attrs.update(metadata)
