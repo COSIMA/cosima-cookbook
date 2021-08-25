@@ -60,7 +60,11 @@ def test_get_experiments_metadata(session_db):
 
     r = querying.get_experiments(session, url=True)
     df = pd.DataFrame.from_dict(
-        {"experiment": ["metadata"], "url": ["https://github.com/COSIMA/oracle"], "ncfiles": [1]}
+        {
+            "experiment": ["metadata"],
+            "url": ["https://github.com/COSIMA/oracle"],
+            "ncfiles": [1],
+        }
     )
     assert_frame_equal(r, df)
 
