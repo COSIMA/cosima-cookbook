@@ -132,7 +132,9 @@ def test_update_nonew(session_db):
     assert db.check()
 
     # re-run the index, make sure we don't re-index anything
-    reindexed = database.build_index("test/data/indexing/broken_file", session)
+    reindexed = database.build_index(
+        "test/data/indexing/broken_file", session, prune="flag"
+    )
     assert reindexed == 0
 
 
@@ -179,11 +181,18 @@ def test_updated_file(session_db, tmpdir):
     reindexed = database.build_index(str(tmpdir), session)
     assert reindexed == 0
 
-    # Should reindex as file is updated, as long as prune='delete'
+    # Should reindex as file is updated
     time.sleep(1)
     (tmpdir / ncfile).touch()
-    reindexed = database.build_index(str(tmpdir), session, prune="delete")
+    reindexed = database.build_index(str(tmpdir), session)
     assert reindexed == 1
+
+    # Should not reindex as flagging as missing will not remove
+    # file from the database, so will not be reindexed
+    time.sleep(1)
+    (tmpdir / ncfile).touch()
+    reindexed = database.build_index(str(tmpdir), session, prune="flag")
+    assert reindexed == 0
 
 
 def test_single_broken(session_db):
