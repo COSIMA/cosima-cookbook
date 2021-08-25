@@ -247,22 +247,21 @@ def getvar(
     for attr in variables[1:]:
         da.attrs[attr] = ds[attr]
 
+    da.attrs["ncfiles"] = ncfiles
+
     # Get experiment metadata, delete extraneous fields and add
     # to attributes
     metadata = get_experiments(
         session, experiment=False, exptname=expt, all=True
     ).to_dict(orient="records")[0]
-    map(metadata.__delitem__, ["ncfiles", "index", "root_dir"])
 
-    for attr in metadata:
-        if (
-            metadata[attr] is not None
-            and metadata[attr] != "None"
-            and metadata[attr] != ""
-        ):
-            da.attrs[attr] = metadata[attr]
+    metadata = {
+        k: v for k, v in metadata.items()
+        if k not in ["ncfiles", "index", "root_dir"]
+            and (v is not None and v != "None" and v != "")
+    }
 
-    da.attrs["ncfiles"] = ncfiles
+    da.attrs.update(metadata)
 
     return da
 
