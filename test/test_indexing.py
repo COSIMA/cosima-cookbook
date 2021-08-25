@@ -1,12 +1,14 @@
-import pytest
+import logging
 import os
+import pytest
 import shutil
 import time
 import xarray as xr
+from pathlib import Path
 from cosima_cookbook import database
 from sqlalchemy import func, inspect
-from pathlib import Path
 
+LOGGER = logging.getLogger(__name__)
 
 @pytest.fixture
 def unreadable_dir(tmpdir):
@@ -165,7 +167,7 @@ def test_update_newfile(session_db, tmpdir):
     assert reindexed == 1
 
 
-def test_updated_file(session_db, tmpdir):
+def test_updated_file(session_db, tmpdir, caplog):
     session, db = session_db
 
     # Make tmpdir a concrete path otherwise filesystem ops won't work
@@ -191,8 +193,11 @@ def test_updated_file(session_db, tmpdir):
     # file from the database, so will not be reindexed
     time.sleep(1)
     (tmpdir / ncfile).touch()
-    reindexed = database.build_index(str(tmpdir), session, prune="flag")
-    assert reindexed == 0
+    # import pdb; pdb.set_trace()
+    with caplog.at_level(logging.WARNING):
+        reindexed = database.build_index(str(tmpdir), session, prune="flag")
+        assert reindexed == 0
+        assert "Set prune to 'delete' to reindex updated files" in caplog.text
 
 
 def test_single_broken(session_db):
