@@ -10,6 +10,7 @@ from sqlalchemy import func, inspect
 
 LOGGER = logging.getLogger(__name__)
 
+
 @pytest.fixture
 def unreadable_dir(tmpdir):
     expt_path = tmpdir / "expt_dir"

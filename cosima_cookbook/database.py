@@ -736,13 +736,13 @@ def _prune_files(expt, session, files, delete=True):
             .filter(NCFile.ncfile.in_(files) & (NCFile.present == True))
         )
         if f.index_time < datetime.fromtimestamp(f.ncfile_path.stat().st_mtime)
-        ]
+    ]
     if not delete:
         oldids = []
         logging.warning(
-             "Data files have been updated since they were last indexed."
-             "Prune has been set to 'flag' so they will not be reindexed."
-             "Set prune to 'delete' to reindex updated files"
+            "Data files have been updated since they were last indexed."
+            "Prune has been set to 'flag' so they will not be reindexed."
+            "Set prune to 'delete' to reindex updated files"
         )
 
     # Missing are physically missing from disk, or where marked as not
