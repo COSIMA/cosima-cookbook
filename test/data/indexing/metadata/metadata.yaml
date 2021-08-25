@@ -1,6 +1,7 @@
 contact: The ACCESS Oracle
 email: oracle@example.com
 created: 2018-01-01
+url: https://github.com/COSIMA/oracle
 description: >-
   Attempted spinup, using salt flux fix
   https://arccss.slack.com/archives/C6PP0GU9Y/p1515460656000124 and

@@ -58,6 +58,12 @@ def test_get_experiments_metadata(session_db):
     )
     assert_frame_equal(r, df)
 
+    r = querying.get_experiments(session, url=True)
+    df = pd.DataFrame.from_dict(
+        {"experiment": ["metadata"], "url": ["https://github.com/COSIMA/oracle"], "ncfiles": [1]}
+    )
+    assert_frame_equal(r, df)
+
     r = querying.get_experiments(session, description=True)
     df = pd.DataFrame.from_dict(
         {
@@ -107,7 +113,7 @@ def test_get_experiments_metadata(session_db):
 
     r = querying.get_experiments(session, all=True)
     # Won't try and match everything, just check dimensions are correct
-    assert r.shape == (1, 8)
+    assert r.shape == (1, 9)
 
     # Test turning off returning experiment (bit dumb, but hey ...)
     r = querying.get_experiments(session, experiment=False)
