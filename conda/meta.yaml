@@ -29,6 +29,7 @@ requirements:
         - sqlalchemy
         - ipywidgets
         - cftime>1.2.1
+        - lxml
 
 about:
     home: http://cosima-cookbook.readthedocs.io
