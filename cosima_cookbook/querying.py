@@ -27,7 +27,9 @@ class QueryWarning(UserWarning):
 warnings.simplefilter("error", category=QueryWarning, lineno=0, append=False)
 
 
-def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs):
+def get_experiments(
+    session, experiment=True, keywords=None, all=False, exptname=None, **kwargs
+):
     """
     Returns a DataFrame of all experiments and the number of netCDF4 files contained
     within each experiment.
@@ -61,11 +63,12 @@ def get_experiments(session, experiment=True, keywords=None, all=False, **kwargs
     )
 
     if keywords is not None:
-
         if isinstance(keywords, str):
             keywords = [keywords]
-
         q = q.filter(*(NCExperiment.keywords.like(k) for k in keywords))
+
+    if exptname is not None:
+        q = q.filter(NCExperiment.experiment == exptname)
 
     return pd.DataFrame(q)
 
@@ -245,6 +248,21 @@ def getvar(
         da.attrs[attr] = ds[attr]
 
     da.attrs["ncfiles"] = ncfiles
+
+    # Get experiment metadata, delete extraneous fields and add
+    # to attributes
+    metadata = get_experiments(
+        session, experiment=False, exptname=expt, all=True
+    ).to_dict(orient="records")[0]
+
+    metadata = {
+        k: v
+        for k, v in metadata.items()
+        if k not in ["ncfiles", "index", "root_dir"]
+        and (v is not None and v != "None" and v != "")
+    }
+
+    da.attrs.update(metadata)
 
     return da
 
