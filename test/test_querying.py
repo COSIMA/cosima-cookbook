@@ -2,7 +2,6 @@ import warnings
 
 import pytest
 
-import os.path
 import xarray as xr
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
