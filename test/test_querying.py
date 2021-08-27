@@ -239,7 +239,7 @@ def test_get_experiments(session):
     r = cc.querying.get_experiments(
         session, experiment=False, exptname="querying", all=True
     )
-    assert r.shape == (1, 7)
+    assert r.shape == (1, 8)
     assert "experiment" not in r
 
 
