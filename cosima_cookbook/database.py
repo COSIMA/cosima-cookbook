@@ -740,8 +740,8 @@ def _prune_files(expt, session, files, delete=True):
     if not delete:
         oldids = []
         logging.warning(
-            "Data files have been updated since they were last indexed."
-            "Prune has been set to 'flag' so they will not be reindexed."
+            "Data files have been updated since they were last indexed. "
+            "Prune has been set to 'flag' so they will not be reindexed. "
             "Set prune to 'delete' to reindex updated files"
         )
 

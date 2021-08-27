@@ -194,7 +194,6 @@ def test_updated_file(session_db, tmpdir, caplog):
     # file from the database, so will not be reindexed
     time.sleep(1)
     (tmpdir / ncfile).touch()
-    # import pdb; pdb.set_trace()
     with caplog.at_level(logging.WARNING):
         reindexed = database.build_index(str(tmpdir), session, prune="flag")
         assert reindexed == 0
