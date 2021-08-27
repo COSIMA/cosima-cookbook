@@ -644,7 +644,7 @@ def build_index(
     directories,
     session,
     client=None,
-    prune="flag",
+    prune="delete",
     force=False,
     followsymlinks=False,
 ):
@@ -725,13 +725,38 @@ def _prune_files(expt, session, files, delete=True):
         # to prune and trying to do so will raise errors
         return
 
+    # Find ids of all files newer than the time last indexed. Only valid
+    # for delete=True as entries cannot be updated if they already exist
+    # in the DB
+    oldids = [
+        f.id
+        for f in (
+            session.query(NCFile)
+            .with_parent(expt)
+            .filter(NCFile.ncfile.in_(files) & (NCFile.present == True))
+        )
+        if f.index_time < datetime.fromtimestamp(f.ncfile_path.stat().st_mtime)
+    ]
+    if not delete:
+        oldids = []
+        logging.warning(
+            "Data files have been updated since they were last indexed. "
+            "Prune has been set to 'flag' so they will not be reindexed. "
+            "Set prune to 'delete' to reindex updated files"
+        )
+
     # Missing are physically missing from disk, or where marked as not
-    # present previously. Can also be a broken file which didn't index
+    # present previously. Can also be a broken file which didn't index.
     missing_ncfiles = (
         session.query(NCFile)
         .with_parent(expt)
-        .filter(NCFile.ncfile.notin_(files) | (NCFile.present == False))
+        .filter(
+            NCFile.ncfile.notin_(files)
+            | (NCFile.present == False)
+            | (NCFile.id.in_(oldids))
+        )
     )
+
     session.expire_all()
     if delete:
         missing_ncfiles.delete(synchronize_session=False)

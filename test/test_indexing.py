@@ -1,10 +1,14 @@
-import pytest
+import logging
 import os
+import pytest
 import shutil
+import time
 import xarray as xr
+from pathlib import Path
 from cosima_cookbook import database
 from sqlalchemy import func, inspect
-from pathlib import Path
+
+LOGGER = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -131,7 +135,9 @@ def test_update_nonew(session_db):
     assert db.check()
 
     # re-run the index, make sure we don't re-index anything
-    reindexed = database.build_index("test/data/indexing/broken_file", session)
+    reindexed = database.build_index(
+        "test/data/indexing/broken_file", session, prune="flag"
+    )
     assert reindexed == 0
 
 
@@ -160,6 +166,38 @@ def test_update_newfile(session_db, tmpdir):
     )
     reindexed = database.build_index(str(tmpdir), session)
     assert reindexed == 1
+
+
+def test_updated_file(session_db, tmpdir, caplog):
+    session, db = session_db
+
+    # Make tmpdir a concrete path otherwise filesystem ops won't work
+    tmpdir = Path(tmpdir)
+
+    ncfile = "test1.nc"
+    ncpath = Path("test/data/indexing/longnames/output000/") / ncfile
+    shutil.copy(str(ncpath), str(tmpdir / ncfile))
+    indexed = database.build_index(str(tmpdir), session)
+    assert indexed == 1
+
+    # Should not reindex
+    reindexed = database.build_index(str(tmpdir), session)
+    assert reindexed == 0
+
+    # Should reindex as file is updated
+    time.sleep(1)
+    (tmpdir / ncfile).touch()
+    reindexed = database.build_index(str(tmpdir), session)
+    assert reindexed == 1
+
+    # Should not reindex as flagging as missing will not remove
+    # file from the database, so will not be reindexed
+    time.sleep(1)
+    (tmpdir / ncfile).touch()
+    with caplog.at_level(logging.WARNING):
+        reindexed = database.build_index(str(tmpdir), session, prune="flag")
+        assert reindexed == 0
+        assert "Set prune to 'delete' to reindex updated files" in caplog.text
 
 
 def test_single_broken(session_db):
