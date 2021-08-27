@@ -1,3 +1,4 @@
+import lxml.html
 import re
 import warnings
 
@@ -18,7 +19,8 @@ def return_value_or_empty(value):
     if value is None:
         return ""
     else:
-        return value
+        # Strip out html tags for safety
+        return lxml.html.fromstring(str(value)).text_content()
 
 
 class DatabaseExtension:
@@ -862,6 +864,7 @@ class DatabaseExplorer(VBox):
         style = """
         <style>
             .info { font: normal 90% Verdana, Arial, sans-serif; }
+            .info a:hover { color: red; text-decoration: underline; }
         </style>
         """
         self.expt_info.value = (
@@ -872,7 +875,8 @@ class DatabaseExplorer(VBox):
         <tr><td><b>Experiment:</b></td> <td>{experiment}</td></tr>
         <tr><td style="vertical-align:top;"><b>Description:</b></td> <td>{description}</td></tr>
         <tr><td style="vertical-align:top;"><b>Notes:</b></td> <td>{notes}</td></tr>
-        <tr><td><b>Contact:</b></td> <td>{contact} &lt;{email}&gt;</td></tr>
+        <tr><td><b>Contact:</b></td> <td>{contact} &lt;<a href="mailto:{email}" target="_blank">{email}</a>&gt;</td></tr>
+        <tr><td><b>Control repo:</b></td> <td><a href="{url}" target="_blank">{url}</a></td></tr>
         <tr><td><b>No. files:</b></td> <td>{ncfiles}</td></tr>
         <tr><td><b>Created:</b></td> <td>{created}</td></tr>
         </table>
@@ -886,6 +890,7 @@ class DatabaseExplorer(VBox):
                         "notes",
                         "contact",
                         "email",
+                        "url",
                         "ncfiles",
                         "created",
                     ]

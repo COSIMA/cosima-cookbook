@@ -23,6 +23,7 @@ setup(
         'f90nml',
         'joblib',
         'ipywidgets',
+        'lxml',
     ],
 
     extras_require = {

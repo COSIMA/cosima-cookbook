@@ -72,7 +72,7 @@ def test_database_extension(session):
     # to experiment
     de = cc.explore.DatabaseExtension(session=session)
 
-    assert de.experiments.shape == (3, 8)
+    assert de.experiments.shape == (3, 9)
     assert de.expt_variable_map.shape == (108, 6)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (12, 6)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (44, 6)
@@ -98,8 +98,8 @@ def test_database_extension(session):
         ],
     )
 
-    assert de.experiments.shape == (2, 8)
-    assert de.allexperiments.shape == (3, 8)
+    assert de.experiments.shape == (2, 9)
+    assert de.allexperiments.shape == (3, 9)
     assert de.expt_variable_map.shape == (52, 6)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 6)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 6)
@@ -124,8 +124,8 @@ def test_database_extension(session):
         ],
     )
 
-    assert de.experiments.shape == (1, 8)
-    assert de.allexperiments.shape == (3, 8)
+    assert de.experiments.shape == (1, 9)
+    assert de.allexperiments.shape == (3, 9)
     assert de.expt_variable_map.shape == (56, 6)
     assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 6)
     assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 6)

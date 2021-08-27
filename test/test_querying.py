@@ -2,7 +2,6 @@ import warnings
 
 import pytest
 
-import os.path
 import xarray as xr
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
@@ -211,7 +210,15 @@ def test_get_experiments(session):
     )
     assert_frame_equal(r, df)
 
-    metadata_keys = ["root_dir", "contact", "email", "created", "description", "notes"]
+    metadata_keys = [
+        "root_dir",
+        "contact",
+        "email",
+        "created",
+        "url",
+        "description",
+        "notes",
+    ]
 
     # Won't try and match everything, there is not much useful metadata, just
     # check dimensions are correct. Metadata correctness checked in test_metadata
@@ -222,17 +229,17 @@ def test_get_experiments(session):
 
     # Test all = True to select all available metadata
     r = cc.querying.get_experiments(session, all=True)
-    assert r.shape == (2, 8)
+    assert r.shape == (2, 9)
 
     # Functionally equivalent to above
     r = cc.querying.get_experiments(session, **{k: True for k in metadata_keys})
-    assert r.shape == (2, 8)
+    assert r.shape == (2, 9)
 
     # Functionally equivalent to above
     r = cc.querying.get_experiments(
         session, experiment=False, exptname="querying", all=True
     )
-    assert r.shape == (1, 7)
+    assert r.shape == (1, 8)
     assert "experiment" not in r
 
 
