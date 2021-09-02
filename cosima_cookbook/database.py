@@ -24,6 +24,7 @@ from sqlalchemy import (
     Index,
 )
 from sqlalchemy import MetaData, Table, select, sql, exists, event
+from sqlalchemy import func, case, literal_column
 
 from sqlalchemy.orm import (
     object_session,
@@ -320,6 +321,66 @@ from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".for
     def ncfile_path(self):
         return Path(self.experiment.root_dir) / Path(self.ncfile)
 
+    @hybrid_property
+    def model(self):
+        """
+        Heuristic to guess type of model. Look for exact strings in subdirectories
+        in path of a file. Match is case-insensitive. Returns model type as string. 
+        Either 'ocean', 'land', 'atmosphere', 'ice', or 'none' if no match found
+        """
+        model_map = {
+            "ocean": ("ocn", "ocean"),
+            "land": ("lnd", "land"),
+            "atmosphere": ("atm", "atmos", "atmosphere"),
+            "ice": ("ice",),
+        }
+        for m in model_map:
+            if any(
+                x in map(str.lower, Path(self.ncfile).parent.parts) for x in model_map[m]
+            ):
+                return m
+        return "none"
+
+    @model.expression
+    def model(cls):
+        """
+        SQL version of the model property
+        """
+        return case(
+            [
+                (func.lower(cls.ncfile).contains("/ocean/"), literal_column("'ocean'")),
+                (func.lower(cls.ncfile).contains("/ocn/"), literal_column("'ocean'")),
+                (func.lower(cls.ncfile).contains("/land/"), literal_column("'land'")),
+                (func.lower(cls.ncfile).contains("/lnd/"), literal_column("'land'")),
+                (func.lower(cls.ncfile).contains("/atm/"), literal_column("'atmosphere'")),
+                (func.lower(cls.ncfile).contains("/atmos/"), literal_column("'atmosphere'")),
+                (func.lower(cls.ncfile).contains("/atmosphere/"), literal_column("'atmosphere'")),
+                (func.lower(cls.ncfile).contains("/ice/"), literal_column("'ice'")),
+            ],
+            else_=literal_column("'none'"),
+        )
+
+    @hybrid_property
+    def is_restart(self):
+        """
+        Heuristic to guess if this is a restart file, returns True if restart file,
+        False otherwise
+        """
+        return any(p.startswith('restart') for p in map(str.lower, Path(self.ncfile).parent.parts))
+
+    @is_restart.expression
+    def is_restart(cls):
+        """
+        SQL version of the is_restart property
+        """
+        return case(
+            [
+                (func.lower(cls.ncfile).like("restart%/%"), literal_column("1", Boolean)),
+            ],
+            else_=literal_column("0", Boolean),
+        )
+
+
 
 class CFVariable(UniqueMixin, Base):
     __tablename__ = "variables"
@@ -370,6 +431,34 @@ class CFVariable(UniqueMixin, Base):
             query.filter(CFVariable.name == name)
             .filter(CFVariable.long_name == long_name)
             .filter(CFVariable.units == units)
+        )
+
+    @hybrid_property
+    def is_coordinate(self):
+        """
+        Heuristic to guess if this is a coordinate variable based on units. Returns
+        True if coordinate variable, False otherwise
+        """
+        if self.units is not None or self.units != '' or self.units.lower() != 'none':
+            coord_units = { r".*degrees_.*", r".*since.*", r"radians", r".*days.*" }
+            for u in coord_units:
+                if re.search(u, self.units):
+                    return True
+        return False
+
+    @is_coordinate.expression
+    def is_coordinate(cls):
+        """
+        SQL version of the is_coordinate property
+        """
+        return case(
+            [
+                (func.lower(cls.units).contains("degrees_", autoescape=True), literal_column("1", Boolean)),
+                (func.lower(cls.units).contains("since"), literal_column("1", Boolean)),
+                (func.lower(cls.units).contains("days"), literal_column("1", Boolean)),
+                (func.lower(cls.units).like("radians"), literal_column("1", Boolean)),
+            ],
+            else_=literal_column("0", Boolean),
         )
 
 

@@ -40,7 +40,7 @@ def get_experiments(
 
     All metadata fields will be returned if all=True, or individual metadata fields
     can be selected by passing field=True, where available fields are:
-    contact, email, created, description, notes, and root_dir
+    contact, email, created, description, notes, url and root_dir
     """
 
     # Determine which attributes to return. Special case experiment
@@ -101,29 +101,55 @@ def get_keywords(session, experiment=None):
         return {r.keyword for r in q}
 
 
-def get_variables(session, experiment, frequency=None):
+def get_variables(session, experiment=None, frequency=None, inferred=False):
     """
     Returns a DataFrame of variables for a given experiment and optionally
-    a given diagnostic frequency.
+    a given diagnostic frequency. If experiment is not specified all variables
+    for all experiments are returned, as is the experiment name.
+    If inferred is True then some properties inferred from other fields are
+    also returned: coordinate, model and restart.
+           - coordinate: True if coordinate, False otherwise
+           - model: model from which variable output, possible values are ocean,
+                    atmosphere, land, ice, or none if can't be identified
+           - restart: True if variable from a restart file, False otherwise
     """
 
-    q = (
-        session.query(
-            CFVariable.name,
-            CFVariable.long_name,
-            NCFile.frequency,
-            NCFile.ncfile,
-            func.count(NCFile.ncfile).label("# ncfiles"),
-            func.min(NCFile.time_start).label("time_start"),
-            func.max(NCFile.time_end).label("time_end"),
+    # Default columns
+    columns = [
+        CFVariable.name,
+        CFVariable.long_name,
+        CFVariable.units,
+        NCFile.frequency,
+        NCFile.ncfile,
+        func.count(NCFile.ncfile).label("# ncfiles"),
+        func.min(NCFile.time_start).label("time_start"),
+        func.max(NCFile.time_end).label("time_end"),
+    ]
+
+    if inferred:
+        columns.extend(
+            [
+                CFVariable.is_coordinate.label("coordinate"),
+                NCFile.model,
+                NCFile.is_restart.label("restart"),
+            ]
         )
+
+    # Add experiment when no experiment specified
+    if experiment is None:
+        columns.insert(0, NCExperiment.experiment)
+
+    q = (
+        session.query(*columns)
         .join(NCFile.experiment)
         .join(NCFile.ncvars)
         .join(NCVar.variable)
-        .filter(NCExperiment.experiment == experiment)
         .order_by(NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile)
-        .group_by(CFVariable.name, NCFile.frequency)
+        .group_by(NCExperiment.experiment, CFVariable.name, NCFile.frequency)
     )
+
+    if experiment is not None:
+        q = q.filter(NCExperiment.experiment == experiment)
 
     if frequency is not None:
         q = q.filter(NCFile.frequency == frequency)
