@@ -7,7 +7,7 @@ Functions for data discovery.
 import logging
 import os.path
 import pandas as pd
-from sqlalchemy import func, distinct
+from sqlalchemy import func, distinct, or_
 import warnings
 import xarray as xr
 
@@ -28,7 +28,13 @@ warnings.simplefilter("error", category=QueryWarning, lineno=0, append=False)
 
 
 def get_experiments(
-    session, experiment=True, keywords=None, all=False, exptname=None, **kwargs
+    session,
+    experiment=True,
+    keywords=None,
+    variables=None,
+    all=False,
+    exptname=None,
+    **kwargs,
 ):
     """
     Returns a DataFrame of all experiments and the number of netCDF4 files contained
@@ -37,6 +43,9 @@ def get_experiments(
     Optionally one or more keywords can be specified, and only experiments with all the
     specified keywords will be return. The keyword strings can utilise SQL wildcard
     characters, "%" and "_", to match multiple keywords.
+
+    Optionally variables can also be specified, and only experiments containing all those
+    variables will be returned.
 
     All metadata fields will be returned if all=True, or individual metadata fields
     can be selected by passing field=True, where available fields are:
@@ -66,6 +75,30 @@ def get_experiments(
         if isinstance(keywords, str):
             keywords = [keywords]
         q = q.filter(*(NCExperiment.keywords.like(k) for k in keywords))
+
+    if variables is not None:
+        if isinstance(variables, str):
+            variables = [variables]
+
+        # Construct a query that counts the number of matches to
+        # variable names for each experiment
+        expts = pd.DataFrame(
+            session.query(
+                NCExperiment.experiment,
+                func.count().over(partition_by=NCExperiment.experiment).label("num"),
+            )
+            .join(NCFile.experiment)
+            .join(NCFile.ncvars)
+            .join(NCVar.variable)
+            .order_by(NCExperiment.experiment)
+            .group_by(NCExperiment.experiment, CFVariable.name)
+            .filter(or_(CFVariable.name == vname for vname in variables))
+        )
+
+        # Return the set of experiment names that have matches for all variables
+        expts = set(expts[expts.num == len(variables)].experiment)
+
+        q = q.filter(NCExperiment.experiment.in_(expts))
 
     if exptname is not None:
         q = q.filter(NCExperiment.experiment == exptname)
@@ -101,17 +134,22 @@ def get_keywords(session, experiment=None):
         return {r.keyword for r in q}
 
 
-def get_variables(session, experiment=None, frequency=None, inferred=False):
+def get_variables(
+    session, experiment=None, frequency=None, inferred=False, search=None
+):
     """
-    Returns a DataFrame of variables for a given experiment and optionally
-    a given diagnostic frequency. If experiment is not specified all variables
-    for all experiments are returned, as is the experiment name.
-    If inferred is True then some properties inferred from other fields are
-    also returned: coordinate, model and restart.
+    Returns a DataFrame of variables for a given experiment if experiment
+    name is specified, and optionally a given diagnostic frequency.
+    If inferred is True some experiment specific properties inferred from other
+    fields are also returned: coordinate, model and restart.
            - coordinate: True if coordinate, False otherwise
            - model: model from which variable output, possible values are ocean,
                     atmosphere, land, ice, or none if can't be identified
            - restart: True if variable from a restart file, False otherwise
+    If experiment is not specified all variables for all experiments are returned,
+    without experiment specific data.
+    Specifying an array of search strings will limit variables returned to any
+    containing any of the search terms in variable name, long name, or standard name.
     """
 
     # Default columns
@@ -119,12 +157,18 @@ def get_variables(session, experiment=None, frequency=None, inferred=False):
         CFVariable.name,
         CFVariable.long_name,
         CFVariable.units,
-        NCFile.frequency,
-        NCFile.ncfile,
-        func.count(NCFile.ncfile).label("# ncfiles"),
-        func.min(NCFile.time_start).label("time_start"),
-        func.max(NCFile.time_end).label("time_end"),
     ]
+
+    if experiment:
+        columns.extend(
+            [
+                NCFile.frequency,
+                NCFile.ncfile,
+                func.count(NCFile.ncfile).label("# ncfiles"),
+                func.min(NCFile.time_start).label("time_start"),
+                func.max(NCFile.time_end).label("time_end"),
+            ]
+        )
 
     if inferred:
         columns.extend(
@@ -135,24 +179,38 @@ def get_variables(session, experiment=None, frequency=None, inferred=False):
             ]
         )
 
-    # Add experiment when no experiment specified
-    if experiment is None:
-        columns.insert(0, NCExperiment.experiment)
-
     q = (
         session.query(*columns)
         .join(NCFile.experiment)
         .join(NCFile.ncvars)
         .join(NCVar.variable)
         .order_by(NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile)
-        .group_by(NCExperiment.experiment, CFVariable.name, NCFile.frequency)
+        .group_by(CFVariable, NCFile.frequency)
     )
 
     if experiment is not None:
         q = q.filter(NCExperiment.experiment == experiment)
 
-    if frequency is not None:
-        q = q.filter(NCFile.frequency == frequency)
+        # Filtering on frequency only makes sense if experiment is specified
+        if frequency is not None:
+            q = q.filter(NCFile.frequency == frequency)
+
+    if search is not None:
+        if isinstance(search, str):
+            search = [
+                search,
+            ]
+        q = q.filter(
+            or_(
+                column.contains(word)
+                for word in search
+                for column in (
+                    CFVariable.name,
+                    CFVariable.long_name,
+                    CFVariable.standard_name,
+                )
+            )
+        )
 
     return pd.DataFrame(q)
 

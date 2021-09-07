@@ -246,6 +246,23 @@ def test_get_experiments(session):
     assert r.shape == (1, 8)
     assert "experiment" not in r
 
+    # Test for variables
+    # import pdb; pdb.set_trace()
+
+    in_both = {"potrho_edges", "age_global", "tx_trans_rho"}
+    only_in_querying = {"hi_m", "ty_trans"}
+
+    r = cc.querying.get_experiments(session, variables=in_both)
+    assert r.shape == (2, 2)
+
+    r = cc.querying.get_experiments(session, variables=(in_both | only_in_querying))
+    assert r.shape == (1, 2)
+
+    r = cc.querying.get_experiments(
+        session, variables=(in_both | only_in_querying | {"none"})
+    )
+    assert r.shape == (0, 0)
+
 
 def test_get_ncfiles(session):
     r = cc.querying.get_ncfiles(session, "querying")
@@ -299,8 +316,119 @@ def test_get_variables(session):
         }
     )
 
-    # assert_frame_equal(r[df.columns], df)
     assert_frame_equal(r, df)
+
+    r = cc.querying.get_variables(session, "querying", search="temp")
+
+    df = pd.DataFrame.from_dict(
+        {
+            "name": ["diff_cbt_t", "temp", "temp_xflux_adv", "temp_yflux_adv"],
+            "long_name": [
+                "total vert diff_cbt(temp) (w/o neutral included)",
+                "Potential temperature",
+                "cp*rho*dzt*dyt*u*temp",
+                "cp*rho*dzt*dxt*v*temp",
+            ],
+            "units": ["m^2/s", "degrees K", "Watts", "Watts"],
+            "frequency": [None] * 4,
+            "ncfile": ["output000/ocean.nc"] * 4,
+            "# ncfiles": [1] * 4,
+            "time_start": [None] * 4,
+            "time_end": [None] * 4,
+        }
+    )
+
+    assert_frame_equal(r, df)
+
+    r = cc.querying.get_variables(session, search="temp")
+
+    df = pd.DataFrame.from_dict(
+        {
+            "name": ["diff_cbt_t", "temp", "temp_xflux_adv", "temp_yflux_adv"],
+            "long_name": [
+                "total vert diff_cbt(temp) (w/o neutral included)",
+                "Potential temperature",
+                "cp*rho*dzt*dyt*u*temp",
+                "cp*rho*dzt*dxt*v*temp",
+            ],
+            "units": ["m^2/s", "degrees K", "Watts", "Watts"],
+        }
+    )
+
+    assert_frame_equal(r, df)
+
+    r = cc.querying.get_variables(session, search=("temp", "velocity"))
+
+    df = pd.DataFrame.from_dict(
+        {
+            "name": [
+                "diff_cbt_t",
+                "temp",
+                "temp_xflux_adv",
+                "temp_yflux_adv",
+                "u",
+                "v",
+                "wt",
+            ],
+            "long_name": [
+                "total vert diff_cbt(temp) (w/o neutral included)",
+                "Potential temperature",
+                "cp*rho*dzt*dyt*u*temp",
+                "cp*rho*dzt*dxt*v*temp",
+                "i-current",
+                "j-current",
+                "dia-surface velocity T-points",
+            ],
+            "units": [
+                "m^2/s",
+                "degrees K",
+                "Watts",
+                "Watts",
+                "m/sec",
+                "m/sec",
+                "m/sec",
+            ],
+        }
+    )
+
+    r = cc.querying.get_variables(session, search=("temp", "velocity"))
+
+    df = pd.DataFrame.from_dict(
+        {
+            "name": [
+                "diff_cbt_t",
+                "temp",
+                "temp_xflux_adv",
+                "temp_yflux_adv",
+                "u",
+                "v",
+                "wt",
+            ],
+            "long_name": [
+                "total vert diff_cbt(temp) (w/o neutral included)",
+                "Potential temperature",
+                "cp*rho*dzt*dyt*u*temp",
+                "cp*rho*dzt*dxt*v*temp",
+                "i-current",
+                "j-current",
+                "dia-surface velocity T-points",
+            ],
+            "units": [
+                "m^2/s",
+                "degrees K",
+                "Watts",
+                "Watts",
+                "m/sec",
+                "m/sec",
+                "m/sec",
+            ],
+            "frequency": [None] * 7,
+            "ncfile": ["output000/ocean.nc"] * 7,
+            "# ncfiles": [1] * 7,
+            "time_start": [None] * 7,
+            "time_end": [None] * 7,
+        }
+    )
 
 
 def test_model_property(session):
@@ -368,7 +496,9 @@ def test_is_restart_property(session):
 
     # Grab all variables and ensure the SQL classification matches the python version
     # May be some holes, as not ensured all cases covered
-    for index, row in cc.querying.get_variables(session, inferred=True).iterrows():
+    for index, row in cc.querying.get_variables(
+        session, "querying", inferred=True
+    ).iterrows():
         ncfile = NCFile(
             index_time=datetime.now(),
             ncfile=row.ncfile,
