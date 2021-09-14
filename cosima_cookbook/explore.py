@@ -1,3 +1,4 @@
+from logging import warning
 import lxml.html
 import re
 import warnings
@@ -25,172 +26,11 @@ def return_value_or_empty(value):
 
 class DatabaseExtension:
 
-    session = None
-    experiments = None
-    allexperiments = None
-    keywords = None
-    variables = None
-    expt_variable_map = None
+    # DEPRECATED
 
     def __init__(self, session, experiments=None):
-        """
-        Generate and store derived information based on queries to the back end
-        SQL database. If no session passed a new session will be created using
-        the default database. If a list of experiment names is provied only those
-        experiments will be queried to generate the list of derived information.
-        """
-        self.session = session
-
-        self.allexperiments = querying.get_experiments(session=self.session, all=True)
-
-        if experiments is None:
-            self.experiments = self.allexperiments
-        else:
-            if isinstance(experiments, str):
-                experiments = [
-                    experiments,
-                ]
-            # Subset experiment column from dataframe, and don't pass as a simple list
-            # otherwise index is not correctly named
-            self.experiments = self.allexperiments[
-                self.allexperiments.experiment.isin(experiments)
-            ]
-
-        self.keywords = sorted(querying.get_keywords(self.session), key=str.casefold)
-        self.expt_variable_map = self.experiment_variable_map()
-        self.variables = self.unique_variable_list()
-
-    def experiment_variable_map(self):
-        """
-        Make a pandas table with experiment as the index and columns of name,
-        long_name, coordinate flag, restart flag and model type.
-        """
-        expts = sorted(set(self.experiments.experiment))
-        allvars = pd.concat(
-            [self.get_variables(expt) for expt in expts],
-            keys=expts,
-        ).rename_axis(["experiment", "number"], axis="rows")
-
-        # Create a new column to flag if variable is from a restart directory
-        allvars["restart"] = allvars.ncfile.str.contains("restart")
-
-        # Create a new column to characterise model type
-        allvars["model"] = ""
-
-        # There is no metadata in the files or database that will let us know which
-        # model produced the output, so use a heuristic that assumes if the data
-        # resides in a directory that is named for a model type it is output from
-        # that model. Doesn't use os.path.sep as it is never envisaged this will be used
-        # outside of a posix system
-        allvars.loc[
-            (
-                allvars.ncfile.str.contains(r"\bocean\b")
-                | allvars.ncfile.str.contains(r"\bocn\b")
-            ),
-            "model",
-        ] = "ocean"
-        allvars.loc[
-            (
-                allvars.ncfile.str.contains(r"\bland\b")
-                | allvars.ncfile.str.contains(r"\blnd\b")
-            ),
-            "model",
-        ] = "land"
-        allvars.loc[
-            (
-                allvars.ncfile.str.contains(r"\batmosphere\b")
-                | allvars.ncfile.str.contains(r"\batm\b")
-                | allvars.ncfile.str.contains(r"\batmos\b")
-            ),
-            "model",
-        ] = "atmosphere"
-        allvars.loc[allvars.ncfile.str.contains(r"\bice\b"), "model"] = "ice"
-
-        allvars["model"] = allvars["model"].astype("category")
-
-        # Create a new column to flag if variable has units which match a number of criteria
-        # that indicated it is a coordinate
-        allvars = allvars.assign(
-            coordinate=(
-                allvars.units.str.contains("degrees", na=False)
-                | allvars.units.str.contains("since", na=False)
-                | allvars.units.str.match("^radians$", na=False)
-                | allvars.units.str.startswith("days", na=False)
-            )
-        )  # legit units: %/day, day of year
-
-        return allvars[["name", "long_name", "model", "restart", "units", "coordinate"]]
-
-    def unique_variable_list(self):
-        """
-        Extract a list of all unique variable name/long_name/model/restart/coordinate
-        combinations from the experiment keyword map
-        """
-        return self.expt_variable_map.reset_index(drop=True).drop_duplicates()
-
-    def keyword_filter(self, keywords):
-        """
-        Return a list of experiments matching *all* of the supplied keywords
-        """
-        try:
-            return querying.get_experiments(self.session, keywords=keywords).experiment
-        except AttributeError:
-            return []
-
-    def variable_filter(self, variables):
-        """
-        Return a set of experiments that contain all the defined variables
-        """
-        expts = []
-        for v in variables:
-            expts.append(
-                set(
-                    self.expt_variable_map[
-                        self.expt_variable_map.name == v
-                    ].reset_index()["experiment"]
-                )
-            )
-        return set.intersection(*expts)
-
-    def get_experiment(self, experiment):
-        """
-        Convenience routine to return the full entry given an experiment name
-        """
-        return self.experiments[self.experiments["experiment"] == experiment]
-
-    # Return more metadata than get_variables from cosima-cookbook
-    def get_variables(self, experiment, frequency=None):
-        """
-        Returns a DataFrame of variables for a given experiment and optionally
-        a given diagnostic frequency.
-        """
-
-        q = (
-            self.session.query(
-                CFVariable.name,
-                CFVariable.long_name,
-                CFVariable.standard_name,
-                CFVariable.units,
-                NCFile.frequency,
-                NCFile.ncfile,
-                func.count(NCFile.ncfile).label("# ncfiles"),
-                func.min(NCFile.time_start).label("time_start"),
-                func.max(NCFile.time_end).label("time_end"),
-            )
-            .join(NCFile.experiment)
-            .join(NCFile.ncvars)
-            .join(NCVar.variable)
-            .filter(NCExperiment.experiment == experiment)
-            .order_by(
-                NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile
-            )
-            .group_by(CFVariable.name, NCFile.frequency)
-        )
-
-        if frequency is not None:
-            q = q.filter(NCFile.frequency == frequency)
-
-        return pd.DataFrame(q)
+        """ """
+        warnings.warn("DatabaseExtension is deprecated and no longer required")
 
 
 class VariableSelector(VBox):
@@ -298,16 +138,20 @@ class VariableSelector(VBox):
         # Populate model selector. Note label and value differ
         options = {"All models": ""}
         for model in variables.model.cat.categories.values:
-            if len(model) > 0:
+            if len(model) > 0 and model != 'none': 
                 options["{} only".format(model.capitalize())] = model
         self.model.options = options
 
         options = dict()
+        firstvar = None
         for vals in variables.sort_values(["name"])[
             ["name", "long_name", "units"]
         ].values:
 
             var, name, units = map(str, vals)
+
+            if firstvar is None:
+                firstvar = var
 
             if name.lower() == "none" or name == "":
                 name = var
@@ -327,6 +171,11 @@ class VariableSelector(VBox):
 
         # Populate variable selector
         self.selector.options = options
+
+        # Highlight first value, otherwise accessors like .value are not
+        # immediately accessible
+        if firstvar is not None:
+            self.selector.value = options[firstvar]
 
     def _reset_filters(self):
         """
@@ -358,7 +207,7 @@ class VariableSelector(VBox):
         Optionally hide some variables
         """
         # Set up a mask with all true values
-        mask = self.variables.name.ne("")
+        mask = self.variables["name"] != ""
 
         # Filter for matching models
         if model != "":
@@ -579,8 +428,10 @@ class VariableSelectFilter(HBox):
         Instantiate all widgets
         """
         layout = {"padding": "0px 5px"}
-        # Variable selector combo-widget
-        self.selector = VariableSelector(selvariables, **kwargs)
+        # Variable selector combo-widget. Pass only unique variable names. Variable
+        # name is the only value used for filtering, so will pick up all matches
+        self.selector = VariableSelector(selvariables.drop_duplicates("name"), **kwargs)
+
         # Button to add variable from selector to selected
         self.var_filter_add = Button(
             tooltip="Add selected variable to filter",
@@ -629,7 +480,7 @@ class VariableSelectFilter(HBox):
         """
         self.add(self.selector.delete())
 
-    def add(self, variable):
+    def add(self, variable=None):
         """
         Add variable to filtered variables
         """
@@ -646,7 +497,7 @@ class VariableSelectFilter(HBox):
 
     def delete(self, variable_names=None):
         """
-        Delete variable from filtered variables
+        Delete variable from list of filtered variables
         """
         # If no variable specified just delete the currently selected one
         if variable_names is None:
@@ -685,8 +536,10 @@ class DatabaseExplorer(VBox):
     """
 
     session = None
-    de = None
     ee = None
+    experiments = None
+    keywords = None
+    variables = None
 
     def __init__(self, session=None, de=None):
 
@@ -694,9 +547,12 @@ class DatabaseExplorer(VBox):
             session = database.create_session()
         self.session = session
 
-        if de is None:
-            de = DatabaseExtension(self.session)
-        self.de = de
+        if de is not None:
+            warning.warn("DatabaseExtension has been deprecated is no longer supported")
+
+        self.experiments = querying.get_experiments(session=self.session, all=True)
+        self.keywords = sorted(querying.get_keywords(self.session), key=str.casefold)
+        self.variables = querying.get_variables(self.session, inferred=True)
 
         self._make_widgets()
 
@@ -711,8 +567,6 @@ class DatabaseExplorer(VBox):
         self._set_handlers()
 
     def _make_widgets(self):
-
-        box_layout = Layout(padding="10px", width="auto", border="0px solid black")
 
         style = "<style>.header p{ line-height: 1.4; margin-bottom: 10px }</style>"
 
@@ -746,7 +600,7 @@ class DatabaseExplorer(VBox):
 
         # Experiment selector box
         self.expt_selector = Select(
-            options=sorted(set(self.de.experiments.experiment), key=str.casefold),
+            options=sorted(set(self.experiments.experiment), key=str.casefold),
             rows=24,
             layout={"padding": "0px 5px", "width": "auto"},
             disabled=False,
@@ -756,7 +610,7 @@ class DatabaseExplorer(VBox):
         # checkboxes
         self.filter_widget = SelectMultiple(
             rows=15,
-            options=sorted(self.de.keywords, key=str.casefold),
+            options=sorted(self.keywords, key=str.casefold),
             layout={"flex": "0 0 100%"},
         )
         # Reset keywords button
@@ -778,7 +632,7 @@ class DatabaseExplorer(VBox):
 
         # Variable filter selector combo widget
         self.var_filter = VariableSelectFilter(
-            self.de.variables, layout={"flex": "0 0 40%"}
+            self.variables, layout={"flex": "0 0 40%"}
         )
 
         # Tab box to contain keyword and variable filters
@@ -822,9 +676,23 @@ class DatabaseExplorer(VBox):
                     [Label(value="Filter by:"), self.filter_tabs, self.filter_button],
                     layout={"padding": "0px 10px", "flex": "0 0 65%"},
                 ),
-                # layout=box_layout,),
             ]
         )
+
+    def _keyword_filter(self, keywords):
+        """
+        Return a list of experiments matching *all* of the supplied keywords
+        """
+        try:
+            return querying.get_experiments(self.session, keywords=keywords).experiment
+        except AttributeError:
+            return []
+
+    def _variable_filter(self, variables):
+        """
+        Return a set of experiments that contain all the defined variables
+        """
+        return querying.get_experiments(self.session, variables=variables).experiment
 
     def _set_handlers(self):
         """
@@ -860,7 +728,7 @@ class DatabaseExplorer(VBox):
         """
         Populate box with experiment information
         """
-        expt = self.de.experiments[self.de.experiments.experiment == experiment_name]
+        expt = self.experiments[self.experiments.experiment == experiment_name]
 
         style = """
         <style>
@@ -903,15 +771,15 @@ class DatabaseExplorer(VBox):
         """
         Filter experiment list by keywords and variable
         """
-        options = set(self.de.experiments.experiment)
+        options = set(self.experiments.experiment)
 
         kwds = self.filter_widget.value
         if len(kwds) > 0:
-            options.intersection_update(self.de.keyword_filter(kwds))
+            options.intersection_update(self._keyword_filter(kwds))
 
         variables = self.var_filter.selected_vars()
         if len(variables) > 0:
-            options.intersection_update(self.de.variable_filter(variables))
+            options.intersection_update(self._variable_filter(variables))
 
         self.expt_selector.options = sorted(options, key=str.casefold)
 
@@ -942,7 +810,8 @@ class ExperimentExplorer(VBox):
     session = None
     _loaded_data = None
     experiment_name = None
-    variables = []
+    variables = None
+    experiments = None
 
     def __init__(self, session=None, experiment=None):
 
@@ -950,15 +819,18 @@ class ExperimentExplorer(VBox):
             session = database.create_session()
         self.session = session
 
-        if experiment is None:
-            # Have to pass an experiment to DatabaseExtension so that
-            # it only creates a variable/keyword map for a single
-            # experiment
-            expts = querying.get_experiments(self.session, all=True)
-            experiment = expts.iloc[0].experiment
+        self.experiments = querying.get_experiments(session=self.session, all=True)
 
-        self.de = DatabaseExtension(self.session, experiments=experiment)
+        if self.experiments.size == 0:
+            raise ValueError("No experiments found in database")
+
+        if experiment is None:
+            experiment = self.experiments.iloc[0].experiment
+
         self.experiment_name = experiment
+        self.variables = querying.get_variables(
+            self.session, self.experiment_name, inferred=True
+        )
 
         self._make_widgets()
 
@@ -997,7 +869,7 @@ class ExperimentExplorer(VBox):
         )
         # Experiment selector element
         self.expt_selector = Dropdown(
-            options=sorted(set(self.de.allexperiments.experiment), key=str.casefold),
+            options=sorted(set(self.experiments.experiment), key=str.casefold),
             value=self.experiment_name,
             description="",
             layout={"width": "40%"},
@@ -1019,7 +891,7 @@ class ExperimentExplorer(VBox):
         # Variable filter selector combo widget. Pass in two widgets so they
         # can be updated by the VariableSelectorInfo widget
         self.var_selector = VariableSelectorInfo(
-            self.de.variables,
+            self.variables,
             daterange=self.daterange,
             frequency=self.frequency,
             rows=20,
@@ -1063,7 +935,7 @@ class ExperimentExplorer(VBox):
         # Create a dict to build load command and the
         # string representation of the same load command
         kwargs = {
-            "session": self.de.session,
+            "session": self.session,
             "expt": self.expt_selector.value,
             "variable": varname,
             "frequency": frequency,
@@ -1124,14 +996,9 @@ class ExperimentExplorer(VBox):
         When first instantiated, or experiment changed, the variable
         selector widget needs to be refreshed
         """
-        self.de = DatabaseExtension(self.session, experiments=experiment_name)
         self.experiment_name = experiment_name
-        # Add metadata
-        self.variables = pd.merge(
-            self.de.variables,
-            self.de.get_variables(self.experiment_name),
-            how="inner",
-            on=["name", "long_name", "units"],
+        self.variables = querying.get_variables(
+            self.session, self.experiment_name, inferred=True
         )
         self._load_variables()
 
