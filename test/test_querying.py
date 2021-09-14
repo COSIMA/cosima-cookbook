@@ -246,9 +246,7 @@ def test_get_experiments(session):
     assert r.shape == (1, 8)
     assert "experiment" not in r
 
-    # Test for variables
-    # import pdb; pdb.set_trace()
-
+    # Test for filtering by variables
     in_both = {"potrho_edges", "age_global", "tx_trans_rho"}
     only_in_querying = {"hi_m", "ty_trans"}
 
@@ -440,19 +438,26 @@ def test_model_property(session):
             "output/ocean/atmos.nc",
             "ocean/ocean_daily.nc",
             "output/ocean/ocean_daily.nc.0000",
+            "ocean/atmos.nc",
         ),
         "atmosphere": (
             "output/atm/fire.nc",
             "output/atmos/ice.nc",
             "output/atmosphere/ice.nc",
+            "atmosphere/ice.nc",
+            "atmos/ice.nc",
         ),
         "land": (
             "output/land/fire.nc",
             "output/lnd/ice.nc",
+            "land/fire.nc",
+            "lnd/ice.nc",
         ),
         "ice": (
             "output/ice/fire.nc",
             "output/ice/in/here/land.nc",
+            "ice/fire.nc",
+            "ice/in/here/land.nc",
         ),
         "none": (
             "output/ocean.nc",  # only a model if part of path, not filename
