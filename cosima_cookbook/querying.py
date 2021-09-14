@@ -212,7 +212,16 @@ def get_variables(
             )
         )
 
-    return pd.DataFrame(q)
+    default_dtypes = {
+        "# ncfiles": "int64",
+        "coordinate": "boolean",
+        "model": "category",
+        "restart": "boolean",
+    }
+
+    df = pd.DataFrame(q)
+
+    return df.astype({k: v for k,v in default_dtypes.items() if k in df.columns})
 
 
 def get_frequencies(session, experiment=None):
