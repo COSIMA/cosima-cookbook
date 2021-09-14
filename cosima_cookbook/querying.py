@@ -221,7 +221,7 @@ def get_variables(
 
     df = pd.DataFrame(q)
 
-    return df.astype({k: v for k,v in default_dtypes.items() if k in df.columns})
+    return df.astype({k: v for k, v in default_dtypes.items() if k in df.columns})
 
 
 def get_frequencies(session, experiment=None):

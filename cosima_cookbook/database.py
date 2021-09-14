@@ -350,7 +350,10 @@ from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".for
         return case(
             [
                 (func.lower(cls.ncfile).contains("/ocean/"), literal_column("'ocean'")),
-                (func.lower(cls.ncfile).startswith("ocean/"), literal_column("'ocean'")),
+                (
+                    func.lower(cls.ncfile).startswith("ocean/"),
+                    literal_column("'ocean'"),
+                ),
                 (func.lower(cls.ncfile).contains("/ocn/"), literal_column("'ocean'")),
                 (func.lower(cls.ncfile).startswith("ocn/"), literal_column("'ocean'")),
                 (func.lower(cls.ncfile).contains("/land/"), literal_column("'land'")),
