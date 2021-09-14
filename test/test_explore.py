@@ -65,87 +65,6 @@ def session(tmpdir_factory):
     return session
 
 
-def test_database_extension(session):
-
-    # DatabaseExtension adds a layer of logic, infers model type, identifies
-    # coordinate and restart variables, and creates a mapping from variables
-    # to experiment
-    de = cc.explore.DatabaseExtension(session=session)
-
-    assert de.experiments.shape == (3, 9)
-    assert de.expt_variable_map.shape == (108, 6)
-    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (12, 6)
-    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (44, 6)
-    assert de.keywords == ["access-om2-01", "another-keyword", "cosima", "ryf9091"]
-    # All unique variables contained in the database
-    assert de.variables.shape == (68, 6)
-    # Check restart and coordinate variables correctly assigned
-    assert de.variables[~de.variables.restart & ~de.variables.coordinate].shape == (
-        32,
-        6,
-    )
-    # Check model assignment
-    assert de.variables[de.variables.model == "ocean"].shape == (38, 6)
-    assert de.variables[de.variables.model == "atmosphere"].shape == (12, 6)
-    assert de.variables[de.variables.model == "ice"].shape == (6, 6)
-    assert de.variables[de.variables.model == ""].shape == (12, 6)
-
-    # Now specify only one experiment, which is what happens in ExperimentExplorer
-    de = cc.explore.DatabaseExtension(
-        session=session,
-        experiments=[
-            "one",
-        ],
-    )
-
-    assert de.experiments.shape == (2, 9)
-    assert de.allexperiments.shape == (3, 9)
-    assert de.expt_variable_map.shape == (52, 6)
-    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 6)
-    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 6)
-    assert de.keywords == ["access-om2-01", "another-keyword", "cosima", "ryf9091"]
-    # All unique variables contained in the database
-    assert de.variables.shape == (52, 6)
-    # Check restart and coordinate variables correctly assigned
-    assert de.variables[~de.variables.restart & ~de.variables.coordinate].shape == (
-        24,
-        6,
-    )
-    assert de.variables[de.variables.model == "ocean"].shape == (34, 6)
-    assert de.variables[de.variables.model == "atmosphere"].shape == (6, 6)
-    assert de.variables[de.variables.model == "ice"].shape == (6, 6)
-    assert de.variables[de.variables.model == ""].shape == (6, 6)
-
-    # Now specify only one experiment, which is what happens in ExperimentExplorer
-    de = cc.explore.DatabaseExtension(
-        session=session,
-        experiments=[
-            "two",
-        ],
-    )
-
-    assert de.experiments.shape == (1, 9)
-    assert de.allexperiments.shape == (3, 9)
-    assert de.expt_variable_map.shape == (56, 6)
-    assert de.expt_variable_map[de.expt_variable_map.restart].shape == (6, 6)
-    assert de.expt_variable_map[de.expt_variable_map.coordinate].shape == (22, 6)
-    assert de.keywords == ["access-om2-01", "another-keyword", "cosima", "ryf9091"]
-    # All unique variables contained in the database
-    assert de.variables.shape == (56, 6)
-    # Check restart and coordinate variables correctly assigned
-    assert de.variables[~de.variables.restart & ~de.variables.coordinate].shape == (
-        28,
-        6,
-    )
-    assert de.variables[de.variables.model == "ocean"].shape == (38, 6)
-    assert de.variables[de.variables.model == "atmosphere"].shape == (6, 6)
-    assert de.variables[de.variables.model == "ice"].shape == (0, 6)
-    assert de.variables[de.variables.model == ""].shape == (12, 6)
-
-    # import pdb; pdb.set_trace()
-    assert de.variable_filter(["salt"]) == {"two"}
-
-
 def test_database_explorer(session):
 
     dbx = cc.explore.DatabaseExplorer(session=session)
@@ -156,10 +75,16 @@ def test_database_explorer(session):
     assert dbx.expt_selector.options == ("one", "two")
 
     # Keyword filter selector
-    assert dbx.filter_widget.options == tuple(dbx.de.keywords)
+    assert dbx.filter_widget.options == tuple(dbx.keywords)
+
+    in_one = set(cc.querying.get_variables(session, "one").name)
+    in_two = set(cc.querying.get_variables(session, "two").name)
 
     # The variable filter box
-    variables = dbx.var_filter.selector.variables
+    assert len(dbx.var_filter.selector.variables) == len((in_one | in_two))
+
+    # Turn off filtering so all variables are present in the filter selector
+    dbx.var_filter.selector._filter_variables(coords=False, restarts=False, model="")
 
     truth = {
         "age_global": "Age (global) (yr)",
@@ -179,6 +104,27 @@ def test_database_explorer(session):
     for var, label in truth.items():
         assert dbx.var_filter.selector.selector.options[var] == label
 
+    # Add all variables common to both experiments and ensure after filter
+    # experiment selector still contains both
+    for var in in_one & in_two:
+        dbx.var_filter.selector.selector.label = var
+        dbx.var_filter._add_var_to_selected(None)
+
+    dbx._filter_experiments(None)
+    assert dbx.expt_selector.options == ("one", "two")
+
+    dbx.var_filter.delete(in_one & in_two)
+    assert len(dbx.var_filter.var_filter_selected.options) == 0
+
+    # Now all variables only in experiment two and ensure after filter
+    # experiment selector only contains two
+    for var in in_two - in_one:
+        dbx.var_filter.selector.selector.label = var
+        dbx.var_filter._add_var_to_selected(None)
+
+    dbx._filter_experiments(None)
+    assert dbx.expt_selector.options == ("two",)
+
 
 def test_experiment_explorer(session):
 
@@ -187,13 +133,13 @@ def test_experiment_explorer(session):
     # Experiment selector
     assert ee1.expt_selector.options == ("one", "two")
 
-    assert len(ee1.var_selector.selector.options) == 23
+    assert len(ee1.var_selector.selector.options) == 24
     assert "pot_rho_0" in ee1.var_selector.selector.options
     assert "ty_trans_rho" not in ee1.var_selector.selector.options
 
     # Simulate selecting a different experiment from menu
     ee1._load_experiment("two")
-    assert len(ee1.var_selector.selector.options) == 27
+    assert len(ee1.var_selector.selector.options) == 28
     assert "pot_rho_0" in ee1.var_selector.selector.options
     assert "ty_trans_rho" in ee1.var_selector.selector.options
 
