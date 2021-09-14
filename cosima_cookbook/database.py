@@ -350,11 +350,19 @@ from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".for
         return case(
             [
                 (func.lower(cls.ncfile).contains("/ocean/"), literal_column("'ocean'")),
+                (func.lower(cls.ncfile).startswith("ocean/"), literal_column("'ocean'")),
                 (func.lower(cls.ncfile).contains("/ocn/"), literal_column("'ocean'")),
+                (func.lower(cls.ncfile).startswith("ocn/"), literal_column("'ocean'")),
                 (func.lower(cls.ncfile).contains("/land/"), literal_column("'land'")),
+                (func.lower(cls.ncfile).startswith("land/"), literal_column("'land'")),
                 (func.lower(cls.ncfile).contains("/lnd/"), literal_column("'land'")),
+                (func.lower(cls.ncfile).startswith("lnd/"), literal_column("'land'")),
                 (
                     func.lower(cls.ncfile).contains("/atm/"),
+                    literal_column("'atmosphere'"),
+                ),
+                (
+                    func.lower(cls.ncfile).startswith("atm/"),
                     literal_column("'atmosphere'"),
                 ),
                 (
@@ -362,10 +370,19 @@ from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".for
                     literal_column("'atmosphere'"),
                 ),
                 (
+                    func.lower(cls.ncfile).startswith("atmos/"),
+                    literal_column("'atmosphere'"),
+                ),
+                (
                     func.lower(cls.ncfile).contains("/atmosphere/"),
                     literal_column("'atmosphere'"),
                 ),
+                (
+                    func.lower(cls.ncfile).startswith("atmosphere/"),
+                    literal_column("'atmosphere'"),
+                ),
                 (func.lower(cls.ncfile).contains("/ice/"), literal_column("'ice'")),
+                (func.lower(cls.ncfile).startswith("ice/"), literal_column("'ice'")),
             ],
             else_=literal_column("'none'"),
         )
