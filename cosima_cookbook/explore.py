@@ -65,9 +65,10 @@ class DatabaseExtension:
         Make a pandas table with experiment as the index and columns of name,
         long_name, coordinate flag, restart flag and model type.
         """
+        expts = sorted(set(self.experiments.experiment))
         allvars = pd.concat(
-            [self.get_variables(expt) for expt in self.experiments.experiment],
-            keys=set(self.experiments.experiment),
+            [self.get_variables(expt) for expt in expts],
+            keys=expts,
         ).rename_axis(["experiment", "number"], axis="rows")
 
         # Create a new column to flag if variable is from a restart directory
