@@ -538,7 +538,7 @@ class NCVar(Base):
         """
         Return cell_methods attribute if it exists, otherwise None
         """
-        return self.attrs.get('cell_methods', None) 
+        return self.attrs.get("cell_methods", None)
 
 
 def create_session(db=None, debug=False):

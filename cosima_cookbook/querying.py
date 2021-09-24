@@ -180,8 +180,8 @@ def get_cellmethods(session, experiment, variables=None, frequency=None):
 
         for result in q.all():
             results.append([variable, result.value])
-    
-    return pd.DataFrame(results, columns=['variable', 'cell_methods'])
+
+    return pd.DataFrame(results, columns=["variable", "cell_methods"])
 
 
 def get_variables(

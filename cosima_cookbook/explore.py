@@ -321,7 +321,9 @@ class VariableSelectorInfo(VariableSelector):
     Subclass of VariableSelector to display more info in a separate widget
     """
 
-    def __init__(self, parent, variables, daterange, frequency, cellmethods, rows=10, **kwargs):
+    def __init__(
+        self, parent, variables, daterange, frequency, cellmethods, rows=10, **kwargs
+    ):
 
         # The cellmethods widget needs access to the session and experiment
         self.session = parent.session
@@ -978,9 +980,12 @@ class ExperimentExplorer(VBox):
 
         load_command = """cc.querying.getvar(expt='{expt}', variable='{variable}', 
                           session=session, frequency='{frequency}'"""
-        if cellmethods is not None: 
-            load_command = load_command + """,
+        if cellmethods is not None:
+            load_command = (
+                load_command
+                + """,
                           attrs={attrs}"""
+            )
         if frequency == "static":
             load_command = load_command + ", n={n})"
         else:
