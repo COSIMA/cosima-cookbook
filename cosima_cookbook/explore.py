@@ -321,15 +321,21 @@ class VariableSelectorInfo(VariableSelector):
     Subclass of VariableSelector to display more info in a separate widget
     """
 
-    def __init__(self, variables, daterange, frequency, rows=10, **kwargs):
+    def __init__(self, parent, variables, daterange, frequency, cellmethods, rows=10, **kwargs):
+
+        # The cellmethods widget needs access to the session and experiment
+        self.session = parent.session
+        self.experiment = parent.experiment_name
 
         super(VariableSelectorInfo, self).__init__(variables, rows, **kwargs)
 
-        # Requires two widgets passed in as an argument. An html box where
-        # extended meta-data will be displayed, and a date range widget for
-        # selecting start and end times to load
+        # Requires three widgets passed as arguments. An html box where
+        # extended meta-data will be displayed, a date range widget for
+        # selecting start and end times to load, and a cellmethods dropdown
+        # selection box
         self.daterange = daterange
         self.frequency = frequency
+        self.cellmethods = cellmethods
 
         # Set event handlers. Don't use _set_observes method: don't want
         # it called when super init invoked
@@ -337,7 +343,7 @@ class VariableSelectorInfo(VariableSelector):
         self.frequency.observe(self._frequency_eventhandler, names="value")
 
         # Set default filtering
-        self._filter_variables()
+        # self._filter_variables()
 
     def _var_eventhandler(self, selector):
         """
@@ -345,10 +351,17 @@ class VariableSelectorInfo(VariableSelector):
         """
         self._set_frequency_selector(self.selector.label)
 
+    def _frequency_eventhandler(self, selector):
+        """
+        When frequency selector is changed update daterange slider
+        """
+        self._set_daterange_selector(self.selector.label, self.frequency.value)
+        self._set_cellmethods_selector(self.selector.label, self.frequency.value)
+
     def _set_frequency_selector(self, variable_name):
         """
-        Populate the variable loading selectors widgets for daterange
-        and frequency given a variable name
+        Populate the variable loading selectors widgets for daterange,
+        frequency and cellmethods given a variable name
         """
         variable = self.variables.loc[self.variables["name"] == variable_name]
 
@@ -359,18 +372,26 @@ class VariableSelectorInfo(VariableSelector):
         self.frequency.options = []
         self.frequency.disabled = True
 
-        if len(variable) == 0:
-            return
+        if len(variable) > 0:
+            self.frequency.options = variable.frequency
+            self.frequency.index = 0
+            self.frequency.disabled = False
 
-        self.frequency.options = variable.frequency
-        self.frequency.index = 0
-        self.frequency.disabled = False
+    def _set_cellmethods_selector(self, variable_name, frequency):
+        """
+        When frequency selector is changed update cellmethods dropdown
+        """
+        # Find the matching variable in our list
+        self.cellmethods.options = []
+        self.cellmethods.disabled = True
 
-    def _frequency_eventhandler(self, selector):
-        """
-        When frequency selector is changed update daterange slider
-        """
-        self._set_daterange_selector(self.selector.label, self.frequency.value)
+        self.cellmethods.options = querying.get_cellmethods(
+            self.session, self.experiment, variable_name, frequency
+        ).cell_methods
+
+        if len(self.cellmethods.options) > 0:
+            self.cellmethods.index = 0
+            self.cellmethods.disabled = False
 
     def _set_daterange_selector(self, variable_name, frequency):
         """
@@ -703,7 +724,7 @@ class DatabaseExplorer(VBox):
         self.filter_button.on_click(self._filter_experiments)
         self.clear_keywords_button.on_click(self._clear_keywords)
 
-    def _filter_restart_eventhandler(selector):
+    def _filter_restart_eventhandler(self, selector):
         """
         Re-populate variable list when checkboxes selected/de-selected
         """
@@ -845,7 +866,8 @@ class ExperimentExplorer(VBox):
             ]
         )
 
-        self._load_experiment(self.experiment_name)
+        # self._load_experiment(self.experiment_name)
+        self._load_variables()
         self._set_handlers()
 
     def _make_widgets(self):
@@ -874,7 +896,7 @@ class ExperimentExplorer(VBox):
             description="",
             layout={"width": "40%"},
         )
-        # Date selection widget
+        # Frequency selection widget
         self.frequency = Dropdown(
             options=(),
             description="Frequency",
@@ -888,12 +910,20 @@ class ExperimentExplorer(VBox):
             layout={"width": "80%"},
             disabled=True,
         )
+        # Cell methods selection widget
+        self.cellmethods = Dropdown(
+            options=(),
+            description="Cell methods",
+            disabled=True,
+        )
         # Variable filter selector combo widget. Pass in two widgets so they
         # can be updated by the VariableSelectorInfo widget
         self.var_selector = VariableSelectorInfo(
+            self,
             self.variables,
             daterange=self.daterange,
             frequency=self.frequency,
+            cellmethods=self.cellmethods,
             rows=20,
         )
         # DataArray information widget
@@ -906,7 +936,7 @@ class ExperimentExplorer(VBox):
             tooltip="Click to load data",
         )
         self.info_pane = VBox(
-            [self.frequency, self.daterange],
+            [self.frequency, self.daterange, self.cellmethods],
             layout={"padding": "10% 0", "width": "50%"},
         )
         self.centre_pane = HBox([VBox([self.var_selector]), self.info_pane])
@@ -931,6 +961,7 @@ class ExperimentExplorer(VBox):
         varname = self.var_selector.get_selected()
         (start_time, end_time) = self.daterange.value
         frequency = self.frequency.value
+        cellmethods = self.cellmethods.value
 
         # Create a dict to build load command and the
         # string representation of the same load command
@@ -939,6 +970,7 @@ class ExperimentExplorer(VBox):
             "expt": self.expt_selector.value,
             "variable": varname,
             "frequency": frequency,
+            "attrs": {"cell_methods": cellmethods},
             "start_time": str(start_time),
             "end_time": str(end_time),
             "n": 1,
@@ -946,6 +978,9 @@ class ExperimentExplorer(VBox):
 
         load_command = """cc.querying.getvar(expt='{expt}', variable='{variable}', 
                           session=session, frequency='{frequency}'"""
+        if cellmethods is not None: 
+            load_command = load_command + """,
+                          attrs={attrs}"""
         if frequency == "static":
             load_command = load_command + ", n={n})"
         else:
@@ -972,6 +1007,9 @@ class ExperimentExplorer(VBox):
             del kwargs["end_time"]
         else:
             del kwargs["n"]
+
+        if cellmethods is None:
+            del kwargs["attrs"]
 
         try:
             self._loaded_data = querying.getvar(**kwargs)

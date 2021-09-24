@@ -533,6 +533,13 @@ class NCVar(Base):
             set(self.attrs.keys()), e=self
         )
 
+    @property
+    def cell_methods(self):
+        """
+        Return cell_methods attribute if it exists, otherwise None
+        """
+        return self.attrs.get('cell_methods', None) 
+
 
 def create_session(db=None, debug=False):
     """Create a session for the specified database file.
