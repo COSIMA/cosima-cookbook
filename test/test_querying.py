@@ -303,6 +303,9 @@ def test_disambiguation_by_frequency(session):
     with pytest.warns(UserWarning) as record:
         assert len(cc.querying._ncfiles_for_variable("querying", "time", session)) == 3
 
+    print(record)
+    for r in record:
+        print(r.message)
     assert len(record) == 1
     assert (
         record[0]
