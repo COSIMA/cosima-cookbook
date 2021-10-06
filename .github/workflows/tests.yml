@@ -33,4 +33,4 @@ jobs:
           python -m pip install '.[build]'
       - name: Unit tests
         run: |
-          python -m pytest
+          python -m pytest -s test
