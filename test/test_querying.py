@@ -304,7 +304,7 @@ def test_disambiguation_by_frequency(session):
         assert len(cc.querying._ncfiles_for_variable("querying", "time", session)) == 3
 
     if len(record) != 1:
-        raise ValueError('|'.join([r.message.args[0] for r in record]))
+        raise ValueError("|".join([r.message.args[0] for r in record]))
 
     assert len(record) == 1
     assert (
