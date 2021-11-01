@@ -147,12 +147,11 @@ def test_experiment_explorer(session):
     assert ee1.frequency.options == ()
     ee1.var_selector.selector.label = "ty_trans"
     ee1.var_selector._set_frequency_selector("ty_trans")
-    assert ee1.frequency.options == ('1 yearly',)
+    assert ee1.frequency.options == ("1 yearly",)
     ee1.var_selector._set_cellmethods_selector("ty_trans", "1 yearly")
     assert ee1.cellmethods.options == ("time: mean",)
     ee1.var_selector._set_daterange_selector("ty_trans", "1 yearly", "time: mean")
-    assert ee1.frequency.options == ('1 yearly',)
-
+    assert ee1.frequency.options == ("1 yearly",)
 
     # Check frequency drop down changes when variable selector assigned a value
     ee1.var_selector.selector.label = "tx_trans"

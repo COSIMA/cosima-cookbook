@@ -188,12 +188,17 @@ def get_cellmethods(session, experiment, variables=None, frequency=None):
 
 
 def get_variables(
-    session, experiment=None, frequency=None, cellmethods=None, inferred=False, search=None
+    session,
+    experiment=None,
+    frequency=None,
+    cellmethods=None,
+    inferred=False,
+    search=None,
 ):
     """
     Returns a DataFrame of variables for a given experiment if experiment
     name is specified, and optionally a given diagnostic frequency.
-    If inferred is True and some experiment specific properties inferred from other 
+    If inferred is True and some experiment specific properties inferred from other
     fields are also returned: coordinate, model and restart.
            - coordinate: True if coordinate, False otherwise
            - model: model from which variable output, possible values are ocean,
@@ -220,19 +225,19 @@ def get_variables(
         ncas2 = aliased(NCAttributeString)
         subq = (
             session.query(
-                NCAttribute.ncvar_id.label('ncvar_id'),
-                ncas2.value.label('value'),
+                NCAttribute.ncvar_id.label("ncvar_id"),
+                ncas2.value.label("value"),
             )
             .join(ncas1, NCAttribute.name_id == ncas1.id)
             .join(ncas2, NCAttribute.value_id == ncas2.id)
             .filter(ncas1.value == "cell_methods")
-        ).subquery(name='attrs')
+        ).subquery(name="attrs")
 
         columns.extend(
             [
                 NCFile.frequency,
                 NCFile.ncfile,
-                subq.c.value.label('cell_methods'),
+                subq.c.value.label("cell_methods"),
                 func.count(NCFile.ncfile).label("# ncfiles"),
                 func.min(NCFile.time_start).label("time_start"),
                 func.max(NCFile.time_end).label("time_end"),
@@ -259,13 +264,10 @@ def get_variables(
 
     if experiment is not None:
         # Join against the NCAttribute table above. Outer join ensures
-        # variables without cell_methods attribute still appear with NULL 
+        # variables without cell_methods attribute still appear with NULL
         q = q.outerjoin(subq, subq.c.ncvar_id == NCVar.id)
 
-    q = q.order_by(NCFile.frequency, 
-                   CFVariable.name, 
-                   NCFile.time_start, 
-                   NCFile.ncfile)
+    q = q.order_by(NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile)
     q = q.group_by(CFVariable, NCFile.frequency)
 
     if experiment is not None:
@@ -279,7 +281,7 @@ def get_variables(
         # Filtering on cell methods only makes sense if experiment is specified
         if cellmethods is not None:
             q = q.filter(subq.c.value == cellmethods)
-            
+
     if search is not None:
         # Filter based on search term appearing in name, long_name or standard_name
         if isinstance(search, str):

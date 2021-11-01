@@ -356,7 +356,7 @@ class VariableSelectorInfo(VariableSelector):
 
     def _frequency_eventhandler(self, selector):
         """
-        When frequency selector is changed update cellmethods selector 
+        When frequency selector is changed update cellmethods selector
         and daterange slider
         """
         self._set_cellmethods_selector(self.selector.label, self.frequency.value)
@@ -365,7 +365,9 @@ class VariableSelectorInfo(VariableSelector):
         """
         When cellmethods selector is changed update daterange slider
         """
-        self._set_daterange_selector(self.selector.label, self.frequency.value, self.cellmethods.value)
+        self._set_daterange_selector(
+            self.selector.label, self.frequency.value, self.cellmethods.value
+        )
 
     def _set_frequency_selector(self, variable_name):
         """
@@ -397,10 +399,12 @@ class VariableSelectorInfo(VariableSelector):
         # Note frequency comparison done against underlying numpy array
         # in case frequency is None, which is a legitimate value, but
         # comparing to None doesn't work for pandas
-        self.cellmethods.options = set(self.variables[
-            (self.variables["name"] == variable_name)
-            & (self.variables["frequency"].values == frequency)
-        ].cell_methods)
+        self.cellmethods.options = set(
+            self.variables[
+                (self.variables["name"] == variable_name)
+                & (self.variables["frequency"].values == frequency)
+            ].cell_methods
+        )
 
         if len(self.cellmethods.options) > 0:
             self.cellmethods.index = 0
