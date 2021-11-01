@@ -145,14 +145,25 @@ def test_experiment_explorer(session):
 
     # Check frequency drop down changes when variable selector assigned a value
     assert ee1.frequency.options == ()
+    ee1.var_selector.selector.label = "ty_trans"
+    ee1.var_selector._set_frequency_selector("ty_trans")
+    assert ee1.frequency.options == ('1 yearly',)
+    ee1.var_selector._set_cellmethods_selector("ty_trans", "1 yearly")
+    assert ee1.cellmethods.options == ("time: mean",)
+    ee1.var_selector._set_daterange_selector("ty_trans", "1 yearly", "time: mean")
+    assert ee1.frequency.options == ('1 yearly',)
+
+
+    # Check frequency drop down changes when variable selector assigned a value
     ee1.var_selector.selector.label = "tx_trans"
     ee1.var_selector._set_frequency_selector("tx_trans")
     assert ee1.frequency.options == (None,)
-    ee1.var_selector._set_daterange_selector("ty_trans", "1 yearly")
-    assert ee1.frequency.options == (None,)
+    ee1.var_selector._set_cellmethods_selector("tx_trans", None)
+    assert ee1.cellmethods.options == ("time: mean",)
+    ee1.var_selector._set_daterange_selector("tx_trans", None, "time: mean")
+    print(ee1.daterange)
 
     ee2 = cc.explore.ExperimentExplorer(session=session)
-
     assert id(ee1.var_selector) != id(ee2.var_selector)
 
 
@@ -165,7 +176,8 @@ def test_get_data(session):
     ee._load_experiment("one")
     ee.var_selector.selector.label = "ty_trans"
     ee.var_selector._set_frequency_selector("ty_trans")
-    ee.var_selector._set_daterange_selector("ty_trans", "1 yearly")
+    ee.var_selector._set_cellmethods_selector("ty_trans", "1 yearly")
+    ee.var_selector._set_daterange_selector("ty_trans", "1 yearly", "time: mean")
     ee._load_data(None)
 
     assert ee.frequency.options == ("1 yearly",)

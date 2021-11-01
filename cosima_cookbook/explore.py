@@ -343,6 +343,7 @@ class VariableSelectorInfo(VariableSelector):
         # it called when super init invoked
         self.selector.observe(self._var_eventhandler, names="value")
         self.frequency.observe(self._frequency_eventhandler, names="value")
+        self.cellmethods.observe(self._cellmethods_eventhandler, names="value")
 
         # Set default filtering
         # self._filter_variables()
@@ -355,10 +356,16 @@ class VariableSelectorInfo(VariableSelector):
 
     def _frequency_eventhandler(self, selector):
         """
-        When frequency selector is changed update daterange slider
+        When frequency selector is changed update cellmethods selector 
+        and daterange slider
         """
-        self._set_daterange_selector(self.selector.label, self.frequency.value)
         self._set_cellmethods_selector(self.selector.label, self.frequency.value)
+
+    def _cellmethods_eventhandler(self, selector):
+        """
+        When cellmethods selector is changed update daterange slider
+        """
+        self._set_daterange_selector(self.selector.label, self.frequency.value, self.cellmethods.value)
 
     def _set_frequency_selector(self, variable_name):
         """
@@ -375,7 +382,7 @@ class VariableSelectorInfo(VariableSelector):
         self.frequency.disabled = True
 
         if len(variable) > 0:
-            self.frequency.options = variable.frequency
+            self.frequency.options = set(variable.frequency)
             self.frequency.index = 0
             self.frequency.disabled = False
 
@@ -387,15 +394,19 @@ class VariableSelectorInfo(VariableSelector):
         self.cellmethods.options = []
         self.cellmethods.disabled = True
 
-        self.cellmethods.options = querying.get_cellmethods(
-            self.session, self.experiment, variable_name, frequency
-        ).cell_methods
+        # Note frequency comparison done against underlying numpy array
+        # in case frequency is None, which is a legitimate value, but
+        # comparing to None doesn't work for pandas
+        self.cellmethods.options = set(self.variables[
+            (self.variables["name"] == variable_name)
+            & (self.variables["frequency"].values == frequency)
+        ].cell_methods)
 
         if len(self.cellmethods.options) > 0:
             self.cellmethods.index = 0
             self.cellmethods.disabled = False
 
-    def _set_daterange_selector(self, variable_name, frequency):
+    def _set_daterange_selector(self, variable_name, frequency, cellmethods):
         """
         When frequency selector is changed update daterange slider
         """
@@ -403,6 +414,7 @@ class VariableSelectorInfo(VariableSelector):
         variable = self.variables.loc[
             (self.variables["name"] == variable_name)
             & (self.variables["frequency"] == frequency)
+            & (self.variables["cell_methods"] == cellmethods)
         ]
         try:
             # Populate daterange widget if variable contains necessary information
@@ -904,18 +916,18 @@ class ExperimentExplorer(VBox):
             description="Frequency",
             disabled=True,
         )
+        # Cell methods selection widget
+        self.cellmethods = Dropdown(
+            options=(),
+            description="Cell methods",
+            disabled=True,
+        )
         # Date selection widget
         self.daterange = SelectionRangeSlider(
             options=["0000", "0001"],
             index=(0, 1),
             description="Date range",
-            layout={"width": "80%"},
-            disabled=True,
-        )
-        # Cell methods selection widget
-        self.cellmethods = Dropdown(
-            options=(),
-            description="Cell methods",
+            layout={"width": "40%"},
             disabled=True,
         )
         # Variable filter selector combo widget. Pass in two widgets so they
@@ -938,8 +950,8 @@ class ExperimentExplorer(VBox):
             tooltip="Click to load data",
         )
         self.info_pane = VBox(
-            [self.frequency, self.daterange, self.cellmethods],
-            layout={"padding": "10% 0", "width": "50%"},
+            [self.frequency, self.cellmethods, self.daterange],
+            layout={"padding": "10% 0", "width": "80%"},
         )
         self.centre_pane = HBox([VBox([self.var_selector]), self.info_pane])
 
