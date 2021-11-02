@@ -27,6 +27,6 @@ setup(
     ],
 
     extras_require = {
-        'build': ['distributed', 'pytest<=6.2.4']
+        'build': ['distributed', 'pytest']
     }
 )
