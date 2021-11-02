@@ -137,56 +137,6 @@ def get_keywords(session, experiment=None):
         return {r.keyword for r in q}
 
 
-def get_cellmethods(session, experiment, variables=None, frequency=None):
-    """
-    Returns a set of all cellmethods, for a given experiment, and optionally
-    for a given variable and/or frequency
-    """
-
-    if variables is None:
-        variables = set(get_variables(session, experiment=experiment).name)
-    else:
-        if isinstance(variables, str):
-            variables = [variables]
-
-    results = []
-    for variable in variables:
-
-        if frequency is not None:
-            subq = (
-                session.query(NCVar.id)
-                .join(NCFile.experiment)
-                .join(NCFile.ncvars)
-                .join(NCVar.variable)
-                .filter(NCExperiment.experiment == experiment)
-                .filter(CFVariable.name == variable)
-                .filter(NCFile.frequency == frequency)
-            ).subquery()
-        else:
-            subq = (
-                session.query(NCVar.id)
-                .join(NCFile.experiment)
-                .join(NCFile.ncvars)
-                .join(NCVar.variable)
-                .filter(NCExperiment.experiment == experiment)
-                .filter(CFVariable.name == variable)
-            ).subquery()
-
-        q = (
-            session.query(
-                NCAttribute,
-            )
-            .join(subq)
-            .filter(NCAttribute.name == "cell_methods")
-            .group_by(NCAttribute.value_id)
-        )
-
-        for result in q.all():
-            results.append([variable, result.value])
-
-    return pd.DataFrame(results, columns=["variable", "cell_methods"])
-
-
 def get_variables(
     session,
     experiment=None,
