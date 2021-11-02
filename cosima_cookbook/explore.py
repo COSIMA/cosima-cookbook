@@ -923,6 +923,7 @@ class ExperimentExplorer(VBox):
         # Cell methods selection widget
         self.cellmethods = Dropdown(
             options=(),
+            style={'description_width': 'initial'},
             description="Cell methods",
             disabled=True,
         )
