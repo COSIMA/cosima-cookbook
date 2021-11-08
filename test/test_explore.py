@@ -1,14 +1,16 @@
 import pytest
 
+from datetime import datetime
 import os.path
 import shutil
+
 import xarray as xr
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
 
 import cosima_cookbook as cc
 
-from cosima_cookbook.database import NCExperiment
+from cosima_cookbook.database import NCExperiment, NCFile
 
 
 def metadata_for_experiment(
@@ -185,3 +187,19 @@ def test_get_data(session):
 
     assert ee.data is not None
     assert ee.data.shape == (2, 1, 1, 1)
+
+
+def test_model_property(session):
+
+    # Grab all variables and ensure the SQL classification matches the python version
+    # May be some holes, as not ensured all cases covered
+    for expt in cc.querying.get_experiments(session, all=True).experiment:
+        for index, row in cc.querying.get_variables(
+            session, experiment=expt, inferred=True
+        ).iterrows():
+            ncfile = NCFile(
+                index_time=datetime.now(),
+                ncfile=row.ncfile,
+                present=True,
+            )
+            assert ncfile.model == row.model
