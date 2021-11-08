@@ -311,6 +311,13 @@ class NCFile(Base):
     )
     attrs = association_proxy("ncfile_attrs", "value", creator=NCAttribute)
 
+    _model_map = {
+        "ocean": ("ocn", "ocean"),
+        "land": ("lnd", "land"),
+        "atmosphere": ("atm", "atmos", "atmosphere"),
+        "ice": ("ice",),
+    }
+
     def __repr__(self):
         return """<NCFile('{e.ncfile}' in {e.experiment}, {} variables, \
 from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".format(
@@ -328,16 +335,11 @@ from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".for
         in path of a file. Match is case-insensitive. Returns model type as string.
         Either 'ocean', 'land', 'atmosphere', 'ice', or 'none' if no match found
         """
-        model_map = {
-            "ocean": ("ocn", "ocean"),
-            "land": ("lnd", "land"),
-            "atmosphere": ("atm", "atmos", "atmosphere"),
-            "ice": ("ice",),
-        }
-        for m in model_map:
+
+        for m in self._model_map:
             if any(
                 x in map(str.lower, Path(self.ncfile).parent.parts)
-                for x in model_map[m]
+                for x in self._model_map[m]
             ):
                 return m
         return "none"
@@ -349,43 +351,20 @@ from {e.time_start} to {e.time_end}, {e.frequency} frequency, {}present)>""".for
         """
         return case(
             [
-                (func.lower(cls.ncfile).contains("/ocean/"), literal_column("'ocean'")),
                 (
-                    func.lower(cls.ncfile).startswith("ocean/"),
-                    literal_column("'ocean'"),
-                ),
-                (func.lower(cls.ncfile).contains("/ocn/"), literal_column("'ocean'")),
-                (func.lower(cls.ncfile).startswith("ocn/"), literal_column("'ocean'")),
-                (func.lower(cls.ncfile).contains("/land/"), literal_column("'land'")),
-                (func.lower(cls.ncfile).startswith("land/"), literal_column("'land'")),
-                (func.lower(cls.ncfile).contains("/lnd/"), literal_column("'land'")),
-                (func.lower(cls.ncfile).startswith("lnd/"), literal_column("'land'")),
+                    func.lower(cls.ncfile).contains(f"/{substr}/"),
+                    literal_column(f"'{model}'"),
+                )
+                for model, substrs in cls._model_map.items()
+                for substr in substrs
+            ]
+            + [
                 (
-                    func.lower(cls.ncfile).contains("/atm/"),
-                    literal_column("'atmosphere'"),
-                ),
-                (
-                    func.lower(cls.ncfile).startswith("atm/"),
-                    literal_column("'atmosphere'"),
-                ),
-                (
-                    func.lower(cls.ncfile).contains("/atmos/"),
-                    literal_column("'atmosphere'"),
-                ),
-                (
-                    func.lower(cls.ncfile).startswith("atmos/"),
-                    literal_column("'atmosphere'"),
-                ),
-                (
-                    func.lower(cls.ncfile).contains("/atmosphere/"),
-                    literal_column("'atmosphere'"),
-                ),
-                (
-                    func.lower(cls.ncfile).startswith("atmosphere/"),
-                    literal_column("'atmosphere'"),
-                ),
-                (func.lower(cls.ncfile).contains("/ice/"), literal_column("'ice'")),
-                (func.lower(cls.ncfile).startswith("ice/"), literal_column("'ice'")),
+                    func.lower(cls.ncfile).startswith(f"{substr}/"),
+                    literal_column(f"'{model}'"),
+                )
+                for model, substrs in cls._model_map.items()
+                for substr in substrs
             ],
             else_=literal_column("'none'"),
         )
