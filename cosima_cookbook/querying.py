@@ -83,25 +83,17 @@ def get_experiments(
         if isinstance(variables, str):
             variables = [variables]
 
-        # Construct a query that counts the number of matches to
-        # variable names for each experiment
-        expts = pd.DataFrame(
-            session.query(
-                NCExperiment.experiment,
-                func.count().over(partition_by=NCExperiment.experiment).label("num"),
-            )
+        expt_query = (
+            session.query(NCExperiment.id)
             .join(NCFile.experiment)
             .join(NCFile.ncvars)
             .join(NCVar.variable)
-            .order_by(NCExperiment.experiment)
-            .group_by(NCExperiment.experiment, CFVariable.name)
-            .filter(or_(CFVariable.name == vname for vname in variables))
+            .group_by(NCExperiment.experiment)
+            .having(func.count(distinct(CFVariable.name)) == len(variables))
+            .filter(CFVariable.name.in_(variables))
         )
 
-        # Return the set of experiment names that have matches for all variables
-        expts = set(expts[expts.num == len(variables)].experiment)
-
-        q = q.filter(NCExperiment.experiment.in_(expts))
+        q = q.filter(NCExperiment.id.in_(expt_query))
 
     if exptname is not None:
         q = q.filter(NCExperiment.experiment == exptname)
