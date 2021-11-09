@@ -7,12 +7,15 @@ Functions for data discovery.
 import logging
 import os.path
 import pandas as pd
-from sqlalchemy import func, distinct
+from sqlalchemy import func, distinct, or_
+from sqlalchemy.orm import aliased
+from sqlalchemy.sql.selectable import subquery
 import warnings
 import xarray as xr
 
 from . import database
 from .database import NCExperiment, NCFile, CFVariable, NCVar, Keyword
+from .database import NCAttribute, NCAttributeString
 
 
 class VariableNotFoundError(Exception):
@@ -28,7 +31,13 @@ warnings.simplefilter("error", category=QueryWarning, lineno=0, append=False)
 
 
 def get_experiments(
-    session, experiment=True, keywords=None, all=False, exptname=None, **kwargs
+    session,
+    experiment=True,
+    keywords=None,
+    variables=None,
+    all=False,
+    exptname=None,
+    **kwargs,
 ):
     """
     Returns a DataFrame of all experiments and the number of netCDF4 files contained
@@ -38,9 +47,12 @@ def get_experiments(
     specified keywords will be return. The keyword strings can utilise SQL wildcard
     characters, "%" and "_", to match multiple keywords.
 
+    Optionally variables can also be specified, and only experiments containing all those
+    variables will be returned.
+
     All metadata fields will be returned if all=True, or individual metadata fields
     can be selected by passing field=True, where available fields are:
-    contact, email, created, description, notes, and root_dir
+    contact, email, created, description, notes, url and root_dir
     """
 
     # Determine which attributes to return. Special case experiment
@@ -66,6 +78,22 @@ def get_experiments(
         if isinstance(keywords, str):
             keywords = [keywords]
         q = q.filter(*(NCExperiment.keywords.like(k) for k in keywords))
+
+    if variables is not None:
+        if isinstance(variables, str):
+            variables = [variables]
+
+        expt_query = (
+            session.query(NCExperiment.id)
+            .join(NCFile.experiment)
+            .join(NCFile.ncvars)
+            .join(NCVar.variable)
+            .group_by(NCExperiment.experiment)
+            .having(func.count(distinct(CFVariable.name)) == len(variables))
+            .filter(CFVariable.name.in_(variables))
+        )
+
+        q = q.filter(NCExperiment.id.in_(expt_query))
 
     if exptname is not None:
         q = q.filter(NCExperiment.experiment == exptname)
@@ -101,34 +129,129 @@ def get_keywords(session, experiment=None):
         return {r.keyword for r in q}
 
 
-def get_variables(session, experiment, frequency=None):
+def get_variables(
+    session,
+    experiment=None,
+    frequency=None,
+    cellmethods=None,
+    inferred=False,
+    search=None,
+):
     """
-    Returns a DataFrame of variables for a given experiment and optionally
-    a given diagnostic frequency.
+    Returns a DataFrame of variables for a given experiment if experiment
+    name is specified, and optionally a given diagnostic frequency.
+    If inferred is True and some experiment specific properties inferred from other
+    fields are also returned: coordinate, model and restart.
+           - coordinate: True if coordinate, False otherwise
+           - model: model from which variable output, possible values are ocean,
+                    atmosphere, land, ice, or none if can't be identified
+           - restart: True if variable from a restart file, False otherwise
+    If experiment is not specified all variables for all experiments are returned,
+    without experiment specific data.
+    Specifying an array of search strings will limit variables returned to any
+    containing any of the search terms in variable name, long name, or standard name.
     """
 
-    q = (
-        session.query(
-            CFVariable.name,
-            CFVariable.long_name,
-            NCFile.frequency,
-            NCFile.ncfile,
-            func.count(NCFile.ncfile).label("# ncfiles"),
-            func.min(NCFile.time_start).label("time_start"),
-            func.max(NCFile.time_end).label("time_end"),
+    # Default columns
+    columns = [
+        CFVariable.name,
+        CFVariable.long_name,
+        CFVariable.units,
+    ]
+
+    if experiment:
+
+        # Create aliases so as to able to join to the NCAttribute table
+        # twice, for the name and value
+        ncas1 = aliased(NCAttributeString)
+        ncas2 = aliased(NCAttributeString)
+        subq = (
+            session.query(
+                NCAttribute.ncvar_id.label("ncvar_id"),
+                ncas2.value.label("value"),
+            )
+            .join(ncas1, NCAttribute.name_id == ncas1.id)
+            .join(ncas2, NCAttribute.value_id == ncas2.id)
+            .filter(ncas1.value == "cell_methods")
+        ).subquery(name="attrs")
+
+        columns.extend(
+            [
+                NCFile.frequency,
+                NCFile.ncfile,
+                subq.c.value.label("cell_methods"),
+                func.count(NCFile.ncfile).label("# ncfiles"),
+                func.min(NCFile.time_start).label("time_start"),
+                func.max(NCFile.time_end).label("time_end"),
+            ]
         )
+
+    if inferred:
+        # Return inferred information
+        columns.extend(
+            [
+                CFVariable.is_coordinate.label("coordinate"),
+                NCFile.model,
+                NCFile.is_restart.label("restart"),
+            ]
+        )
+
+    # Base query
+    q = (
+        session.query(*columns)
         .join(NCFile.experiment)
         .join(NCFile.ncvars)
         .join(NCVar.variable)
-        .filter(NCExperiment.experiment == experiment)
-        .order_by(NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile)
-        .group_by(CFVariable.name, NCFile.frequency)
     )
 
-    if frequency is not None:
-        q = q.filter(NCFile.frequency == frequency)
+    if experiment is not None:
+        # Join against the NCAttribute table above. Outer join ensures
+        # variables without cell_methods attribute still appear with NULL
+        q = q.outerjoin(subq, subq.c.ncvar_id == NCVar.id)
 
-    return pd.DataFrame(q)
+    q = q.order_by(NCFile.frequency, CFVariable.name, NCFile.time_start, NCFile.ncfile)
+    q = q.group_by(CFVariable, NCFile.frequency)
+
+    if experiment is not None:
+        q = q.group_by(subq.c.value)
+        q = q.filter(NCExperiment.experiment == experiment)
+
+        # Filtering on frequency only makes sense if experiment is specified
+        if frequency is not None:
+            q = q.filter(NCFile.frequency == frequency)
+
+        # Filtering on cell methods only makes sense if experiment is specified
+        if cellmethods is not None:
+            q = q.filter(subq.c.value == cellmethods)
+
+    if search is not None:
+        # Filter based on search term appearing in name, long_name or standard_name
+        if isinstance(search, str):
+            search = [
+                search,
+            ]
+        q = q.filter(
+            or_(
+                column.contains(word)
+                for word in search
+                for column in (
+                    CFVariable.name,
+                    CFVariable.long_name,
+                    CFVariable.standard_name,
+                )
+            )
+        )
+
+    default_dtypes = {
+        "# ncfiles": "int64",
+        "coordinate": "boolean",
+        "model": "category",
+        "restart": "boolean",
+    }
+
+    df = pd.DataFrame(q)
+
+    return df.astype({k: v for k, v in default_dtypes.items() if k in df.columns})
 
 
 def get_frequencies(session, experiment=None):

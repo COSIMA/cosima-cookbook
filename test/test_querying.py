@@ -1,13 +1,17 @@
 import warnings
 
+from datetime import datetime
+
 import pytest
 
 import xarray as xr
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
+import numpy as np
 
 import cosima_cookbook as cc
 from cosima_cookbook.querying import QueryWarning
+from cosima_cookbook.database import NCFile, CFVariable
 
 
 @pytest.fixture(scope="module")
@@ -242,6 +246,21 @@ def test_get_experiments(session):
     assert r.shape == (1, 8)
     assert "experiment" not in r
 
+    # Test for filtering by variables
+    in_both = {"potrho_edges", "age_global", "tx_trans_rho"}
+    only_in_querying = {"hi_m", "ty_trans"}
+
+    r = cc.querying.get_experiments(session, variables=in_both)
+    assert r.shape == (2, 2)
+
+    r = cc.querying.get_experiments(session, variables=(in_both | only_in_querying))
+    assert r.shape == (1, 2)
+
+    r = cc.querying.get_experiments(
+        session, variables=(in_both | only_in_querying | {"none"})
+    )
+    assert r.shape == (0, 0)
+
 
 def test_get_ncfiles(session):
     r = cc.querying.get_ncfiles(session, "querying")
@@ -251,7 +270,7 @@ def test_get_ncfiles(session):
             "ncfile": [
                 "output000/hi_m.nc",
                 "output000/ocean.nc",
-                "output000/ty_trans.nc",
+                "restart000/ty_trans.nc",
             ],
             "index_time": [
                 pd.Timestamp("2019-08-09 21:51:12.090930"),
@@ -279,8 +298,17 @@ def test_get_variables(session):
                 "model time",
                 "boundaries for time-averaging interval",
             ],
+            "units": [
+                "degrees_north",
+                "degrees_east",
+                "m",
+                "m^2",
+                "days since 1900-01-01 00:00:00",
+                "days since 1900-01-01 00:00:00",
+            ],
             "frequency": ["1 monthly"] * 6,
             "ncfile": ["output000/hi_m.nc"] * 6,
+            "cell_methods": [None, None, "time: mean", None, None, None],
             "# ncfiles": [1] * 6,
             "time_start": ["1900-01-01 00:00:00"] * 6,
             "time_end": ["1900-02-01 00:00:00"] * 6,
@@ -288,6 +316,231 @@ def test_get_variables(session):
     )
 
     assert_frame_equal(r, df)
+
+    r = cc.querying.get_variables(session, "querying", search="temp")
+
+    df = pd.DataFrame.from_dict(
+        {
+            "name": ["diff_cbt_t", "temp", "temp_xflux_adv", "temp_yflux_adv"],
+            "long_name": [
+                "total vert diff_cbt(temp) (w/o neutral included)",
+                "Potential temperature",
+                "cp*rho*dzt*dyt*u*temp",
+                "cp*rho*dzt*dxt*v*temp",
+            ],
+            "units": ["m^2/s", "degrees K", "Watts", "Watts"],
+            "frequency": [None] * 4,
+            "ncfile": ["output000/ocean.nc"] * 4,
+            "cell_methods": ["time: mean"] * 4,
+            "# ncfiles": [1] * 4,
+            "time_start": [None] * 4,
+            "time_end": [None] * 4,
+        }
+    )
+
+    assert_frame_equal(r, df)
+
+    r = cc.querying.get_variables(session, search="temp")
+
+    df = pd.DataFrame.from_dict(
+        {
+            "name": ["diff_cbt_t", "temp", "temp_xflux_adv", "temp_yflux_adv"],
+            "long_name": [
+                "total vert diff_cbt(temp) (w/o neutral included)",
+                "Potential temperature",
+                "cp*rho*dzt*dyt*u*temp",
+                "cp*rho*dzt*dxt*v*temp",
+            ],
+            "units": ["m^2/s", "degrees K", "Watts", "Watts"],
+        }
+    )
+
+    assert_frame_equal(r, df)
+
+    r = cc.querying.get_variables(session, search=("temp", "velocity"))
+
+    df = pd.DataFrame.from_dict(
+        {
+            "name": [
+                "diff_cbt_t",
+                "temp",
+                "temp_xflux_adv",
+                "temp_yflux_adv",
+                "u",
+                "v",
+                "wt",
+            ],
+            "long_name": [
+                "total vert diff_cbt(temp) (w/o neutral included)",
+                "Potential temperature",
+                "cp*rho*dzt*dyt*u*temp",
+                "cp*rho*dzt*dxt*v*temp",
+                "i-current",
+                "j-current",
+                "dia-surface velocity T-points",
+            ],
+            "units": [
+                "m^2/s",
+                "degrees K",
+                "Watts",
+                "Watts",
+                "m/sec",
+                "m/sec",
+                "m/sec",
+            ],
+        }
+    )
+
+    r = cc.querying.get_variables(session, search=("temp", "velocity"))
+
+    df = pd.DataFrame.from_dict(
+        {
+            "name": [
+                "diff_cbt_t",
+                "temp",
+                "temp_xflux_adv",
+                "temp_yflux_adv",
+                "u",
+                "v",
+                "wt",
+            ],
+            "long_name": [
+                "total vert diff_cbt(temp) (w/o neutral included)",
+                "Potential temperature",
+                "cp*rho*dzt*dyt*u*temp",
+                "cp*rho*dzt*dxt*v*temp",
+                "i-current",
+                "j-current",
+                "dia-surface velocity T-points",
+            ],
+            "units": [
+                "m^2/s",
+                "degrees K",
+                "Watts",
+                "Watts",
+                "m/sec",
+                "m/sec",
+                "m/sec",
+            ],
+            "frequency": [None] * 7,
+            "ncfile": ["output000/ocean.nc"] * 7,
+            "# ncfiles": [1] * 7,
+            "time_start": [None] * 7,
+            "time_end": [None] * 7,
+        }
+    )
+
+
+def test_model_property(session):
+
+    filename_map = {
+        "ocean": (
+            "output/ocean/ice.nc",
+            "output/ocn/land.nc",
+            "output/ocean/atmos.nc",
+            "ocean/ocean_daily.nc",
+            "output/ocean/ocean_daily.nc.0000",
+            "ocean/atmos.nc",
+        ),
+        "atmosphere": (
+            "output/atm/fire.nc",
+            "output/atmos/ice.nc",
+            "output/atmosphere/ice.nc",
+            "atmosphere/ice.nc",
+            "atmos/ice.nc",
+        ),
+        "land": (
+            "output/land/fire.nc",
+            "output/lnd/ice.nc",
+            "land/fire.nc",
+            "lnd/ice.nc",
+        ),
+        "ice": (
+            "output/ice/fire.nc",
+            "output/ice/in/here/land.nc",
+            "ice/fire.nc",
+            "ice/in/here/land.nc",
+        ),
+        "none": (
+            "output/ocean.nc",  # only a model if part of path, not filename
+            "someotherpath/ocean_daily.nc",
+            "lala/land_daily.nc.0000",
+            "output/atmosphere_ice.nc",
+            "output/noice/in/here/land.nc",
+        ),
+    }
+    for model in filename_map:
+        for fpath in filename_map[model]:
+            ncfile = NCFile(
+                index_time=datetime.now(),
+                ncfile=fpath,
+                present=True,
+            )
+            assert ncfile.model == model
+
+
+def test_is_restart_property(session):
+
+    filename_map = {
+        True: (
+            "output/restart/ice.nc",
+            "output/restart000/land.nc",
+            "restart/land.nc",
+        ),
+        False: (
+            "output/restartice.nc",
+            "output/lastrestart/land.nc",
+        ),
+    }
+    for isrestart in filename_map:
+        for fpath in filename_map[isrestart]:
+            ncfile = NCFile(
+                index_time=datetime.now(),
+                ncfile=fpath,
+                present=True,
+            )
+            assert ncfile.is_restart == isrestart
+
+    # Grab all variables and ensure the SQL classification matches the python version
+    # May be some holes, as not ensured all cases covered
+    for index, row in cc.querying.get_variables(
+        session, "querying", inferred=True
+    ).iterrows():
+        ncfile = NCFile(
+            index_time=datetime.now(),
+            ncfile=row.ncfile,
+            present=True,
+        )
+        assert ncfile.is_restart == row.restart
+
+
+def test_is_coordinate_property(session):
+
+    units_map = {
+        True: (
+            "degrees_",
+            "degrees_E",
+            "degrees_N",
+            "degrees_east",
+            "hours since a long time ago",
+            "radians",
+            "days",
+            "days since a while ago",
+        ),
+        False: ("degrees K",),
+    }
+
+    for iscoord in units_map:
+        for units in units_map[iscoord]:
+            assert CFVariable(name="bogus", units=units).is_coordinate == iscoord
+
+    # Grab all variables and ensure the SQL classification matches the python version
+    # May be some holes, as not ensured all cases covered
+    for index, row in cc.querying.get_variables(session, inferred=True).iterrows():
+        assert (
+            CFVariable(name=row["name"], units=row.units).is_coordinate
+            == row.coordinate
+        )
 
 
 def test_get_frequencies(session):
