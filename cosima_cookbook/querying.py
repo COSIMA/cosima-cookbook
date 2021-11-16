@@ -368,11 +368,13 @@ def getvar(
     da = ds[variable]
 
     # Check the chunks given were actually in the data
-    chunks = xr_kwargs.get('chunks', None)
+    chunks = xr_kwargs.get("chunks", None)
     if chunks is not None:
         missing_chunk_dims = set(chunks.keys()) - set(da.dims)
         if len(missing_chunk_dims) > 0:
-            logging.warning(f"chunking along dimensions {missing_chunk_dims} is not possible. Available dimensions for chunking are {set(da.dims)}")
+            logging.warning(
+                f"chunking along dimensions {missing_chunk_dims} is not possible. Available dimensions for chunking are {set(da.dims)}"
+            )
 
     for attr in variables[1:]:
         da.attrs[attr] = ds[attr]
