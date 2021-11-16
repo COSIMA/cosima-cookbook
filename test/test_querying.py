@@ -633,3 +633,7 @@ def test_query_with_attrs(session):
         cc.querying.getvar(
             "querying", "salt", session, decode_times=False, attrs={"not_found": "psu"}
         )
+
+def test_query_chunks(session, caplog):
+    with cc.querying.getvar("querying", "ty_trans", session, chunks={'invalid': 99}) as v:
+        assert "chunking along dimensions {'invalid'} is not possible" in caplog.text
