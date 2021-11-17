@@ -259,7 +259,7 @@ def test_get_experiments(session):
     r = cc.querying.get_experiments(
         session, variables=(in_both | only_in_querying | {"none"})
     )
-    assert r.shape == (0, 0)
+    assert r.shape == (0, 2)
 
 
 def test_get_ncfiles(session):

@@ -98,7 +98,7 @@ def get_experiments(
     if exptname is not None:
         q = q.filter(NCExperiment.experiment == exptname)
 
-    return pd.DataFrame(q)
+    return pd.DataFrame(q, columns=[c['name'] for c in q.column_descriptions])
 
 
 def get_ncfiles(session, experiment):
@@ -113,7 +113,7 @@ def get_ncfiles(session, experiment):
         .order_by(NCFile.ncfile)
     )
 
-    return pd.DataFrame(q)
+    return pd.DataFrame(q, columns=[c['name'] for c in q.column_descriptions])
 
 
 def get_keywords(session, experiment=None):
@@ -249,7 +249,7 @@ def get_variables(
         "restart": "boolean",
     }
 
-    df = pd.DataFrame(q)
+    df = pd.DataFrame(q, columns=[c['name'] for c in q.column_descriptions])
 
     return df.astype({k: v for k, v in default_dtypes.items() if k in df.columns})
 
@@ -270,7 +270,7 @@ def get_frequencies(session, experiment=None):
             .group_by(NCFile.frequency)
         )
 
-    return pd.DataFrame(q)
+    return pd.DataFrame(q, columns=[c['name'] for c in q.column_descriptions])
 
 
 def getvar(
