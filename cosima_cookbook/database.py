@@ -193,7 +193,6 @@ def _setup_ncattribute(session, attr_object):
         return cache[attr_object.value]
 
     cache[attr_object.value] = attr_object
-    session.add(attr_object)
     return attr_object
 
 
@@ -883,10 +882,11 @@ def _prune_files(expt, session, files, delete=True):
         )
     )
 
+    session.expire_all()
     if delete:
-        missing_ncfiles.delete(synchronize_session="fetch")
+        missing_ncfiles.delete(synchronize_session=False)
     else:
-        missing_ncfiles.update({NCFile.present: False}, synchronize_session="fetch")
+        missing_ncfiles.update({NCFile.present: False}, synchronize_session=False)
 
 
 def prune_experiment(experiment, session, delete=True, followsymlinks=False):
