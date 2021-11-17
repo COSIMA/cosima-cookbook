@@ -167,9 +167,6 @@ class NCAttributeString(Base):
     id = Column(Integer, primary_key=True)
     value = Column(String, unique=True)
 
-    def __repr__(self):
-        return f"<NCAttributeString {self.id} '{self.value}'>"
-
 
 def _setup_ncattribute(session, attr_object):
     """
@@ -495,7 +492,7 @@ class NCVar(Base):
     #: The generic form of this variable (name and attributes)
     variable_id = Column(Integer, ForeignKey("variables.id"), nullable=False)
     variable = relationship(
-        "CFVariable", back_populates="ncvars"  # , uselist=False, cascade="merge"
+        "CFVariable", back_populates="ncvars", uselist=False,
     )
     #: Proxy for the variable name
     varname = association_proxy("variable", "name")
