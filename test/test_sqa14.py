@@ -121,3 +121,26 @@ def test_index_file(session_db):
 
     var = session.query(NCVar).filter(NCVar.varname == "temp").one()
     assert var.attrs["long_name"] == "Potential temperature"
+
+
+def test_file_delete(session_db):
+    session, db = session_db
+
+    exp = NCExperiment(experiment="a", root_dir="test/data/querying")
+
+    file = index_file("output000/ocean.nc", exp, session)
+
+    session.add(exp)
+    session.commit()
+
+    assert session.query(NCFile).count() == 1
+
+    session.delete(file)
+    session.commit()
+
+    assert session.query(NCExperiment).count() == 1
+    assert session.query(NCFile).count() == 0
+    assert session.query(CFVariable).count() == 38 # Not cascaded
+    assert session.query(NCVar).count() == 0
+    assert session.query(NCAttribute).count() == 0
+    assert session.query(NCAttributeString).count() == 114 # Not cascaded
