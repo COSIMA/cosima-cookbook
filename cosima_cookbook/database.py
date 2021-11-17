@@ -183,8 +183,7 @@ def _setup_ncattribute(session, attr_object):
     if cache is None:
         session._ncattribute_cache = cache = {}
 
-    if attr_object.value in cache:
-        return cache[attr_object.value]
+    print('setup',attr_object.value)
 
     with session.no_autoflush:
         r = (
@@ -193,9 +192,16 @@ def _setup_ncattribute(session, attr_object):
             .one_or_none()
         )
         if r is not None:
+            print('in db')
             return r
 
+    if attr_object.value in cache:
+        print('in cache')
+        return cache[attr_object.value]
+
+    print('new')
     cache[attr_object.value] = attr_object
+    session.add(attr_object)
     return attr_object
 
 
@@ -624,7 +630,7 @@ def update_timeinfo(f, ncfile):
         ncfile.time_end = format_datetime(ncfile.time_end)
 
 
-def index_file(session, ncfile_name, experiment):
+def index_file(ncfile_name, experiment, session):
     """Index a single netCDF file within an experiment by retrieving all variables, their dimensions
     and chunking.
     """
@@ -758,10 +764,10 @@ def index_experiment(files, session, expt, client=None):
 
     # index in parallel or serial, depending on whether we have a client
     if client is not None:
-        futures = client.map(index_file, files, experiment=expt)
+        futures = client.map(index_file, files, experiment=expt, session=session)
         results = client.gather(futures)
     else:
-        results = [index_file(session, f, experiment=expt) for f in tqdm(files)]
+        results = [index_file(f, experiment=expt, session=session) for f in tqdm(files)]
 
     session.add_all(results)
     return len(results)
@@ -839,7 +845,6 @@ def build_index(
 
             # if everything went smoothly, commit these changes to the database
             session.commit()
-            session._ncattribute_cache = {}
 
     return indexed
 

@@ -21,6 +21,8 @@ def unreadable_dir(tmpdir):
 
     yield idx_dir
 
+    idx_dir.chmod(0o700)
+
     expt_path.remove(ignore_errors=True)
 
 
