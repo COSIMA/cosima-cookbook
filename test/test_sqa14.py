@@ -140,7 +140,7 @@ def test_file_delete(session_db):
 
     assert session.query(NCExperiment).count() == 1
     assert session.query(NCFile).count() == 0
-    assert session.query(CFVariable).count() == 38 # Not cascaded
+    assert session.query(CFVariable).count() == 38  # Not cascaded
     assert session.query(NCVar).count() == 0
     assert session.query(NCAttribute).count() == 0
-    assert session.query(NCAttributeString).count() == 114 # Not cascaded
+    assert session.query(NCAttributeString).count() == 114  # Not cascaded
