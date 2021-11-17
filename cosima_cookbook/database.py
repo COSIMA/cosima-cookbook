@@ -183,7 +183,7 @@ def _setup_ncattribute(session, attr_object):
     if cache is None:
         session._ncattribute_cache = cache = {}
 
-    print('setup',attr_object.value)
+    print("setup", attr_object.value)
 
     with session.no_autoflush:
         r = (
@@ -192,14 +192,14 @@ def _setup_ncattribute(session, attr_object):
             .one_or_none()
         )
         if r is not None:
-            print('in db')
+            print("in db")
             return r
 
     if attr_object.value in cache:
-        print('in cache')
+        print("in cache")
         return cache[attr_object.value]
 
-    print('new')
+    print("new")
     cache[attr_object.value] = attr_object
     session.add(attr_object)
     return attr_object
