@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.7, 3.9]
-        sqa-version: ['<1.4', '=1.4']
+        sqa-version: ['<1.4', '==1.4']
 
     steps:
       - uses: actions/checkout@v2
