@@ -167,6 +167,9 @@ class NCAttributeString(Base):
     id = Column(Integer, primary_key=True)
     value = Column(String, unique=True)
 
+    def __repr__(self):
+        return f"<NCAttributeString {self.id} '{self.value}'>"
+
 
 def _setup_ncattribute(session, attr_object):
     """
@@ -301,6 +304,7 @@ class NCFile(Base):
         "NCVar",
         collection_class=attribute_mapped_collection("varname"),
         cascade="all, delete-orphan",
+        back_populates="ncfile",
     )
 
     #: file-level attributes
@@ -436,11 +440,11 @@ class CFVariable(UniqueMixin, Base):
         return "<CFVariable('{e.name}', in {} NCVars)>".format(len(self.ncvars), e=self)
 
     @classmethod
-    def unique_hash(cls, name, long_name, _standard_name, units, *arg):
+    def unique_hash(cls, name, long_name, standard_name, units, *arg):
         return "{}_{}_{}".format(name, long_name, units)
 
     @classmethod
-    def unique_filter(cls, query, name, long_name, _standard_name, units, *arg):
+    def unique_filter(cls, query, name, long_name, standard_name, units, *arg):
         return (
             query.filter(CFVariable.name == name)
             .filter(CFVariable.long_name == long_name)
@@ -486,7 +490,7 @@ class NCVar(Base):
 
     #: The ncfile to which this variable belongs
     ncfile_id = Column(Integer, ForeignKey("ncfiles.id"), nullable=False, index=True)
-    ncfile = relationship("NCFile")
+    ncfile = relationship("NCFile", back_populates="ncvars")
     #: The generic form of this variable (name and attributes)
     variable_id = Column(Integer, ForeignKey("variables.id"), nullable=False)
     variable = relationship(
@@ -620,7 +624,7 @@ def update_timeinfo(f, ncfile):
         ncfile.time_end = format_datetime(ncfile.time_end)
 
 
-def index_file(ncfile_name, experiment):
+def index_file(session, ncfile_name, experiment):
     """Index a single netCDF file within an experiment by retrieving all variables, their dimensions
     and chunking.
     """
@@ -639,15 +643,23 @@ def index_file(ncfile_name, experiment):
         with netCDF4.Dataset(f, "r") as ds:
             for v in ds.variables.values():
                 # create the generic cf variable structure
-                cfvar = CFVariable(name=v.name)
+                cfvar = {
+                    "name": v.name,
+                    "long_name": None,
+                    "standard_name": None,
+                    "units": None,
+                }
 
                 # check for other attributes
                 for att in CFVariable.attributes:
                     if att in v.ncattrs():
-                        setattr(cfvar, att, v.getncattr(att))
+                        cfvar[att] = v.getncattr(att)
+
+                cfvar = CFVariable.as_unique(session, **cfvar)
 
                 # fill in the specifics for this file: dimensions and chunking
                 ncvar = NCVar(
+                    ncfile=ncfile,
                     variable=cfvar,
                     dimensions=str(v.dimensions),
                     chunking=str(v.chunking()),
@@ -749,15 +761,7 @@ def index_experiment(files, session, expt, client=None):
         futures = client.map(index_file, files, experiment=expt)
         results = client.gather(futures)
     else:
-        results = [index_file(f, experiment=expt) for f in tqdm(files)]
-
-    # update all variables to be unique
-    for ncfile in results:
-        for ncvar in ncfile.ncvars.values():
-            v = ncvar.variable
-            ncvar.variable = CFVariable.as_unique(
-                session, v.name, v.long_name, v.standard_name, v.units
-            )
+        results = [index_file(session, f, experiment=expt) for f in tqdm(files)]
 
     session.add_all(results)
     return len(results)
@@ -835,6 +839,7 @@ def build_index(
 
             # if everything went smoothly, commit these changes to the database
             session.commit()
+            session._ncattribute_cache = {}
 
     return indexed
 
@@ -880,11 +885,10 @@ def _prune_files(expt, session, files, delete=True):
         )
     )
 
-    session.expire_all()
     if delete:
-        missing_ncfiles.delete(synchronize_session=False)
+        missing_ncfiles.delete(synchronize_session="fetch")
     else:
-        missing_ncfiles.update({NCFile.present: False}, synchronize_session=False)
+        missing_ncfiles.update({NCFile.present: False}, synchronize_session="fetch")
 
 
 def prune_experiment(experiment, session, delete=True, followsymlinks=False):
