@@ -495,7 +495,7 @@ class NCVar(Base):
     #: The generic form of this variable (name and attributes)
     variable_id = Column(Integer, ForeignKey("variables.id"), nullable=False)
     variable = relationship(
-        "CFVariable", back_populates="ncvars" #, uselist=False, cascade="merge"
+        "CFVariable", back_populates="ncvars"  # , uselist=False, cascade="merge"
     )
     #: Proxy for the variable name
     varname = association_proxy("variable", "name")
