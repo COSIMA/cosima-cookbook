@@ -750,7 +750,9 @@ def index_experiment(files, session, expt, client=None):
     """Index specified files for an experiment."""
 
     if client is not None:
-        warnings.warn("client is no longer a supported argument", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "client is no longer a supported argument", DeprecationWarning, stacklevel=2
+        )
 
     update_metadata(expt, session)
 
@@ -786,7 +788,9 @@ def build_index(
     """
 
     if client is not None:
-        warnings.warn("client is no longer a supported argument", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "client is no longer a supported argument", DeprecationWarning, stacklevel=2
+        )
 
     if not isinstance(directories, list):
         directories = [directories]
