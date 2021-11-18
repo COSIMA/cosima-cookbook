@@ -8,7 +8,6 @@ from tqdm import tqdm
 import warnings
 
 import cftime
-from dask.distributed import as_completed
 import netCDF4
 import yaml
 
@@ -750,16 +749,14 @@ def find_experiment(session, expt_path):
 def index_experiment(files, session, expt, client=None):
     """Index specified files for an experiment."""
 
+    if client is not None:
+        warnings.warn("client is no longer a supported argument", DeprecationWarning, stacklevel=2)
+
     update_metadata(expt, session)
 
     results = []
 
-    # index in parallel or serial, depending on whether we have a client
-    if client is not None:
-        futures = client.map(index_file, files, experiment=expt, session=session)
-        results = client.gather(futures)
-    else:
-        results = [index_file(f, experiment=expt, session=session) for f in tqdm(files)]
+    results = [index_file(f, experiment=expt, session=session) for f in tqdm(files)]
 
     session.add_all(results)
     return len(results)
@@ -787,6 +784,9 @@ def build_index(
 
     Returns the number of new files that were indexed.
     """
+
+    if client is not None:
+        warnings.warn("client is no longer a supported argument", DeprecationWarning, stacklevel=2)
 
     if not isinstance(directories, list):
         directories = [directories]
@@ -833,7 +833,7 @@ def build_index(
                     }
                 )
 
-            indexed += index_experiment(files, session, expt, client)
+            indexed += index_experiment(files, session, expt)
 
             # if everything went smoothly, commit these changes to the database
             session.commit()
