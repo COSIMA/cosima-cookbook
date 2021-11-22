@@ -284,23 +284,23 @@ def test_get_experiments_with_keywords(session_db):
 
     # Test passing an array of keywords that will not match any one experiment
     r = querying.get_experiments(session, keywords=["another-keyword", "ryf9091"])
-    df = pd.DataFrame()
+    df = pd.DataFrame(columns=["experiment", "ncfiles"])
     assert_frame_equal(r, df)
 
     # Test passing a non-existent keyword along with one present. Should return
     # nothing as no experiment contains it
     r = querying.get_experiments(session, keywords=["ryf9091", "not-a-keyword"])
-    df = pd.DataFrame()
+    df = pd.DataFrame(columns=["experiment", "ncfiles"])
     assert_frame_equal(r, df)
 
     # Test passing only a non-existent keyword
     r = querying.get_experiments(session, keywords=["not-a-keyword"])
-    df = pd.DataFrame()
+    df = pd.DataFrame(columns=["experiment", "ncfiles"])
     assert_frame_equal(r, df)
 
     # Test passing only a non-existent wildcard keyword
     r = querying.get_experiments(session, keywords=["z%"])
-    df = pd.DataFrame()
+    df = pd.DataFrame(columns=["experiment", "ncfiles"])
     assert_frame_equal(r, df)
 
 

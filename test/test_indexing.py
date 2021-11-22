@@ -21,6 +21,7 @@ def unreadable_dir(tmpdir):
 
     yield idx_dir
 
+    idx_dir.chmod(0o700)
     expt_path.remove(ignore_errors=True)
 
 
@@ -37,7 +38,7 @@ def test_find_files():
 
     # Test works with alternative suffix
     files = database.find_files("test/", "*.py")
-    assert len(files) == 7
+    assert len(files) == 8
 
     for f in files:
         assert Path(f).suffix == ".py"
