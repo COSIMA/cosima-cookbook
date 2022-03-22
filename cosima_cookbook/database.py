@@ -560,69 +560,68 @@ class EmptyFileError(Exception):
     pass
 
 
-def update_timeinfo(f, ncfile):
-    """Extract time information from a single netCDF file: start time, end time, and frequency."""
+def update_timeinfo(ds, ncfile):
+    """Extract time information from a single netCDF dataset: start time, end time, and frequency."""
 
-    with netCDF4.Dataset(f, "r") as ds:
-        # we assume the record dimension corresponds to time
-        time_dim = netcdf_utils.find_time_dimension(ds)
-        if time_dim is None:
-            return None
+    # Assume the record dimension corresponds to time
+    time_dim = netcdf_utils.find_time_dimension(ds)
+    if time_dim is None:
+        return None
 
-        time_var = ds.variables[time_dim]
-        has_bounds = hasattr(time_var, "bounds")
+    time_var = ds.variables[time_dim]
+    has_bounds = hasattr(time_var, "bounds")
 
-        if len(time_var) == 0:
-            raise EmptyFileError(
-                "{} has a valid unlimited dimension, but no data".format(f)
-            )
+    if len(time_var) == 0:
+        raise EmptyFileError(
+            "{} has a valid unlimited dimension, but no data".format(f)
+        )
 
-        if not hasattr(time_var, "units") or not hasattr(time_var, "calendar"):
-            # non CF-compliant file -- don't process further
-            return
+    if not hasattr(time_var, "units") or not hasattr(time_var, "calendar"):
+        # non CF-compliant file -- don't process further
+        return
 
-        # Helper function to get a date
-        def todate(t):
-            return cftime.num2date(t, time_var.units, calendar=time_var.calendar)
+    # Helper function to get a date
+    def todate(t):
+        return cftime.num2date(t, time_var.units, calendar=time_var.calendar)
 
+    if has_bounds:
+        bounds_var = ds.variables[time_var.bounds]
+        ncfile.time_start = todate(bounds_var[0, 0])
+        ncfile.time_end = todate(bounds_var[-1, 1])
+    else:
+        ncfile.time_start = todate(time_var[0])
+        ncfile.time_end = todate(time_var[-1])
+
+    if len(time_var) > 1 or has_bounds:
+        # calculate frequency -- I don't see any easy way to do this, so
+        # it's somewhat heuristic
+        #
+        # using bounds_var gets us the averaging period instead of the
+        # difference between the centre of averaging periods, which is easier
+        # to work with
         if has_bounds:
-            bounds_var = ds.variables[time_var.bounds]
-            ncfile.time_start = todate(bounds_var[0, 0])
-            ncfile.time_end = todate(bounds_var[-1, 1])
+            next_time = todate(bounds_var[0, 1])
         else:
-            ncfile.time_start = todate(time_var[0])
-            ncfile.time_end = todate(time_var[-1])
+            next_time = todate(time_var[1])
 
-        if len(time_var) > 1 or has_bounds:
-            # calculate frequency -- I don't see any easy way to do this, so
-            # it's somewhat heuristic
-            #
-            # using bounds_var gets us the averaging period instead of the
-            # difference between the centre of averaging periods, which is easier
-            # to work with
-            if has_bounds:
-                next_time = todate(bounds_var[0, 1])
-            else:
-                next_time = todate(time_var[1])
-
-            dt = next_time - ncfile.time_start
-            if dt.days >= 365:
-                years = round(dt.days / 365)
-                ncfile.frequency = "{} yearly".format(years)
-            elif dt.days >= 28:
-                months = round(dt.days / 30)
-                ncfile.frequency = "{} monthly".format(months)
-            elif dt.days >= 1:
-                ncfile.frequency = "{} daily".format(dt.days)
-            else:
-                ncfile.frequency = "{} hourly".format(dt.seconds // 3600)
+        dt = next_time - ncfile.time_start
+        if dt.days >= 365:
+            years = round(dt.days / 365)
+            ncfile.frequency = "{} yearly".format(years)
+        elif dt.days >= 28:
+            months = round(dt.days / 30)
+            ncfile.frequency = "{} monthly".format(months)
+        elif dt.days >= 1:
+            ncfile.frequency = "{} daily".format(dt.days)
         else:
-            # single time value in this file and no averaging
-            ncfile.frequency = "static"
+            ncfile.frequency = "{} hourly".format(dt.seconds // 3600)
+    else:
+        # single time value in this file and no averaging
+        ncfile.frequency = "static"
 
-        # convert start/end times to timestamps
-        ncfile.time_start = format_datetime(ncfile.time_start)
-        ncfile.time_end = format_datetime(ncfile.time_end)
+    # convert start/end times to timestamps
+    ncfile.time_start = format_datetime(ncfile.time_start)
+    ncfile.time_end = format_datetime(ncfile.time_end)
 
 
 def index_file(ncfile_name, experiment, session):
@@ -675,7 +674,8 @@ def index_file(ncfile_name, experiment, session):
             for att in ds.ncattrs():
                 ncfile.attrs[att] = str(ds.getncattr(att))
 
-        update_timeinfo(f, ncfile)
+            update_timeinfo(ds, ncfile)
+
         ncfile.present = True
     except FileNotFoundError:
         logging.info("Unable to find file: %s", f)
