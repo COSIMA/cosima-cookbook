@@ -179,6 +179,9 @@ def _setup_ncattribute(session, attr_object):
     if cache is None:
         session._ncattribute_cache = cache = {}
 
+    if attr_object.value in cache:
+        return cache[attr_object.value]
+
     with session.no_autoflush:
         r = (
             session.query(NCAttributeString)
@@ -187,9 +190,6 @@ def _setup_ncattribute(session, attr_object):
         )
         if r is not None:
             return r
-
-    if attr_object.value in cache:
-        return cache[attr_object.value]
 
     cache[attr_object.value] = attr_object
     return attr_object
@@ -746,7 +746,7 @@ def find_experiment(session, expt_path):
     return q.one_or_none()
 
 
-def index_experiment(files, session, expt, client=None):
+def index_experiment(files, session, expt, client=None, chunksize=1000):
     """Index specified files for an experiment."""
 
     if client is not None:
@@ -754,14 +754,30 @@ def index_experiment(files, session, expt, client=None):
             "client is no longer a supported argument", DeprecationWarning, stacklevel=2
         )
 
+    print('Indexing {} files'.format(len(files)))
+
     update_metadata(expt, session)
 
-    results = []
+    def chunks(setlist, n):
+        """Yield successive n-sized chunks from lst."""
+        lst = list(setlist)
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
 
-    results = [index_file(f, experiment=expt, session=session) for f in tqdm(files)]
+    nindexed = 0
 
-    session.add_all(results)
-    return len(results)
+    # Cap the maximum number of files to index before committing to keep memory use 
+    # under control and make indexing less affected by errors
+    for fileschunk in chunks(files, chunksize):
+        results = [index_file(f, experiment=expt, session=session) for f in tqdm(fileschunk)]
+        session.add_all(results)
+
+        nindexed = nindexed + len(results)
+
+        # Commit changes to the database
+        session.commit()
+
+    return nindexed
 
 
 def build_index(
@@ -816,7 +832,7 @@ def build_index(
         print("Indexing experiment: {}".format(directory.name))
 
         # find all netCDF files in the experiment directory
-        files = find_files(directory, followsymlinks=followsymlinks)
+        files = find_files(str(directory), followsymlinks=followsymlinks)
 
         if force:
             # Prune all files to force re-indexing data
@@ -838,9 +854,6 @@ def build_index(
                 )
 
             indexed += index_experiment(files, session, expt)
-
-            # if everything went smoothly, commit these changes to the database
-            session.commit()
 
     return indexed
 
