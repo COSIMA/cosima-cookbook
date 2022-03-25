@@ -754,7 +754,7 @@ def index_experiment(files, session, expt, client=None, chunksize=1000):
             "client is no longer a supported argument", DeprecationWarning, stacklevel=2
         )
 
-    print('Indexing {} files'.format(len(files)))
+    print("Indexing {} files".format(len(files)))
 
     update_metadata(expt, session)
 
@@ -762,14 +762,16 @@ def index_experiment(files, session, expt, client=None, chunksize=1000):
         """Yield successive n-sized chunks from lst."""
         lst = list(setlist)
         for i in range(0, len(lst), n):
-            yield lst[i:i + n]
+            yield lst[i : i + n]
 
     nindexed = 0
 
-    # Cap the maximum number of files to index before committing to keep memory use 
+    # Cap the maximum number of files to index before committing to keep memory use
     # under control and make indexing less affected by errors
     for fileschunk in chunks(files, chunksize):
-        results = [index_file(f, experiment=expt, session=session) for f in tqdm(fileschunk)]
+        results = [
+            index_file(f, experiment=expt, session=session) for f in tqdm(fileschunk)
+        ]
         session.add_all(results)
 
         nindexed = nindexed + len(results)
