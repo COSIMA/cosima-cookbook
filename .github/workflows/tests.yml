@@ -19,10 +19,10 @@ jobs:
     needs: formatting
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: [3.7, 3.9]
         sqa-version: ['<1.4', '==1.4']
-        fail-fast: false
 
     steps:
       - uses: actions/checkout@v2
