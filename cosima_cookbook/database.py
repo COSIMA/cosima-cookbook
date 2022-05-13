@@ -522,7 +522,7 @@ class NCVar(Base):
         return self.attrs.get("cell_methods", None)
 
 
-def create_session(db=None, debug=False):
+def create_session(db=None, debug=False, timeout=15):
     """Create a session for the specified database file.
 
     If debug=True, the session will output raw SQL whenever it is executed on the database.
@@ -531,7 +531,7 @@ def create_session(db=None, debug=False):
     if db is None:
         db = os.getenv("COSIMA_COOKBOOK_DB", __DEFAULT_DB__)
 
-    engine = create_engine("sqlite:///" + db, echo=debug)
+    engine = create_engine("sqlite:///" + db, echo=debug, connect_args={'timeout': timeout})
 
     # if database version is 0, we've created it anew
     conn = engine.connect()
@@ -570,7 +570,7 @@ def update_timeinfo(ds, ncfile):
 
     if len(time_var) == 0:
         raise EmptyFileError(
-            "{} has a valid unlimited dimension, but no data".format(f)
+            "{} has a valid unlimited dimension, but no data".format(ncfile)
         )
 
     if not hasattr(time_var, "units") or not hasattr(time_var, "calendar"):
@@ -746,7 +746,7 @@ def find_experiment(session, expt_path):
     return q.one_or_none()
 
 
-def index_experiment(files, session, expt, client=None, chunksize=1000):
+def index_experiment(files, session, expt, client=None, nfiles=1000):
     """Index specified files for an experiment."""
 
     if client is not None:
@@ -768,7 +768,7 @@ def index_experiment(files, session, expt, client=None, chunksize=1000):
 
     # Cap the maximum number of files to index before committing to keep memory use
     # under control and make indexing less affected by errors
-    for fileschunk in chunks(files, chunksize):
+    for fileschunk in chunks(files, nfiles):
         results = [
             index_file(f, experiment=expt, session=session) for f in tqdm(fileschunk)
         ]
@@ -789,6 +789,7 @@ def build_index(
     prune="delete",
     force=False,
     followsymlinks=False,
+    nfiles=1000,
 ):
     """Index all netcdf files contained within experiment directories.
 
@@ -855,7 +856,7 @@ def build_index(
                     }
                 )
 
-            indexed += index_experiment(files, session, expt)
+            indexed += index_experiment(files, session, expt, nfiles)
 
     return indexed
 
