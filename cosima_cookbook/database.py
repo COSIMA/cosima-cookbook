@@ -1,6 +1,8 @@
 from datetime import datetime
 import logging
 import os
+from tenacity import retry, retry_if_exception_type, stop_after_attempt
+import sys
 from pathlib import Path
 import re
 import subprocess
@@ -11,6 +13,7 @@ import cftime
 import netCDF4
 import yaml
 
+import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy import (
     Column,
@@ -37,6 +40,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.exc import OperationalError
 
 from . import netcdf_utils
 from .database_utils import *
@@ -746,7 +750,7 @@ def find_experiment(session, expt_path):
     return q.one_or_none()
 
 
-def index_experiment(files, session, expt, client=None, nfiles=1000):
+def index_experiment(files, session, expt, nfiles, client=None):
     """Index specified files for an experiment."""
 
     if client is not None:
@@ -770,16 +774,18 @@ def index_experiment(files, session, expt, client=None, nfiles=1000):
     # under control and make indexing less affected by errors
     for fileschunk in chunks(files, nfiles):
         results = [
-            index_file(f, experiment=expt, session=session) for f in tqdm(fileschunk)
+            index_file(f, experiment=expt, session=session) 
+                      for f in tqdm(fileschunk, file=sys.stdout)
         ]
         session.add_all(results)
-
         nindexed = nindexed + len(results)
-
-        # Commit changes to the database
-        session.commit()
+        tenacious_commit(session)
 
     return nindexed
+
+@retry(retry=retry_if_exception_type(OperationalError), stop=stop_after_attempt(5))
+def tenacious_commit(session):
+    session.commit()
 
 
 def build_index(
@@ -789,7 +795,7 @@ def build_index(
     prune="delete",
     force=False,
     followsymlinks=False,
-    nfiles=1000,
+    nfiles=100,
 ):
     """Index all netcdf files contained within experiment directories.
 
