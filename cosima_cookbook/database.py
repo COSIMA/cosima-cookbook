@@ -1028,4 +1028,9 @@ def delete_experiment(experiment, session):
     expt = (
         session.query(NCExperiment)
         .filter(NCExperiment.experiment == experiment)
- 
+        .one_or_none()
+    )
+
+    if expt is not None:
+        session.delete(expt)
+        session.commit()
