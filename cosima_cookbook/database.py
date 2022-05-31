@@ -772,8 +772,11 @@ def find_experiment(session, expt_path):
     return q.one_or_none()
 
 
-def index_experiment(files, session, expt, nfiles, client=None):
+def index_experiment(files, session, expt, nfiles=None, client=None):
     """Index specified files for an experiment."""
+
+    if nfiles is None:
+        nfiles = min(len(files), 100)
 
     if client is not None:
         warnings.warn(
