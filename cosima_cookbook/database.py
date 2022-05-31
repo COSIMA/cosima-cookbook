@@ -1,7 +1,14 @@
 from datetime import datetime
 import logging
 import os
-from tenacity import retry, retry_if_exception_type, stop_after_attempt
+from typing import final
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_random,
+    RetryError,
+)
 import sys
 from pathlib import Path
 import re
@@ -40,7 +47,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, IntegrityError, InvalidRequestError
 
 from . import netcdf_utils
 from .database_utils import *
@@ -526,6 +533,11 @@ class NCVar(Base):
         return self.attrs.get("cell_methods", None)
 
 
+@retry(
+    retry=retry_if_exception_type(OperationalError),
+    wait=wait_random(min=5, max=30),
+    stop=stop_after_attempt(20),
+)
 def create_session(db=None, debug=False, timeout=15):
     """Create a session for the specified database file.
 
@@ -535,7 +547,9 @@ def create_session(db=None, debug=False, timeout=15):
     if db is None:
         db = os.getenv("COSIMA_COOKBOOK_DB", __DEFAULT_DB__)
 
-    engine = create_engine("sqlite:///" + db, echo=debug, connect_args={'timeout': timeout})
+    engine = create_engine(
+        "sqlite:///" + db, echo=debug, connect_args={"timeout": timeout}
+    )
 
     # if database version is 0, we've created it anew
     conn = engine.connect()
@@ -686,6 +700,14 @@ def index_file(ncfile_name, experiment, session):
     return ncfile
 
 
+@retry(
+    retry=(
+        retry_if_exception_type(OperationalError)
+        | retry_if_exception_type(InvalidRequestError)
+    ),
+    wait=wait_random(min=5, max=30),
+    stop=stop_after_attempt(20),
+)
 def update_metadata(experiment, session):
     """Look for a metadata.yaml for a given experiment, and populate
     the row with any data found."""
@@ -760,7 +782,10 @@ def index_experiment(files, session, expt, nfiles, client=None):
 
     print("Indexing {} files".format(len(files)))
 
-    update_metadata(expt, session)
+    try:
+        update_metadata(expt, session)
+    except RetryError:
+        print("Updating metadata failed: ", update_metadata.retry.statistics)
 
     def chunks(setlist, n):
         """Yield successive n-sized chunks from lst."""
@@ -773,18 +798,55 @@ def index_experiment(files, session, expt, nfiles, client=None):
     # Cap the maximum number of files to index before committing to keep memory use
     # under control and make indexing less affected by errors
     for fileschunk in chunks(files, nfiles):
-        results = [
-            index_file(f, experiment=expt, session=session) 
-                      for f in tqdm(fileschunk, file=sys.stdout)
-        ]
-        session.add_all(results)
-        nindexed = nindexed + len(results)
-        tenacious_commit(session)
+        try:
+            nindexed = nindexed + _tenacious_index_files(session, expt, fileschunk)
+        except RetryError:
+            print("Indexing failed: ", _tenacious_index_files.retry.statistics)
+        finally:
+            try:
+                _tenacious_commit(session)
+            except RetryError:
+                print("Commit failed: ", _tenacious_commit.retry.statistics)
+                raise
 
     return nindexed
 
-@retry(retry=retry_if_exception_type(OperationalError), stop=stop_after_attempt(5))
-def tenacious_commit(session):
+
+@retry(
+    retry=(
+        retry_if_exception_type(OperationalError)
+        | retry_if_exception_type(InvalidRequestError)
+    ),
+    wait=wait_random(min=15, max=120),
+    stop=stop_after_attempt(20),
+)
+def _tenacious_index_files(session, expt, files):
+    """
+    Add files to Database. Catch IntegrityError, likely overlapping indexing
+    leading to attempts to insert the same data. Can safely re-index.
+    """
+    results = [
+        index_file(f, experiment=expt, session=session)
+        for f in tqdm(files, file=sys.stdout)
+    ]
+    session.add_all(results)
+    return len(results)
+
+
+@retry(
+    retry=(
+        retry_if_exception_type(OperationalError)
+        | retry_if_exception_type(IntegrityError)
+        | retry_if_exception_type(InvalidRequestError)
+    ),
+    wait=wait_random(min=5, max=30),
+    stop=stop_after_attempt(20),
+)
+def _tenacious_commit(session):
+    """
+    Wrap session commit to catch OperationalError, likely as a result of a locked
+    DB, safe to try again. Limit to 5 retries to avoid locks.
+    """
     session.commit()
 
 
@@ -844,11 +906,17 @@ def build_index(
         files = find_files(str(directory), followsymlinks=followsymlinks)
 
         if force:
-            # Prune all files to force re-indexing data
-            _prune_files(expt, session, {}, delete=True)
+            try:
+                # Prune all files to force re-indexing data
+                _prune_files(expt, session, {}, delete=True)
+            except RetryError:
+                print("Force _prune_files", _prune_files.retry.statistics)
         else:
-            # Prune files that exist in the database but are not present on disk
-            _prune_files(expt, session, files, delete=(prune == "delete"))
+            try:
+                # Prune files that exist in the database but are not present on disk
+                _prune_files(expt, session, files, delete=(prune == "delete"))
+            except RetryError:
+                print("_prune_files", _prune_files.retry.statistics)
 
         if len(files) > 0:
             if len(expt.ncfiles) > 0:
@@ -867,9 +935,18 @@ def build_index(
     return indexed
 
 
+@retry(
+    retry=(
+        retry_if_exception_type(OperationalError)
+        | retry_if_exception_type(IntegrityError)
+    ),
+    wait=wait_random(min=15, max=120),
+    stop=stop_after_attempt(20),
+)
 def _prune_files(expt, session, files, delete=True):
     """Delete or mark as not present the database entries that are
-    not present in the list of files
+    not present in the list of files. The tenacity retry decorator
+    makes this more error tolerant in case the DB is currently locked.
     """
     if len(expt.ncfiles) == 0:
         # No entries in DB, special case just return as there is nothing
@@ -951,9 +1028,4 @@ def delete_experiment(experiment, session):
     expt = (
         session.query(NCExperiment)
         .filter(NCExperiment.experiment == experiment)
-        .one_or_none()
-    )
-
-    if expt is not None:
-        session.delete(expt)
-        session.commit()
+ 
