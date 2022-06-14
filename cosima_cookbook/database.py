@@ -531,7 +531,10 @@ def create_session(db=None, debug=False):
     if db is None:
         db = os.getenv("COSIMA_COOKBOOK_DB", __DEFAULT_DB__)
 
-    engine = create_engine("sqlite:///" + db, echo=debug)
+    # File might be a symlink, so we make sure to resolve it before proceeding
+    db_path = Path(db).resolve()
+
+    engine = create_engine("sqlite:///" + str(db_path), echo=debug)
 
     # if database version is 0, we've created it anew
     conn = engine.connect()
