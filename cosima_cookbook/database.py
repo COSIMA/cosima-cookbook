@@ -759,6 +759,8 @@ def index_experiment(files, session, expt, nfiles=None, client=None):
             "client is no longer a supported argument", DeprecationWarning, stacklevel=2
         )
 
+    update_metadata(expt, session)
+
     # Short-cut if no files are specified
     if len(files) == 0:
         return 0
@@ -767,8 +769,6 @@ def index_experiment(files, session, expt, nfiles=None, client=None):
         # Default to a "chunk size" of 1000 or number of files, whichever
         # is smaller
         nfiles = min(1000, len(files))
-
-    update_metadata(expt, session)
 
     def chunks(setlist, n):
         """Yield successive n-sized chunks from setlist.  Last yielded chunk may have fewer
