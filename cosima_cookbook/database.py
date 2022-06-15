@@ -522,7 +522,7 @@ class NCVar(Base):
         return self.attrs.get("cell_methods", None)
 
 
-def create_session(db=None, debug=False):
+def create_session(db=None, debug=False, timeout=15):
     """Create a session for the specified database file.
 
     If debug=True, the session will output raw SQL whenever it is executed on the database.
@@ -534,7 +534,9 @@ def create_session(db=None, debug=False):
     # File might be a symlink, so we make sure to resolve it before proceeding
     db_path = Path(db).resolve()
 
-    engine = create_engine("sqlite:///" + str(db_path), echo=debug)
+    engine = create_engine(
+        "sqlite:///" + str(db_path), echo=debug, connect_args={"timeout": timeout}
+    )
 
     # if database version is 0, we've created it anew
     conn = engine.connect()
@@ -573,7 +575,7 @@ def update_timeinfo(ds, ncfile):
 
     if len(time_var) == 0:
         raise EmptyFileError(
-            "{} has a valid unlimited dimension, but no data".format(f)
+            "{} has a valid unlimited dimension, but no data".format(ncfile)
         )
 
     if not hasattr(time_var, "units") or not hasattr(time_var, "calendar"):
@@ -749,7 +751,7 @@ def find_experiment(session, expt_path):
     return q.one_or_none()
 
 
-def index_experiment(files, session, expt, client=None):
+def index_experiment(files, session, expt, nfiles=None, client=None):
     """Index specified files for an experiment."""
 
     if client is not None:
@@ -757,14 +759,42 @@ def index_experiment(files, session, expt, client=None):
             "client is no longer a supported argument", DeprecationWarning, stacklevel=2
         )
 
+    # Short-cut if no files are specified
+    if len(files) == 0:
+        return 0
+
+    if nfiles is None:
+        # Default to a "chunk size" of 1000 or number of files, whichever
+        # is smaller
+        nfiles = min(1000, len(files))
+
     update_metadata(expt, session)
 
-    results = []
+    def chunks(setlist, n):
+        """Yield successive n-sized chunks from setlist.  Last yielded chunk may have fewer
+        than n elements: len(setlist) does not have to be an integer multiple of n"""
+        lst = list(setlist)
+        for i in range(0, len(lst), n):
+            yield lst[i : i + n]
 
-    results = [index_file(f, experiment=expt, session=session) for f in tqdm(files)]
+    nindexed = 0
 
-    session.add_all(results)
-    return len(results)
+    # Cap the maximum number of files to index before committing to keep memory use
+    # under control and make indexing less affected by errors
+    for fileschunk in chunks(files, nfiles):
+        results = [
+            index_file(f, experiment=expt, session=session) for f in tqdm(fileschunk)
+        ]
+        try:
+            session.add_all(results)
+        except:
+            raise
+        finally:
+            # if everything went smoothly, commit these changes to the database
+            session.commit()
+            nindexed = nindexed + len(results)
+
+    return nindexed
 
 
 def build_index(
@@ -774,6 +804,7 @@ def build_index(
     prune="delete",
     force=False,
     followsymlinks=False,
+    nfiles=None,
 ):
     """Index all netcdf files contained within experiment directories.
 
@@ -840,10 +871,7 @@ def build_index(
                     }
                 )
 
-            indexed += index_experiment(files, session, expt)
-
-            # if everything went smoothly, commit these changes to the database
-            session.commit()
+            indexed += index_experiment(files, session, expt, nfiles)
 
     return indexed
 
