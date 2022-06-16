@@ -788,7 +788,11 @@ def index_experiment(files, session, expt, nfiles=None, client=None):
         try:
             session.add_all(results)
         except Exception as e:
-            logging.error("Error adding results when indexing experiment %s: %s", expt.experiment, e)
+            logging.error(
+                "Error adding results when indexing experiment %s: %s",
+                expt.experiment,
+                e,
+            )
         finally:
             # if everything went smoothly, commit these changes to the database
             session.commit()
