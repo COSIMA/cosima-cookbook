@@ -55,6 +55,7 @@ def test_find_experiment(session_db):
         experiment=str(directory.name), root_dir=str(directory.resolve())
     )
     session.add(expt)
+    session.flush()
 
     assert expt == database.find_experiment(session, directory)
 
@@ -71,6 +72,7 @@ def test_index_experiment(session_db):
 
     # Index just one file
     database.index_experiment(set(list(files)[:1]), session, expt)
+    session.flush()
 
     assert expt == database.find_experiment(session, directory)
     assert len(database.find_experiment(session, directory).ncfiles) == 1

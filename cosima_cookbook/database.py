@@ -179,6 +179,9 @@ def _setup_ncattribute(session, attr_object):
     if cache is None:
         session._ncattribute_cache = cache = {}
 
+    if attr_object.value in cache:
+        return cache[attr_object.value]
+
     with session.no_autoflush:
         r = (
             session.query(NCAttributeString)
@@ -187,9 +190,6 @@ def _setup_ncattribute(session, attr_object):
         )
         if r is not None:
             return r
-
-    if attr_object.value in cache:
-        return cache[attr_object.value]
 
     cache[attr_object.value] = attr_object
     return attr_object
@@ -554,7 +554,7 @@ def create_session(db=None, debug=False, timeout=15):
     Base.metadata.create_all(conn)
     conn.close()
 
-    Session = sessionmaker(bind=engine)
+    Session = sessionmaker(bind=engine, autoflush=False)
     return Session()
 
 
