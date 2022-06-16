@@ -593,13 +593,15 @@ def test_disambiguation_by_frequency(session):
 
 
 def test_time_bounds_on_dataarray(session):
-    var_salt = cc.querying.getvar("querying", "salt", session, decode_times=False)
+    var_salt = cc.querying.getvar(
+        "querying", "salt", session, decode_times=False, return_dataset=True
+    )
 
     # we should have added time_bounds into the DataArray's attributes
-    assert "time_bounds" in var_salt.attrs
+    assert "time_bounds" in var_salt
 
     # and time_bounds should itself be a DataArray
-    assert isinstance(var_salt.attrs["time_bounds"], xr.DataArray)
+    assert isinstance(var_salt["time_bounds"], xr.DataArray)
 
 
 def test_query_with_attrs(session):

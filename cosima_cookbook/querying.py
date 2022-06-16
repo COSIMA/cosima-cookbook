@@ -284,6 +284,7 @@ def getvar(
     frequency=None,
     attrs=None,
     attrs_unique=None,
+    return_dataset=False,
     **kwargs,
 ):
     """For a given experiment, return an xarray DataArray containing the
@@ -310,6 +311,10 @@ def getvar(
             must be unique on the returned variables. Defaults to
             {'cell_methods': 'time: mean'} and should not generally be
             changed.
+    return_dataset - if True, return xarray.Dataset, containing the
+                     requested variable, along with its time_bounds,
+                     if present.  Otherwise (default), return
+                     xarray.DataArray containing only the variable
 
     Note that if start_time and/or end_time are used, the time range
     of the resulting dataset may not be bounded exactly on those
@@ -339,8 +344,11 @@ def getvar(
         attrs_unique,
     )
 
-    # we know at least one variable was returned
-    variables = _bounds_vars_for_variable(*ncfiles[0])
+    variables = [variable]
+    if return_dataset:
+        # we know at least one variable was returned, so we can index ncfiles
+        # ask for the extra variables associated with cell_methods, etc.
+        variables += _bounds_vars_for_variable(*ncfiles[0])
 
     # chunking -- use first row/file and assume it's the same across the whole dataset
     xr_kwargs = {"chunks": _parse_chunks(ncfiles[0].NCVar)}
@@ -365,7 +373,11 @@ def getvar(
         **xr_kwargs,
     )
 
-    da = ds[variable]
+    if return_dataset:
+        da = ds
+    else:
+        # if we want a dataarray, we'll strip off the extra info
+        da = ds[variable]
 
     # Check the chunks given were actually in the data
     chunks = xr_kwargs.get("chunks", None)
@@ -375,9 +387,6 @@ def getvar(
             logging.warning(
                 f"chunking along dimensions {missing_chunk_dims} is not possible. Available dimensions for chunking are {set(da.dims)}"
             )
-
-    for attr in variables[1:]:
-        da.attrs[attr] = ds[attr]
 
     da.attrs["ncfiles"] = ncfiles
 
@@ -402,7 +411,7 @@ def getvar(
 def _bounds_vars_for_variable(ncfile, ncvar):
     """Return a list of names for a variable and its bounds"""
 
-    variables = [ncvar.varname]
+    variables = []
 
     if "cell_methods" not in ncvar.attrs:
         # no cell methods, so no need to look for bounds
