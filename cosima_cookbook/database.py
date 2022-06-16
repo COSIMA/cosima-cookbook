@@ -522,7 +522,7 @@ class NCVar(Base):
         return self.attrs.get("cell_methods", None)
 
 
-def create_session(db=None, debug=False):
+def create_session(db=None, debug=False, timeout=15):
     """Create a session for the specified database file.
 
     If debug=True, the session will output raw SQL whenever it is executed on the database.
@@ -534,7 +534,9 @@ def create_session(db=None, debug=False):
     # File might be a symlink, so we make sure to resolve it before proceeding
     db_path = Path(db).resolve()
 
-    engine = create_engine("sqlite:///" + str(db_path), echo=debug)
+    engine = create_engine(
+        "sqlite:///" + str(db_path), echo=debug, connect_args={"timeout": timeout}
+    )
 
     # if database version is 0, we've created it anew
     conn = engine.connect()
@@ -560,69 +562,68 @@ class EmptyFileError(Exception):
     pass
 
 
-def update_timeinfo(f, ncfile):
-    """Extract time information from a single netCDF file: start time, end time, and frequency."""
+def update_timeinfo(ds, ncfile):
+    """Extract time information from a single netCDF dataset: start time, end time, and frequency."""
 
-    with netCDF4.Dataset(f, "r") as ds:
-        # we assume the record dimension corresponds to time
-        time_dim = netcdf_utils.find_time_dimension(ds)
-        if time_dim is None:
-            return None
+    # Assume the record dimension corresponds to time
+    time_dim = netcdf_utils.find_time_dimension(ds)
+    if time_dim is None:
+        return None
 
-        time_var = ds.variables[time_dim]
-        has_bounds = hasattr(time_var, "bounds")
+    time_var = ds.variables[time_dim]
+    has_bounds = hasattr(time_var, "bounds")
 
-        if len(time_var) == 0:
-            raise EmptyFileError(
-                "{} has a valid unlimited dimension, but no data".format(f)
-            )
+    if len(time_var) == 0:
+        raise EmptyFileError(
+            "{} has a valid unlimited dimension, but no data".format(ncfile)
+        )
 
-        if not hasattr(time_var, "units") or not hasattr(time_var, "calendar"):
-            # non CF-compliant file -- don't process further
-            return
+    if not hasattr(time_var, "units") or not hasattr(time_var, "calendar"):
+        # non CF-compliant file -- don't process further
+        return
 
-        # Helper function to get a date
-        def todate(t):
-            return cftime.num2date(t, time_var.units, calendar=time_var.calendar)
+    # Helper function to get a date
+    def todate(t):
+        return cftime.num2date(t, time_var.units, calendar=time_var.calendar)
 
+    if has_bounds:
+        bounds_var = ds.variables[time_var.bounds]
+        ncfile.time_start = todate(bounds_var[0, 0])
+        ncfile.time_end = todate(bounds_var[-1, 1])
+    else:
+        ncfile.time_start = todate(time_var[0])
+        ncfile.time_end = todate(time_var[-1])
+
+    if len(time_var) > 1 or has_bounds:
+        # calculate frequency -- I don't see any easy way to do this, so
+        # it's somewhat heuristic
+        #
+        # using bounds_var gets us the averaging period instead of the
+        # difference between the centre of averaging periods, which is easier
+        # to work with
         if has_bounds:
-            bounds_var = ds.variables[time_var.bounds]
-            ncfile.time_start = todate(bounds_var[0, 0])
-            ncfile.time_end = todate(bounds_var[-1, 1])
+            next_time = todate(bounds_var[0, 1])
         else:
-            ncfile.time_start = todate(time_var[0])
-            ncfile.time_end = todate(time_var[-1])
+            next_time = todate(time_var[1])
 
-        if len(time_var) > 1 or has_bounds:
-            # calculate frequency -- I don't see any easy way to do this, so
-            # it's somewhat heuristic
-            #
-            # using bounds_var gets us the averaging period instead of the
-            # difference between the centre of averaging periods, which is easier
-            # to work with
-            if has_bounds:
-                next_time = todate(bounds_var[0, 1])
-            else:
-                next_time = todate(time_var[1])
-
-            dt = next_time - ncfile.time_start
-            if dt.days >= 365:
-                years = round(dt.days / 365)
-                ncfile.frequency = "{} yearly".format(years)
-            elif dt.days >= 28:
-                months = round(dt.days / 30)
-                ncfile.frequency = "{} monthly".format(months)
-            elif dt.days >= 1:
-                ncfile.frequency = "{} daily".format(dt.days)
-            else:
-                ncfile.frequency = "{} hourly".format(dt.seconds // 3600)
+        dt = next_time - ncfile.time_start
+        if dt.days >= 365:
+            years = round(dt.days / 365)
+            ncfile.frequency = "{} yearly".format(years)
+        elif dt.days >= 28:
+            months = round(dt.days / 30)
+            ncfile.frequency = "{} monthly".format(months)
+        elif dt.days >= 1:
+            ncfile.frequency = "{} daily".format(dt.days)
         else:
-            # single time value in this file and no averaging
-            ncfile.frequency = "static"
+            ncfile.frequency = "{} hourly".format(dt.seconds // 3600)
+    else:
+        # single time value in this file and no averaging
+        ncfile.frequency = "static"
 
-        # convert start/end times to timestamps
-        ncfile.time_start = format_datetime(ncfile.time_start)
-        ncfile.time_end = format_datetime(ncfile.time_end)
+    # convert start/end times to timestamps
+    ncfile.time_start = format_datetime(ncfile.time_start)
+    ncfile.time_end = format_datetime(ncfile.time_end)
 
 
 def index_file(ncfile_name, experiment, session):
@@ -675,7 +676,8 @@ def index_file(ncfile_name, experiment, session):
             for att in ds.ncattrs():
                 ncfile.attrs[att] = str(ds.getncattr(att))
 
-        update_timeinfo(f, ncfile)
+            update_timeinfo(ds, ncfile)
+
         ncfile.present = True
     except FileNotFoundError:
         logging.info("Unable to find file: %s", f)
@@ -749,7 +751,7 @@ def find_experiment(session, expt_path):
     return q.one_or_none()
 
 
-def index_experiment(files, session, expt, client=None):
+def index_experiment(files, session, expt, nfiles=None, client=None):
     """Index specified files for an experiment."""
 
     if client is not None:
@@ -759,12 +761,44 @@ def index_experiment(files, session, expt, client=None):
 
     update_metadata(expt, session)
 
-    results = []
+    # Short-cut if no files are specified
+    if len(files) == 0:
+        return 0
 
-    results = [index_file(f, experiment=expt, session=session) for f in tqdm(files)]
+    if nfiles is None:
+        # Default to a "chunk size" of 1000 or number of files, whichever
+        # is smaller
+        nfiles = min(1000, len(files))
 
-    session.add_all(results)
-    return len(results)
+    def chunks(setlist, n):
+        """Yield successive n-sized chunks from setlist.  Last yielded chunk may have fewer
+        than n elements: len(setlist) does not have to be an integer multiple of n"""
+        lst = list(setlist)
+        for i in range(0, len(lst), n):
+            yield lst[i : i + n]
+
+    nindexed = 0
+
+    # Cap the maximum number of files to index before committing to keep memory use
+    # under control and make indexing less affected by errors
+    for fileschunk in chunks(files, nfiles):
+        results = [
+            index_file(f, experiment=expt, session=session) for f in tqdm(fileschunk)
+        ]
+        try:
+            session.add_all(results)
+        except Exception as e:
+            logging.error(
+                "Error adding results when indexing experiment %s: %s",
+                expt.experiment,
+                e,
+            )
+        finally:
+            # if everything went smoothly, commit these changes to the database
+            session.commit()
+            nindexed = nindexed + len(results)
+
+    return nindexed
 
 
 def build_index(
@@ -774,6 +808,7 @@ def build_index(
     prune="delete",
     force=False,
     followsymlinks=False,
+    nfiles=None,
 ):
     """Index all netcdf files contained within experiment directories.
 
@@ -840,10 +875,7 @@ def build_index(
                     }
                 )
 
-            indexed += index_experiment(files, session, expt)
-
-            # if everything went smoothly, commit these changes to the database
-            session.commit()
+            indexed += index_experiment(files, session, expt, nfiles)
 
     return indexed
 
