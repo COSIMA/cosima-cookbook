@@ -321,6 +321,21 @@ def test_time_dimension(session_db):
         assert r[0] == 1
 
 
+def test_missing_time_bounds(session_db):
+    session, db = session_db
+    database.build_index("test/data/indexing/time_bounds", session)
+
+    # Should have one experiment
+    q = session.query(database.NCExperiment)
+    assert q.count() == 1
+
+    # And one correctly indexed (present) file
+    q = session.query(database.NCFile)
+    r = q.all()
+    assert len(r) == 1
+    assert r[0].present
+
+
 def test_index_attributes(session_db):
     session, db = session_db
     database.build_index("test/data/querying", session)

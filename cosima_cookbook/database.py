@@ -571,7 +571,7 @@ def update_timeinfo(ds, ncfile):
         return None
 
     time_var = ds.variables[time_dim]
-    has_bounds = hasattr(time_var, "bounds")
+    has_bounds = hasattr(time_var, "bounds") and time_var.bounds in ds.variables
 
     if len(time_var) == 0:
         raise EmptyFileError(
