@@ -28,7 +28,7 @@ def unreadable_dir(tmpdir):
 def test_find_files():
 
     files = database.find_files("test/data/indexing/")
-    assert len(files) == 16
+    assert len(files) == 17
 
     for f in files:
         assert Path(f).suffix == ".nc"
