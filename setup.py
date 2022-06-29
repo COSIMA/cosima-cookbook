@@ -25,7 +25,11 @@ setup(
         'ipywidgets',
         'lxml',
     ],
-
+    entry_points={
+        'console_scripts': [
+            'cosima_cookbook-update_db = cosima_cookbook.database_update:main',
+        ]
+    },
     extras_require = {
         'build': ['distributed', 'pytest']
     }
