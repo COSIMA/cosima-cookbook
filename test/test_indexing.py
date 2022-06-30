@@ -38,7 +38,7 @@ def test_find_files():
 
     # Test works with alternative suffix
     files = database.find_files("test/", "*.py")
-    assert len(files) == 8
+    assert len(files) == 9
 
     for f in files:
         assert Path(f).suffix == ".py"

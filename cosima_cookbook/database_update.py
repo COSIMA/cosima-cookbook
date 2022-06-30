@@ -4,7 +4,7 @@ import pathlib
 import cosima_cookbook as cc
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Update COSIMA cookbook database.")
     parser.add_argument(
         "dirs", type=pathlib.Path, nargs="+", help="Directories to index."
@@ -17,7 +17,7 @@ def main():
         default="cosima_master.db",
         help="Database to update.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     print(cc)
 
