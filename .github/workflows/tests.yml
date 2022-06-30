@@ -35,4 +35,6 @@ jobs:
           python -m pip install "sqlalchemy${{ matrix.sqa-version}}"
       - name: Unit tests
         run: |
-          python -m pytest test
+          python -m pytest --cov cosima_cookbook test
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v3

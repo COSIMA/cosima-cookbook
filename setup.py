@@ -31,6 +31,6 @@ setup(
         ]
     },
     extras_require = {
-        'build': ['distributed', 'pytest']
+        'build': ['distributed', 'pytest', 'pytest-cov']
     }
 )
