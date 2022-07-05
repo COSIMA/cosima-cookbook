@@ -1,0 +1,9 @@
+name: build
+channels:
+    - coecms
+    - conda-forge
+dependencies:
+    - python
+    - conda-build 
+    - conda-verify
+
