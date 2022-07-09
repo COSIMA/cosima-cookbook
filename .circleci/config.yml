@@ -6,7 +6,7 @@ jobs:
             - image: circleci/python
               environment:
                 PYTHON_VER: 3.6
-
+        resource_class: medium+
         steps:
             - checkout
 
@@ -33,6 +33,7 @@ jobs:
         working_directory: /circleci
         docker:
             - image: scottwales/conda-build
+        resource_class: medium+
         steps:
             - attach_workspace:
                 at: /artefacts
