@@ -26,7 +26,7 @@ requirements:
         - netcdf4
         - joblib
         - tqdm
-        - sqlalchemy<=1.4
+        - sqlalchemy
         - ipywidgets
         - cftime>1.2.1
         - lxml
