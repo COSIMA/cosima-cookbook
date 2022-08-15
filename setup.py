@@ -18,7 +18,7 @@ setup(
         'bokeh',
         'netcdf4',
         'tqdm',
-        'sqlalchemy<=1.4',
+        'sqlalchemy',
         'cftime',
         'f90nml',
         'joblib',
