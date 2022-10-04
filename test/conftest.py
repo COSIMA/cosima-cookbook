@@ -12,8 +12,8 @@ def client():
 
 
 @pytest.fixture(scope="function")
-def session_db(tmpdir):
-    db = tmpdir.join("test.db")
+def session_db(tmp_path):
+    db = tmp_path / "test.db"
     s = database.create_session(str(db))
     yield s, db
 

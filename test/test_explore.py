@@ -42,10 +42,10 @@ def metadata_for_experiment(
 
 
 @pytest.fixture(scope="module")
-def session(tmpdir_factory):
+def session(tmp_path_factory):
     # index test directory into temp database
-    d = tmpdir_factory.mktemp("database")
-    db = d.join("test.db")
+    d = tmp_path_factory.mktemp("database")
+    db = d / "test.db"
     session = cc.database.create_session(str(db))
 
     # build index for entire module
