@@ -198,8 +198,13 @@ class VariableSelector(VBox):
         """
         Called when filter button pushed
         """
+        if self.model.value:
+            model_value = self.model_value
+        else:
+            model_value = ""
+
         self._filter_variables(
-            self.filter_coords.value, self.filter_restarts.value, self.model.value
+            self.filter_coords.value, self.filter_restarts.value, model_value
         )
 
     def _filter_variables(self, coords=True, restarts=True, model=""):

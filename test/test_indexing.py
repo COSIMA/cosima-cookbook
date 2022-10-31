@@ -11,9 +11,19 @@ from sqlalchemy import func, inspect
 LOGGER = logging.getLogger(__name__)
 
 
+def rm_tree(pth):
+    pth = Path(pth)
+    for child in pth.glob("*"):
+        if child.is_file():
+            child.unlink()
+        else:
+            rm_tree(child)
+    pth.rmdir()
+
+
 @pytest.fixture
-def unreadable_dir(tmpdir):
-    expt_path = tmpdir / "expt_dir"
+def unreadable_dir(tmp_path):
+    expt_path = tmp_path / "expt_dir"
     expt_path.mkdir()
     idx_dir = expt_path / "unreadable"
     idx_dir.mkdir()
@@ -22,7 +32,7 @@ def unreadable_dir(tmpdir):
     yield idx_dir
 
     idx_dir.chmod(0o700)
-    expt_path.remove(ignore_errors=True)
+    rm_tree(expt_path)
 
 
 def test_find_files():
@@ -96,7 +106,7 @@ def test_broken(session_db):
     indexed = database.build_index("test/data/indexing/broken_file", session)
 
     # make sure the database was created
-    assert db.check()
+    assert db.exists()
 
     # we indexed a single file
     assert indexed == 1
@@ -118,7 +128,7 @@ def test_empty_file(session_db):
 
     # as with test_broken, we should have seen a single file,
     # but it should be marked as empty
-    assert db.check()
+    assert db.exists()
     assert indexed == 1
     q = session.query(database.NCFile)
     r = q.all()
@@ -135,7 +145,7 @@ def test_empty_file(session_db):
 def test_update_nonew(session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session)
-    assert db.check()
+    assert db.exists()
 
     # re-run the index, make sure we don't re-index anything
     reindexed = database.build_index(
@@ -147,7 +157,7 @@ def test_update_nonew(session_db):
 def test_reindex_force(session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session)
-    assert db.check()
+    assert db.exists()
 
     # re-run the index, make sure re-index
     reindexed = database.build_index(
@@ -156,49 +166,49 @@ def test_reindex_force(session_db):
     assert reindexed == 1
 
 
-def test_update_newfile(session_db, tmpdir):
+def test_update_newfile(session_db, tmp_path):
     session, db = session_db
     shutil.copy(
-        "test/data/indexing/longnames/output000/test1.nc", str(tmpdir / "test1.nc")
+        "test/data/indexing/longnames/output000/test1.nc", str(tmp_path / "test1.nc")
     )
-    database.build_index(str(tmpdir), session)
+    database.build_index(str(tmp_path), session)
 
     # add another file
     shutil.copy(
-        "test/data/indexing/longnames/output000/test2.nc", str(tmpdir / "test2.nc")
+        "test/data/indexing/longnames/output000/test2.nc", str(tmp_path / "test2.nc")
     )
-    reindexed = database.build_index(str(tmpdir), session)
+    reindexed = database.build_index(str(tmp_path), session)
     assert reindexed == 1
 
 
-def test_updated_file(session_db, tmpdir, caplog):
+def test_updated_file(session_db, tmp_path, caplog):
     session, db = session_db
 
-    # Make tmpdir a concrete path otherwise filesystem ops won't work
-    tmpdir = Path(tmpdir)
+    # Make tmp_path a concrete path otherwise filesystem ops won't work
+    tmp_path = Path(tmp_path)
 
     ncfile = "test1.nc"
     ncpath = Path("test/data/indexing/longnames/output000/") / ncfile
-    shutil.copy(str(ncpath), str(tmpdir / ncfile))
-    indexed = database.build_index(str(tmpdir), session)
+    shutil.copy(str(ncpath), str(tmp_path / ncfile))
+    indexed = database.build_index(str(tmp_path), session)
     assert indexed == 1
 
     # Should not reindex
-    reindexed = database.build_index(str(tmpdir), session)
+    reindexed = database.build_index(str(tmp_path), session)
     assert reindexed == 0
 
     # Should reindex as file is updated
     time.sleep(1)
-    (tmpdir / ncfile).touch()
-    reindexed = database.build_index(str(tmpdir), session)
+    (tmp_path / ncfile).touch()
+    reindexed = database.build_index(str(tmp_path), session)
     assert reindexed == 1
 
     # Should not reindex as flagging as missing will not remove
     # file from the database, so will not be reindexed
     time.sleep(1)
-    (tmpdir / ncfile).touch()
+    (tmp_path / ncfile).touch()
     with caplog.at_level(logging.WARNING):
-        reindexed = database.build_index(str(tmpdir), session, prune="flag")
+        reindexed = database.build_index(str(tmp_path), session, prune="flag")
         assert reindexed == 0
         assert "Set prune to 'delete' to reindex updated files" in caplog.text
 
@@ -382,7 +392,7 @@ def test_distributed(client, session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session, client)
 
-    assert db.check()
+    assert db.exists()
     q = session.query(database.NCExperiment)
     r = q.all()
     assert len(r) == 1
@@ -392,7 +402,7 @@ def test_prune_broken(session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session)
 
-    assert db.check()
+    assert db.exists()
 
     # check that we have one file
     q = session.query(database.NCFile)
@@ -412,7 +422,7 @@ def test_prune_missing_experiment(session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session)
 
-    assert db.check()
+    assert db.exists()
 
     # check that we have one file
     q = session.query(database.NCFile)
@@ -425,9 +435,9 @@ def test_prune_missing_experiment(session_db):
         database.prune_experiment(experiment, session)
 
 
-def test_prune_nodelete(session_db, tmpdir):
+def test_prune_nodelete(session_db, tmp_path):
     session, db = session_db
-    expt_dir = tmpdir / "expt"
+    expt_dir = tmp_path / "expt"
     expt_dir.mkdir()
 
     # copy the file to a new experiment directory and index
@@ -452,9 +462,9 @@ def test_prune_nodelete(session_db, tmpdir):
     assert not r.present
 
 
-def test_prune_delete(session_db, tmpdir):
+def test_prune_delete(session_db, tmp_path):
     session, db = session_db
-    expt_dir = tmpdir / "expt"
+    expt_dir = tmp_path / "expt"
     expt_dir.mkdir()
 
     # copy the file to a new experiment directory and index
@@ -478,9 +488,9 @@ def test_prune_delete(session_db, tmpdir):
     assert r is None
 
 
-def test_index_with_prune_nodelete(session_db, tmpdir):
+def test_index_with_prune_nodelete(session_db, tmp_path):
     session, db = session_db
-    expt_dir = tmpdir / "expt"
+    expt_dir = tmp_path / "expt"
     expt_dir.mkdir()
 
     # copy the file to a new experiment directory and index
@@ -505,9 +515,9 @@ def test_index_with_prune_nodelete(session_db, tmpdir):
     assert not r.present
 
 
-def test_index_with_prune_delete(session_db, tmpdir):
+def test_index_with_prune_delete(session_db, tmp_path):
     session, db = session_db
-    expt_dir = tmpdir / "expt"
+    expt_dir = tmp_path / "expt"
     expt_dir.mkdir()
 
     # copy the file to a new experiment directory and index

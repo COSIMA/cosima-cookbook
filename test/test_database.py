@@ -5,9 +5,9 @@ from cosima_cookbook import database
 
 
 @pytest.fixture
-def db_env(tmpdir):
+def db_env(tmp_path):
     old_db = os.getenv("COSIMA_COOKBOOK_DB")
-    db = tmpdir.join("test.db")
+    db = tmp_path / "test.db"
     os.environ["COSIMA_COOKBOOK_DB"] = str(db)
 
     yield db
@@ -19,31 +19,31 @@ def db_env(tmpdir):
         del os.environ["COSIMA_COOKBOOK_DB"]
 
 
-def test_default(tmpdir):
-    db = tmpdir.join("test.db")
+def test_default(tmp_path):
+    db = tmp_path / "test.db"
     # override the NCI-specific default
     database.__DEFAULT_DB__ = str(db)
 
     s = database.create_session()
 
-    assert db.check()
+    assert db.exists()
 
 
 def test_env_var(db_env):
     # make sure we use the environment variable
     # override with no arguments supplied
     s = database.create_session()
-    assert db_env.check()
+    assert db_env.exists()
 
 
-def test_arg_override(tmpdir, db_env):
+def test_arg_override(tmp_path, db_env):
     # check that if we supply an argument, that
     # is used rather than the environment variable
-    db = tmpdir.join("test_other.db")
+    db = tmp_path / "test_other.db"
     s = database.create_session(str(db))
 
-    assert not db_env.check()
-    assert db.check()
+    assert not db_env.exists()
+    assert db.exists()
 
 
 def test_creation(session_db):
@@ -51,7 +51,7 @@ def test_creation(session_db):
     when the session file doesn't exist."""
 
     s, db = session_db
-    assert db.check()
+    assert db.exists()
 
     # we should be able to query against a table that exists
     # with no error
@@ -62,10 +62,10 @@ def test_creation(session_db):
         s.execute("SELECT * FROM ncfiles_notfound")
 
 
-def test_reopen(tmpdir):
+def test_reopen(tmp_path):
     """Test that we can reopen a database of the correct version."""
 
-    db = tmpdir.join("test.db")
+    db = tmp_path / "test.db"
     s = database.create_session(str(db))
 
     s.close()
@@ -73,10 +73,10 @@ def test_reopen(tmpdir):
     s.close()
 
 
-def test_outdated(tmpdir):
+def test_outdated(tmp_path):
     """Test that we can't use an outdated database"""
 
-    db = tmpdir.join("test.db")
+    db = tmp_path / "test.db"
     s = database.create_session(str(db))
 
     # check that the current version matches that defined in the module
@@ -92,14 +92,14 @@ def test_outdated(tmpdir):
         s = database.create_session(str(db))
 
 
-def test_outdated_notmodified(tmpdir):
+def test_outdated_notmodified(tmp_path):
     """Test that we don't try to modify an outdated database.
     This includes adding tables that don't yet exist because
     it's a previous version.
     """
 
     # set up an empty database with a previous version
-    db = tmpdir.join("test.db")
+    db = tmp_path / "test.db"
     conn = sa.create_engine("sqlite:///" + str(db)).connect()
     conn.execute("PRAGMA user_version={}".format(database.__DB_VERSION__ - 1))
     conn.close()
