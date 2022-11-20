@@ -5,6 +5,10 @@
     <img alt="latest docs" src="https://img.shields.io/badge/docs-latest-blue.svg">
 </a>
 
+<a href="https://anaconda.org/coecms/cosima-cookbook">
+    <img src="https://anaconda.org/coecms/cosima-cookbook/badges/version.svg" />
+</a>
+
 # cosima-cookbook
 
 The COSIMA Cookbook is a framework for analysing output from ocean-sea ice models. The focus is on the ACCESS-OM2 suite of models being developed and run by members of [COSIMA: Consortium for Ocean-Sea Ice Modelling in Australia](http://cosima.org.au). But this framework is suited to analysing any MOM5/MOM6 output, as well as output from other models.
@@ -17,26 +21,18 @@ The cookbook is structured as follows:
 
 ## Getting Started
 
-The easiest way to use the COSIMA Cookbook is through NCI's HPC systems (either VDI or Gadi). The cookbook is preinstalled in the latest `conda/analysis3` environment.
+The easiest way to use the COSIMA Cookbook is through NCI's HPC systems (either via Open OnDemand (OOD) or on Gadi). The cookbook is preinstalled in the latest `conda/analysis3` environment.
 
-Once you have an account on the VDI, you should:
- 1. Clone the [`cosima-recipes`](https://github.com/COSIMA/cosima-recipes) repository to your local file space.
- 2. Start a jupyter notebook session using the following commands:
-```
->> module use /g/data/hh5/public/modules/
->> module load conda/analysis3-unstable
->> jupyter notebook
-```
- 3. Navigate to one of the COSIMA recipes and run the analysis.
+Once you have an NCI account you can connect via the Open OnDemand (OOD) following instructions at instructions at https://ood.nci.org.au/ and also at https://opus.nci.org.au/display/DAE/COSIMA+Cookbook.
 
-Alternatively, you might prefer to download `vdi_jupyter` or the `gadi_jupyter` scripts hosted in the CLEx CMS Github Repository [coecms/nci_scripts](https://github.com/coecms/nci_scripts). These scripts will allow you to open a Jupyter notebook in your local browser window.
+Alternatively, you might prefer to download the `gadi_jupyter` scripts hosted in the CLEx CMS Github Repository [coecms/nci_scripts](https://github.com/coecms/nci_scripts). Running the script will open a Jupyter notebook in your local browser window.
 
 
 ## Using the Cookbook
 
 The COSIMA Cookbook relies on several components:
  1. There needs to be a database of simulations -- on the NCI system, model output that is stored in the COSIMA space on the `/g/data/ik11/` directory.
- 2. Once you have access to data, the best place to start is the [`cosima-recipes`](https://github.com/COSIMA/cosima-recipes) repository which includes a series of jupyter notebooks containing examples that guide you through to use the cookbook to load model output and then proceed doing simple (or elaborate) computations. The best starting point of exploring the [`cosima-recipes`](https://github.com/COSIMA/cosima-recipes) is the [Documented Examples](https://cosima-recipes.readthedocs.io/en/latest/documented_examples/index.html). A collection of useful examples leveraging the `cosima-cookbook` is also found [here](https://github.com/COSIMA/ACCESS-OM2-1-025-010deg-report/tree/master/figures).
+ 2. Once you have access to data, the best place to start is the [`cosima-recipes`](https://github.com/COSIMA/cosima-recipes) repository which includes a series of jupyter notebooks containing examples that guide you through to use the cookbook to load model output and then proceed doing simple (or elaborate) computations. The best starting point of exploring the [`cosima-recipes`](https://github.com/COSIMA/cosima-recipes) is the [Tutorials](https://cosima-recipes.readthedocs.io/en/latest/tutorials/index.html) and the [Documented Examples](https://cosima-recipes.readthedocs.io/en/latest/documented_examples/index.html). A collection of useful examples leveraging the `cosima-cookbook` that were used in the [ACCESS-OM2 model announcement paper](https://doi.org/10.5194/gmd-13-401-2020) can be found at [COSIMA/ACCESS-OM2-1-025-010deg-report](https://github.com/COSIMA/ACCESS-OM2-1-025-010deg-report/tree/master/figures) repository.
 
 
 ## Contributing to the Cookbook
