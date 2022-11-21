@@ -21,6 +21,7 @@ assumed that this data resides on a NCI storage system.
 The cookbook is supported on two NCI systems
 
 #. `Open OnDemand (OOD) <https://ood.nci.org.au/>`_
+#. `Australian Research Environment (ARE) <https://are.nci.org.au/>`_
 #. `gadi (gadi.nci.org.au) <http://nci.org.au/systems-services/peak-system/gadi/>`_
 
 Connecting
