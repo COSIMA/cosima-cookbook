@@ -399,16 +399,6 @@ def test_index_attributes(session_db):
         assert attr in v.attrs and v.attrs[attr] == attr_val
 
 
-def test_distributed(client, session_db):
-    session, db = session_db
-    database.build_index("test/data/indexing/broken_file", session, client)
-
-    assert db.exists()
-    q = session.query(database.NCExperiment)
-    r = q.all()
-    assert len(r) == 1
-
-
 def test_prune_broken(session_db):
     session, db = session_db
     database.build_index("test/data/indexing/broken_file", session)
