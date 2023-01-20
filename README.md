@@ -46,5 +46,13 @@ If you like the cookbook, you may like to interact more closely with us:
  * If you find a problem, or have a suggestion for improvement, please log an issue.
  * All code submitted as part of the `cosima-cookbook` itself must be formatted with [black](https://github.com/psf/black)
 
+## Conditions of use for ACCESS-OM2 data
+
+We request that users of ACCESS-OM2 model [code](https://github.com/COSIMA/access-om2) or output data:
+1. consider citing Kiss et al. (2020) ([http://doi.org/10.5194/gmd-13-401-2020](http://doi.org/10.5194/gmd-13-401-2020))
+2. include an acknowledgement such as the following:
+
+   *The authors thank the Consortium for Ocean-Sea Ice Modelling in Australia (COSIMA; [http://www.cosima.org.au](http://www.cosima.org.au)) for making the ACCESS-OM2 suite of models available at [https://github.com/COSIMA/access-om2](https://github.com/COSIMA/access-om2).*
+3. let us know of any publications which use these models or data so we can add them to [our list](https://scholar.google.com/citations?hl=en&user=inVqu_4AAAAJ).
 
 [![Documentation Status](https://readthedocs.org/projects/cosima-cookbook/badge/?version=latest)](https://cosima-cookbook.readthedocs.org/en/latest)
