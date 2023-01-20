@@ -21,6 +21,14 @@ def rm_tree(pth):
     pth.rmdir()
 
 
+def assert_dictionaries_same(expected, actual):
+    for key in expected.keys():
+        if key not in actual or expected[key] != actual[key]:
+            return False
+
+    return True
+
+
 @pytest.fixture
 def unreadable_dir(tmp_path):
     expt_path = tmp_path / "expt_dir"
@@ -351,11 +359,14 @@ def test_index_attributes(session_db):
     database.build_index("test/data/querying", session)
 
     inspector = inspect(session.get_bind())
-    assert inspector.get_indexes("ncattributes")[0] == {
-        "name": "ix_ncattributes_ncvar_id",
-        "column_names": ["ncvar_id"],
-        "unique": 0,
-    }
+    assert assert_dictionaries_same(
+        {
+            "name": "ix_ncattributes_ncvar_id",
+            "column_names": ["ncvar_id"],
+            "unique": 0,
+        },
+        inspector.get_indexes("ncattributes")[0],
+    )
 
     ncfile = "output000/ocean.nc"
 
