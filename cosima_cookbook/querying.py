@@ -520,7 +520,7 @@ def _ncfiles_for_variable(
             warnings.warn(
                 f"Your query returns variables from files with different {attr}: {unique_attributes}. "
                 "This could lead to unexpected behaviour! Disambiguate by passing "
-                f"attrs={{'{attr}'=''}} to getvar, specifying the desired attribute value.",
+                f"attrs={{'{attr}':''}} to getvar, specifying the desired attribute value.",
                 QueryWarning,
             )
 
