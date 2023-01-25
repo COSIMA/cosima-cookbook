@@ -25,7 +25,6 @@ The easiest way to use the COSIMA Cookbook is through NCI's HPC systems (either 
 
 Once you have an NCI account you can connect via
 
-- the Open OnDemand (OOD) following instructions at instructions at https://ood.nci.org.au and also at https://opus.nci.org.au/display/DAE/COSIMA+Cookbook
 
 - the Australian Research Environment (ARE) at https://are.nci.org.au
 
