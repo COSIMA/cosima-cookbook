@@ -71,7 +71,6 @@ def teardown_module(module):
 
 
 def test_format_parse_datetime():
-
     dates = [
         cftime.num2date(t, units="days since 01-01-01", calendar="noleap")
         for t in times
@@ -94,7 +93,6 @@ def test_format_parse_datetime():
 
 
 def test_rebase_times():
-
     # Should be a 10 year offset between original times and rebased times
     assert not np.any(
         (times + 365 * 10)
@@ -113,7 +111,6 @@ def test_rebase_times():
 
 
 def test_rebase_variable():
-
     timesvar = xr.DataArray(
         times, attrs={"units": "days since 1980-01-01", "calendar": "noleap"}
     )
@@ -154,7 +151,6 @@ def test_rebase_variable():
 
 
 def test_matching_time_units():
-
     testfile = "test/data/ocean_sealevel.nc"
 
     ds = xr.open_dataset(testfile, decode_times=False)
@@ -213,7 +209,6 @@ def test_matching_time_units():
 
 
 def test_chunking():
-
     # An offset is required as the target units are ahead of the data in time
     target_units = "days since 2000-01-01"
 

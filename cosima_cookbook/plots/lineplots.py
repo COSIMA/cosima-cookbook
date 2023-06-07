@@ -69,7 +69,6 @@ def annual_scalar(expts=[], variables=[]):
 
     # plotting each variable in a separate plot
     for variable in variables:
-
         plt.figure(figsize=(12, 6))
 
         for result in results:

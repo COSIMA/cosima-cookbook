@@ -44,7 +44,6 @@ def unreadable_dir(tmp_path):
 
 
 def test_find_files():
-
     files = database.find_files("test/data/indexing/")
     assert len(files) == 17
 
