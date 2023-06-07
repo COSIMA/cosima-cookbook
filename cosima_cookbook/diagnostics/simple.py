@@ -21,7 +21,6 @@ def annual_scalar(expt, variables):
     annual_average = darray.resample(time="A").mean("time")
 
     for v in annual_average.data_vars:
-
         avar = annual_average.variables[v]
         dvar = darray.variables[v]
         avar.attrs["long_name"] = dvar.attrs["long_name"] + " (annual average)"

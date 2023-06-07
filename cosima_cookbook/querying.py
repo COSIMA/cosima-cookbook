@@ -160,7 +160,6 @@ def get_variables(
     ]
 
     if experiment:
-
         # Create aliases so as to able to join to the NCAttribute table
         # twice, for the name and value
         ncas1 = aliased(NCAttributeString)

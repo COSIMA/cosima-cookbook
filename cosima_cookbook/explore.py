@@ -25,7 +25,6 @@ def return_value_or_empty(value):
 
 
 class DatabaseExtension:
-
     # DEPRECATED
 
     def __init__(self, session, experiments=None):
@@ -147,7 +146,6 @@ class VariableSelector(VBox):
         for vals in variables.sort_values(["name"])[
             ["name", "long_name", "units"]
         ].values:
-
             var, name, units = map(str, vals)
 
             if firstvar is None:
@@ -329,7 +327,6 @@ class VariableSelectorInfo(VariableSelector):
     def __init__(
         self, parent, variables, daterange, frequency, cellmethods, rows=10, **kwargs
     ):
-
         # The cellmethods widget needs access to the session and experiment
         self.session = parent.session
         self.experiment = parent.experiment_name
@@ -586,7 +583,6 @@ class DatabaseExplorer(VBox):
     variables = None
 
     def __init__(self, session=None, de=None):
-
         if session is None:
             session = database.create_session()
         self.session = session
@@ -611,7 +607,6 @@ class DatabaseExplorer(VBox):
         self._set_handlers()
 
     def _make_widgets(self):
-
         style = "<style>.header p{ line-height: 1.4; margin-bottom: 10px }</style>"
 
         # Gui header
@@ -850,7 +845,6 @@ class DatabaseExplorer(VBox):
 
 
 class ExperimentExplorer(VBox):
-
     session = None
     _loaded_data = None
     experiment_name = None
@@ -858,7 +852,6 @@ class ExperimentExplorer(VBox):
     experiments = None
 
     def __init__(self, session=None, experiment=None):
-
         if session is None:
             session = database.create_session()
         self.session = session

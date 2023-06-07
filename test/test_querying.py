@@ -56,7 +56,6 @@ def test_invalid_query(session):
 
 
 def test_warning_on_ambiguous_attr(session):
-
     with pytest.warns(QueryWarning) as record:
         cc.querying._ncfiles_for_variable(
             "querying_disambiguation",
@@ -118,7 +117,6 @@ def test_warning_on_ambiguous_attr(session):
 
 
 def test_disambiguation_on_default_attr(session):
-
     files = cc.querying._ncfiles_for_variable(
         "querying_disambiguation",
         "v",
@@ -432,7 +430,6 @@ def test_get_variables(session):
 
 
 def test_model_property(session):
-
     filename_map = {
         "ocean": (
             "output/ocean/ice.nc",
@@ -480,7 +477,6 @@ def test_model_property(session):
 
 
 def test_is_restart_property(session):
-
     filename_map = {
         True: (
             "output/restart/ice.nc",
@@ -515,7 +511,6 @@ def test_is_restart_property(session):
 
 
 def test_is_coordinate_property(session):
-
     units_map = {
         True: (
             "degrees_",
@@ -552,7 +547,6 @@ def test_get_frequencies(session):
 
 
 def test_disambiguation_by_frequency(session):
-
     with pytest.warns(UserWarning) as record:
         assert len(cc.querying._ncfiles_for_variable("querying", "time", session)) == 3
 
