@@ -64,6 +64,6 @@ in the COSIMA recipes repository which demonstrates the available tools.
 Tutorials and examples
 ======================
 
-COSIMA recipes provides `tutorials <https://cosima-recipes.readthedocs.io/en/latest/tutorials/index.html>`_
-and `documented examples <https://cosima-recipes.readthedocs.io/en/latest/documented_examples/index.html>`_ 
+COSIMA recipes provides `tutorials <https://cosima-recipes.readthedocs.io/en/latest/tutorials.html>`_
+and `documented examples <https://cosima-recipes.readthedocs.io/en/latest/documented_examples.html>`_ 
 which can be used to learn how to use the Cookbook and for ideas and inspiration for your own analysis.
