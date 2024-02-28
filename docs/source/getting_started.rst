@@ -26,8 +26,8 @@ The cookbook is supported on NCI systems:
 Connecting
 ==========
 
-For gadi, scripts used to start a `jupyter notebook <http://jupyter-notebook.readthedocs.io>`_ 
-or `jupyter lab <http://jupyterlab.readthedocs.io>`_ session on the chosen system 
+For Gadi, scripts used to start a `jupyter notebook <http://jupyter-notebook.readthedocs.io>`_ 
+or `jupyter lab <http://jupyterlab.readthedocs.io>`_ session on the system 
 and automatically create an `ssh tunnel <https://www.ssh.com/ssh/tunneling/>`_ 
 such that the jupyter session can be opened in your local browser using a url
 like <http://localhost:8888> that appears to be on your own local machine. Scripts for
