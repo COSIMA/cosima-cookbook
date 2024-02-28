@@ -305,7 +305,6 @@ def test_get_experiments_with_keywords(session_db):
 
 
 def test_getvar_with_metadata(session_db):
-
     session, db = session_db
     database.build_index("test/data/indexing/metadata", session)
 

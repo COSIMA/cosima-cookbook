@@ -68,7 +68,6 @@ def session(tmp_path_factory):
 
 
 def test_database_explorer(session):
-
     dbx = cc.explore.DatabaseExplorer(session=session)
 
     assert dbx.session is session
@@ -129,7 +128,6 @@ def test_database_explorer(session):
 
 
 def test_experiment_explorer(session):
-
     ee1 = cc.explore.ExperimentExplorer(session=session)
 
     # Experiment selector
@@ -169,7 +167,6 @@ def test_experiment_explorer(session):
 
 
 def test_get_data(session):
-
     ee = cc.explore.ExperimentExplorer(session=session)
 
     assert ee.data is None
@@ -190,7 +187,6 @@ def test_get_data(session):
 
 
 def test_model_property(session):
-
     # Grab all variables and ensure the SQL classification matches the python version
     # May be some holes, as not ensured all cases covered
     for expt in cc.querying.get_experiments(session, all=True).experiment:

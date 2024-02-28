@@ -7,7 +7,6 @@ import IPython.display
 
 
 def psi_avg(expts, n=10, clev=np.arange(-20, 20, 2)):
-
     if not isinstance(expts, list):
         expts = [expts]
 
@@ -66,7 +65,6 @@ def psi_avg(expts, n=10, clev=np.arange(-20, 20, 2)):
 
 
 def zonal_mean(expts, variable, n=10, resolution=1):
-
     if not isinstance(expts, list):
         expts = [expts]
 

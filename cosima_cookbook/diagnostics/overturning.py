@@ -225,7 +225,6 @@ def calc_amoc_south(expt):
 
 @memory.cache
 def zonal_mean(expt, variable, n=10, resolution=1):
-
     zonal_var = get_nc_variable(
         expt,
         "ocean.nc",

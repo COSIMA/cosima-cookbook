@@ -844,7 +844,6 @@ def build_index(
 
     indexed = 0
     for directory in [Path(d) for d in directories]:
-
         expt = find_experiment(session, directory)
         if expt is None:
             expt = NCExperiment(

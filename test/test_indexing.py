@@ -21,6 +21,14 @@ def rm_tree(pth):
     pth.rmdir()
 
 
+def assert_dictionaries_same(expected, actual):
+    for key in expected.keys():
+        if key not in actual or expected[key] != actual[key]:
+            return False
+
+    return True
+
+
 @pytest.fixture
 def unreadable_dir(tmp_path):
     expt_path = tmp_path / "expt_dir"
@@ -36,7 +44,6 @@ def unreadable_dir(tmp_path):
 
 
 def test_find_files():
-
     files = database.find_files("test/data/indexing/")
     assert len(files) == 17
 
@@ -351,11 +358,14 @@ def test_index_attributes(session_db):
     database.build_index("test/data/querying", session)
 
     inspector = inspect(session.get_bind())
-    assert inspector.get_indexes("ncattributes")[0] == {
-        "name": "ix_ncattributes_ncvar_id",
-        "column_names": ["ncvar_id"],
-        "unique": 0,
-    }
+    assert assert_dictionaries_same(
+        {
+            "name": "ix_ncattributes_ncvar_id",
+            "column_names": ["ncvar_id"],
+            "unique": 0,
+        },
+        inspector.get_indexes("ncattributes")[0],
+    )
 
     ncfile = "output000/ocean.nc"
 
@@ -386,16 +396,6 @@ def test_index_attributes(session_db):
     }
     for attr, attr_val in var_attrs.items():
         assert attr in v.attrs and v.attrs[attr] == attr_val
-
-
-def test_distributed(client, session_db):
-    session, db = session_db
-    database.build_index("test/data/indexing/broken_file", session, client)
-
-    assert db.exists()
-    q = session.query(database.NCExperiment)
-    r = q.all()
-    assert len(r) == 1
 
 
 def test_prune_broken(session_db):

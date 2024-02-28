@@ -201,7 +201,6 @@ def build_index(use_bag=False, careful=False, expt_dir_list=None):
         )
 
         def index_variables(ncfile):
-
             matched = find_output.match(ncfile)
             if matched is None:
                 return []
