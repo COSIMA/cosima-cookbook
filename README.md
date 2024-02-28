@@ -27,7 +27,7 @@ The cookbook is structured as follows:
 ## Getting Started
 
 The easiest way to use the COSIMA Cookbook is through NCI's HPC systems (either via the Australian
-Research Environment (ARE), Open OnDemand (OOD), or on Gadi). The cookbook is preinstalled in the
+Research Environment (ARE), or directly on Gadi). The cookbook is preinstalled in the
 latest `conda/analysis3` environment.
 
 Once you have an NCI account you can connect via
