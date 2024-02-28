@@ -18,16 +18,13 @@ COSIMA ocean and ice models are typically run on `NCI <nci.org.au>`_, a HPC
 computing centre in Australia. The output data is very large and it is 
 assumed that this data resides on a NCI storage system.
 
-The cookbook is supported on two NCI systems
+The cookbook is supported on NCI systems:
 
-#. `Open OnDemand (OOD) <https://ood.nci.org.au/>`_
 #. `Australian Research Environment (ARE) <https://are.nci.org.au/>`_
 #. `gadi (gadi.nci.org.au) <http://nci.org.au/systems-services/peak-system/gadi/>`_
 
 Connecting
 ==========
-
-To connect to OOD follow instructions at https://ood.nci.org.au/ and also at https://opus.nci.org.au/display/DAE/COSIMA+Cookbook
 
 For gadi, scripts used to start a `jupyter notebook <http://jupyter-notebook.readthedocs.io>`_ 
 or `jupyter lab <http://jupyterlab.readthedocs.io>`_ session on the chosen system 
