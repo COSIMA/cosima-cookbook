@@ -31,7 +31,7 @@ or `jupyter lab <http://jupyterlab.readthedocs.io>`_ session on the chosen syste
 and automatically create an `ssh tunnel <https://www.ssh.com/ssh/tunneling/>`_ 
 such that the jupyter session can be opened in your local browser using a url
 like <http://localhost:8888> that appears to be on your own local machine. Scripts for
-this purpose are provided by the CLEX CMS team in at the repository
+this purpose are provided by the CLEX CMS team in the repository
 https://github.com/coecms/nci_scripts
 
 Clone the repository to your local computer. There are instructions in the repository 
