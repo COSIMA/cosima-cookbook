@@ -35,7 +35,7 @@ Alternatively, you might prefer to download `vdi_jupyter` or the `gadi_jupyter` 
 ## Using the Cookbook
 
 The COSIMA Cookbook relies on several components:
- 1. There needs to be a database of simulations -- on the NCI system, model output that is stored in the COSIMA space on the `/g/data/ik11/` directory.
+ 1. There needs to be a database of simulations -- on the NCI system, model output stored in the COSIMA directories `/g/data/ik11/` and `/g/data/cj50` is indexed in a default shared database which is [manually updated](https://github.com/COSIMA/master_index) on request. Alternatively you can [make your own database](https://cosima-recipes.readthedocs.io/en/latest/Tutorials/Make_Your_Own_Database.html). 
  2. Once you have access to data, the best place to start is the [`cosima-recipes`](https://github.com/COSIMA/cosima-recipes) repository which includes a series of jupyter notebooks containing examples that guide you through to use the cookbook to load model output and then proceed doing simple (or elaborate) computations. The best starting point of exploring the [`cosima-recipes`](https://github.com/COSIMA/cosima-recipes) is the [Documented Examples](https://cosima-recipes.readthedocs.io/en/latest/documented_examples.html). A collection of useful examples leveraging the `cosima-cookbook` is also found [here](https://github.com/COSIMA/ACCESS-OM2-1-025-010deg-report/tree/master/figures).
 
 
