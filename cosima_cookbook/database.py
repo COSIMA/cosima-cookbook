@@ -42,8 +42,6 @@ from . import netcdf_utils
 from .database_utils import *
 from .date_utils import format_datetime
 
-logging.captureWarnings(True)
-
 __DB_VERSION__ = 3
 __DEFAULT_DB__ = "/g/data/ik11/databases/cosima_master.db"
 
@@ -731,7 +729,8 @@ def find_files(searchdir, matchstring="*.nc", followsymlinks=False):
     )
     if proc.returncode != 0:
         warnings.warn(
-            "Some files or directories could not be read while finding output files: %s",
+            "Some files or directories could not be read "
+            f"while finding output files: {proc.stderr[:200]}",
             UserWarning,
         )
 
