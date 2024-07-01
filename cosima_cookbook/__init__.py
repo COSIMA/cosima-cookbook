@@ -3,13 +3,13 @@
 Common tools for working with COSIMA model output
 """
 
-import pkg_resources
-
 from . import database
 from . import querying
 from . import explore
 
+from importlib.metadata import version, PackageNotFoundError
+
 try:
-    __version__ = pkg_resources.get_distribution("cosima-cookbook").version
-except Exception:
-    __version__ = "999"
+    __version__ = version("cosima-cookbook")
+except PackageNotFoundError:
+    pass
