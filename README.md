@@ -9,7 +9,7 @@
 
 This repository hosts the `cosima_cookbook` which is a [Python package](https://anaconda.org/coecms/cosima-cookbook) for managing a database of ocean model output and loading the output via xarray.
 
-⚠️ `cosima_cookbook` Python package is deprecated and no longer being developed! ⚠️
+⚠️ **The `cosima_cookbook` Python package is deprecated and no longer being developed!** ⚠️
 
 Use the [ACCESS-NRI Intake catalog](https://cosima-recipes.readthedocs.io/en/latest/Tutorials/ACCESS-NRI_Intake_Catalog.html) instead.
 
