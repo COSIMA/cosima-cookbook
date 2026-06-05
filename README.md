@@ -11,7 +11,7 @@ This repository hosts the `cosima_cookbook` which is a [Python package](https://
 
 ⚠️ **The `cosima_cookbook` Python package is deprecated and no longer being developed!** ⚠️
 
-Use the [ACCESS-NRI Intake catalog](https://cosima-recipes.readthedocs.io/en/latest/Tutorials/ACCESS-NRI_Intake_Catalog.html) instead.
+Use the [ACCESS-NRI Intake catalog](https://cosima-recipes.readthedocs.io/en/latest/01-Cooking-Lessons-101/01-Basics/02-ACCESS-NRI_Intake_Catalog.html) instead.
 
 ## What now? Where should I go?
 
