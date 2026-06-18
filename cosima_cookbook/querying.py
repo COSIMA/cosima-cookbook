@@ -7,8 +7,10 @@ Functions for data discovery.
 import logging
 import os.path
 import pandas as pd
+import sqlalchemy as sa
 from sqlalchemy import func, distinct, or_
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql.expression import cast
 from sqlalchemy.sql.selectable import subquery
 import warnings
 import xarray as xr
@@ -270,6 +272,50 @@ def get_frequencies(session, experiment=None):
         )
 
     return pd.DataFrame(q, columns=[c["name"] for c in q.column_descriptions])
+
+
+def get_ranges(session, experiment, variable, frequency, cellmethods=None):
+    # first, we query for the files with a flag indicating that the current row is not
+    # contiguous with its predecessor
+    flag_q = (
+        session.query(
+            NCFile.time_start,
+            NCFile.time_end,
+            (
+                NCFile.time_start
+                != func.lag(NCFile.time_end, 1, "").over(order_by=NCFile.time_start)
+            ).label("flag"),
+        )
+        .join(NCFile.experiment)
+        .join(NCFile.ncvars)
+        .join(NCVar.variable)
+        .filter(NCExperiment.experiment == experiment)
+        .filter(NCFile.frequency == frequency)
+        .filter(NCVar.variable == variable)
+        .order_by(NCFile.time_start)
+    ).subquery()
+
+    # now, by summing over the flag (as an integer), we get a column that allows us to group
+    # on consecutive files
+    group_q = session.query(
+        flag_q,
+        func.sum(cast(flag_q.c.flag, sa.Integer))
+        .over(order_by=flag_q.c.time_start)
+        .label("grp"),
+    ).subquery()
+
+    # we just need the smallest start time and largest end time out of each group
+    # to gets its extent
+    q = (
+        session.query(
+            func.min(group_q.c.time_start),
+            func.max(group_q.c.time_end),
+        )
+        .group_by(group_q.c.grp)
+        .order_by(group_q.c.time_start)
+    )
+
+    return pd.DataFrame(q, columns=["start", "end"])
 
 
 def getvar(
